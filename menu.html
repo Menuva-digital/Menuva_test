@@ -348,15 +348,13 @@ function loadDataFromDB(restoId) {
         const tx = db.transaction(STORE_NAME, "readonly");
         const store = tx.objectStore(STORE_NAME);
 
-        // langsung ambil key "main"
-        const getReq = store.get("main");
+        // ✅ ambil berdasarkan restoId, bukan hardcode "main"
+        const getReq = store.get(restoId);
 
         getReq.onsuccess = () => {
           const data = getReq.result;
           if (!data) return resolve(null);
-
-          const { id, ...cleanData } = data;
-          resolve(cleanData);
+          resolve(data);
         };
 
         getReq.onerror = () => reject("❌ Failed read data from object store.");
@@ -368,7 +366,7 @@ function loadDataFromDB(restoId) {
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+        db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
       }
     };
   });
@@ -488,11 +486,16 @@ function startCountdown(tanggalAkhir, elementId) {
 window.onload = async () => {
   const restoId = getDataFromURL();
 
+  if (!restoId) {
+    alert("❌ Resto ID tidak ditemukan di URL. Gunakan ?resto=xxxx");
+    return;
+  }
+
   try {
     const data = await loadDataFromDB(restoId);
 
     if (!data) {
-      console.warn("⚠️ Tidak ada data ditemukan di IndexedDB");
+      console.warn("⚠️ Tidak ada data ditemukan di IndexedDB untuk restoId:", restoId);
       return;
     }
 
@@ -519,9 +522,9 @@ window.onload = async () => {
   }
 };
 </script>
-
 </body>
 </html>
+
 
 
 
