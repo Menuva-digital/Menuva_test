@@ -544,66 +544,49 @@ button {
 
  <script>
 console.log("Admin Script Version: 2025-09-15-01");
-  let db;
-  const DB_NAME = "MenuvaDB";
-  const STORE_NAME = "menuvaData";
-  const DB_VERSION = 2;
-  
-  // ====================== IndexedDB ======================
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+ let db;
+const DB_NAME = "MenuvaDB";
+const STORE_NAME = "menuvaData";
+const DB_VERSION = 2;
 
-      request.onerror = () => reject(request.error);
-
-      request.onupgradeneeded = (event) => {
-        db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("roomData")) {
-          db.createObjectStore("roomData", { keyPath: "id", autoIncrement: true });
-        }
-      };
-
-      request.onsuccess = (event) => {
-        db = event.target.result;
-        resolve();
-      };
-    });
-  }
-function saveDataToDB(data) {
+// ====================== Init DB ======================
+function initDB() {
   return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("Not Initialized"));
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
+    if (db) return resolve(db);
 
-    // --- pastikan restoId selalu ada ---
-    let restoId = data.restoId;
-    if (!restoId || restoId.trim() === "") {
-      const nama = (data.namaRestoran || "").trim();
-      restoId = slugify(nama) || ("resto" + Date.now());
-      data.restoId = restoId;
-    }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
 
-    // --- pastikan id anchor selalu 1 ---
-    if (!data.id) {
-      data.id = 1;
-    }
-
-    const req = store.put(data);
-
-    req.onsuccess = () => {
-      console.log("✅ Data saved:", data.restoId);
-      resolve(data.restoId); // return restoId biar konsisten
+    req.onerror = () => reject(req.error);
+    req.onsuccess = (e) => {
+      db = e.target.result;
+      resolve(db);
     };
-    req.onerror = () => {
-      console.error("❌ Failed Save Data:", req.error);
-      reject(req.error);
+
+    req.onupgradeneeded = (e) => {
+      const _db = e.target.result;
+      if (!_db.objectStoreNames.contains(STORE_NAME)) {
+        _db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
     };
   });
 }
+   async function saveDataToDB(data) {
+  await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
 
+    // pakai id=1 anchor utama
+    const payload = { id: 1, ...data };
+
+    const req = store.put(payload);
+    req.onsuccess = () => {
+      console.log("✅ Data saved to DB", payload);
+      resolve(payload);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
  function loadDataFromDB() {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error("Not Initialized"));
@@ -1194,30 +1177,24 @@ async function simpanData() {
  function restoreDataFromFile(event) {
   const file = event.target.files[0];
   if (!file) return;
+
   const reader = new FileReader();
-
-  reader.onload = async e => {
+  reader.onload = async (e) => {
     try {
-      const json = JSON.parse(e.target.result);
+      let json = JSON.parse(e.target.result);
 
-      // --- pastikan struktur restore aman ---
-      if (!json.id) {
-        json.id = 1; // anchor biar kebaca menu.html
-      }
-      if (!json.restoId || json.restoId.trim() === "") {
-        json.restoId = "main"; // fallback biar menu.html tetap baca
-      }
+      // kalau file dalam bentuk wrapper {profile: {...}}
+      if (json.profile) json = json.profile;
+      if (json.data) json = json.data;
 
       await saveDataToDB(json);
-
-      alert("✅ Data restored successfully! The page will reload....");
+      alert("✅ Data restored successfully! Reloading...");
       location.reload();
     } catch (err) {
-      console.error("❌ Failed to read JSON file:", err);
-      alert("❌ Failed to read JSON file.");
+      console.error("❌ Restore failed:", err);
+      alert("❌ Failed to restore JSON file.");
     }
   };
-
   reader.readAsText(file);
 }
 
@@ -1357,5 +1334,6 @@ function updateShareUI() {
 </script>
 
 </html>
+
 
 
