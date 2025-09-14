@@ -604,39 +604,54 @@ function openDB() {
   });
 }
 // Simpan JSON ke IndexedDB
+// ======= Robust saveDataToDB (replace existing) =======
 async function saveDataToDB(data) {
   await initDB(); // pastikan DB sudah ready
 
   return new Promise((resolve, reject) => {
-    // pastikan restoId ada (kita sepakat pakai phone sebagai restoId)
-    if (!data.restoId) {
-      if (data.restoPhone) {
-        data.restoId = data.restoPhone.toString().trim();
-      } else {
-        // fallback: buat ID dari nama atau timestamp, tapi idealnya ada phone
-        data.restoId = slugify(data.namaRestoran || ("resto" + Date.now()));
+    try {
+      // jika yang dikirim bukan object, tolak
+      if (!data || typeof data !== "object") {
+        return reject(new Error("Invalid data type: expected object"));
       }
+
+      // jika file berisi { profile: {...} } atau { data: {...} } support unwrapping
+      if (!data.restoId && data.profile && typeof data.profile === "object") {
+        data = Object.assign({}, data.profile);
+      } else if (!data.restoId && data.data && typeof data.data === "object") {
+        data = Object.assign({}, data.data);
+      }
+
+      // pastikan restoId ada (prioritas: restoId -> restoPhone -> namaRestoran -> timestamp)
+      if (!data.restoId || (typeof data.restoId === "string" && data.restoId.trim() === "")) {
+        if (data.restoPhone && String(data.restoPhone).trim() !== "") {
+          data.restoId = String(data.restoPhone).trim();
+        } else {
+          data.restoId = slugify(String(data.namaRestoran || ("resto" + Date.now())));
+        }
+      } else {
+        data.restoId = String(data.restoId).trim();
+      }
+
+      // terakhir pengecekan valid restoId
+      if (!data.restoId) {
+        return reject(new Error("Failed to determine restoId for data"));
+      }
+
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+
+      // gunakan second arg key sebagai fallback (lebih robust jika keyPath bermasalah)
+      const req = store.put(data, data.restoId);
+
+      req.onsuccess = () => resolve(data.restoId);
+      req.onerror = () => reject(req.error || new Error("Failed to put data"));
+
+      tx.onabort = () => reject(new Error("Transaction aborted"));
+      tx.onerror = () => reject(tx.error || new Error("Transaction error"));
+    } catch (err) {
+      reject(err);
     }
-
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-
-    // gunakan put(data) saja — restoId akan dipakai sebagai key karena keyPath sudah diset
-    const req = store.put(data);
-
-    req.onsuccess = () => {
-      console.log("✅ Data saved:", data.restoId);
-      resolve(data.restoId);
-    };
-
-    req.onerror = () => {
-      console.error("❌ Failed Save Data:", req.error);
-      reject(req.error);
-    };
-
-    // opsional: juga handle tx.onerror / tx.oncomplete
-    tx.onabort = () => reject(new Error("Transaction aborted"));
-    tx.onerror = () => reject(tx.error || new Error("Transaction error"));
   });
 }
 
@@ -1241,25 +1256,50 @@ function restoreDataFromFile(event) {
   const reader = new FileReader();
   reader.onload = async e => {
     try {
-      const json = JSON.parse(e.target.result);
+      let json = JSON.parse(e.target.result);
 
-      // ✅ Pastikan restoId selalu ada
-      if (!json.restoId || json.restoId.trim() === "") {
-        if (json.restoPhone && json.restoPhone.trim() !== "") {
-          json.restoId = json.restoPhone.trim(); // pakai no hp
+      console.log("Restore file parsed:", json);
+
+      // Jika file berisi array -> insert each element
+      if (Array.isArray(json)) {
+        // proses sekuensial supaya tidak overload transaction
+        for (const entry of json) {
+          try {
+            await saveDataToDB(entry);
+            console.log("Restored entry:", entry?.restoId || "(generated)");
+          } catch (entryErr) {
+            console.error("Failed to restore entry:", entry, entryErr);
+          }
+        }
+        alert("✅ Restore completed for array file. Reloading...");
+        location.reload();
+        return;
+      }
+
+      // Jika file berisi wrapper { profile: {...} } support itu
+      if (json.profile && typeof json.profile === "object") {
+        json = json.profile;
+      } else if (json.data && typeof json.data === "object") {
+        json = json.data;
+      }
+
+      // Pastikan restoId selalu ada
+      if (!json.restoId || String(json.restoId).trim() === "") {
+        if (json.restoPhone && String(json.restoPhone).trim() !== "") {
+          json.restoId = String(json.restoPhone).trim();
         } else {
-          json.restoId = slugify(json.namaRestoran || ("resto" + Date.now()));
+          json.restoId = slugify(String(json.namaRestoran || ("resto" + Date.now())));
         }
       }
 
-      console.log("Restoring data with restoId:", json.restoId);
+      console.log("Restoring data with restoId:", json.restoId, json);
 
       await saveDataToDB(json);
       alert("✅ Data restored successfully! The page will reload....");
       location.reload();
     } catch(err) {
       console.error("❌ Failed to read JSON file:", err);
-      alert("❌ Failed to read JSON file.");
+      alert("❌ Failed to read JSON file. See console for details.");
     }
   };
   reader.readAsText(file);
@@ -1401,6 +1441,7 @@ function updateShareUI() {
 </script>
 
 </html>
+
 
 
 
