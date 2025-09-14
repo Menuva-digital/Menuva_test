@@ -542,12 +542,16 @@ button {
 </body>
 </html>
 
- <script>
+<script>
   let db;
   const DB_NAME = "MenuvaDB";
   const STORE_NAME = "menuvaData";
   const DB_VERSION = 2;
-  
+
+  // Broadcast channel untuk notify tab lain kalau ada update
+  let bc;
+  try { bc = new BroadcastChannel('menuva_channel'); } catch(e) { bc = null; }
+
   // ====================== IndexedDB ======================
   function initDB() {
     return new Promise((resolve, reject) => {
@@ -572,57 +576,68 @@ button {
     });
   }
 
+  // Simpan data: clear dulu objectStore, lalu put data dengan id=1 (anchor record)
   function saveDataToDB(data) {
-  return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("Not Initialized"));
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
+    return new Promise((resolve, reject) => {
+      if (!db) return reject(new Error("Not Initialized"));
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
 
-    // pastikan restoId ada sebelum save
-    let restoId = data.restoId;
-    if (!restoId) {
-      const nama = (data.namaRestoran || "").trim();
-      restoId = slugify(nama) || ("resto" + Date.now());
-      data.restoId = restoId;
-    }
-
-    // simpan dengan id=1 sebagai anchor record utama
-    const req = store.put({ id: 2, ...data });
-
-    req.onsuccess = () => {
-      console.log("✅ Data saved:", restoId);
-      resolve(restoId); // return restoId biar bisa dipakai lanjut
-    };
-    req.onerror = () => {
-      console.error("❌ Failed Save Data:", req.error);
-      reject(req.error);
-    };
-  });
-}
-
-
- function loadDataFromDB() {
-  return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("Not Initialized"));
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(2);
-
-    req.onsuccess = () => {
-      const result = req.result;
-      if (result) {
-        // buang "id" supaya data yang di-restore bersih
-        const { id, ...data } = result;
-        resolve(data);
-      } else {
-        resolve({});
+      // pastikan restoId ada sebelum save
+      let restoId = data.restoId;
+      if (!restoId) {
+        const nama = (data.namaRestoran || "").trim();
+        restoId = slugify(nama) || ("resto" + Date.now());
+        data.restoId = restoId;
       }
-    };
 
-    req.onerror = () => reject(req.error);
-  });
-}
+      // Clear store dulu supaya selalu cuma ada 1 record utama
+      const clearReq = store.clear();
+      clearReq.onsuccess = () => {
+        // simpan dengan id=1 sebagai anchor record utama
+        const req = store.put({ id: 1, ...data });
 
+        req.onsuccess = () => {
+          console.log("✅ Data saved:", restoId);
+          // notify tab lain kalau ada update
+          try { if (bc) bc.postMessage({ type: 'MENUVA_DATA_UPDATED', restoId }); } catch(e){}
+
+          resolve(restoId); // return restoId biar bisa dipakai lanjut
+        };
+        req.onerror = () => {
+          console.error("❌ Failed Save Data:", req.error);
+          reject(req.error);
+        };
+      };
+      clearReq.onerror = () => {
+        console.error("❌ Failed clear store before save:", clearReq.error);
+        reject(clearReq.error);
+      };
+    });
+  }
+
+  // Ambil data anchor (id=1)
+  function loadDataFromDB() {
+    return new Promise((resolve, reject) => {
+      if (!db) return reject(new Error("Not Initialized"));
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(1);
+
+      req.onsuccess = () => {
+        const result = req.result;
+        if (result) {
+          // buang "id" supaya data yang di-restore bersih
+          const { id, ...data } = result;
+          resolve(data);
+        } else {
+          resolve({});
+        }
+      };
+
+      req.onerror = () => reject(req.error);
+    });
+  }
 
   function clearDataDB() {
     return new Promise((resolve, reject) => {
@@ -630,7 +645,11 @@ button {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
       const req = store.clear();
-      req.onsuccess = () => resolve();
+      req.onsuccess = () => {
+        // notify tab lain juga kalau direset
+        try { if (bc) bc.postMessage({ type: 'MENUVA_DATA_CLEARED' }); } catch(e){}
+        resolve();
+      };
       req.onerror = () => reject(req.error);
     });
   }
@@ -643,6 +662,7 @@ button {
   // ====================== PROMO ======================
   function renderPromoUI() {
     const container = document.getElementById("promoContainer");
+    if(!container) return;
     container.innerHTML = "";
     menuPromo.forEach((promo, index) => {
       const div = document.createElement("div");
@@ -678,8 +698,9 @@ button {
     menuPromo[index][key] = value;
   }
 
+  // fixed: hapus 1 item, bukan 2
   function hapusPromo(index) {
-    menuPromo.splice(index, 2);
+    menuPromo.splice(index, 1);
     renderPromoUI();
   }
 
@@ -688,7 +709,8 @@ button {
     if (!file) return;
     resizeIfNeeded(file)
       .then((resized) => {
-        document.getElementById(`promoImgPreview${index}`).src = resized;
+        const el = document.getElementById(`promoImgPreview${index}`);
+        if(el) el.src = resized;
         updatePromo(index, "image", resized);
       })
       .catch(err => console.error("Failed upload promo:", err));
@@ -731,8 +753,10 @@ function uploadMenuImage(event, inputEl) {
   resizeIfNeeded(file)
     .then((resized) => {
       const preview = inputEl.parentElement.querySelector(".menuPreview");
-      preview.src = resized;
-      preview.style.display = "block";
+      if(preview){
+        preview.src = resized;
+        preview.style.display = "block";
+      }
       inputEl.setAttribute("data-image", resized); // simpan base64 ke attribute
     })
     .catch(err => console.error("Upload menu image failed:", err));
@@ -980,7 +1004,8 @@ document.getElementById("logoInput")?.addEventListener("change", async function 
   if (!file) return;
   try {
     const logoUrl = await resizeIfNeeded(file, 100); // target 100KB
-    document.getElementById("previewLogo").src = logoUrl;
+    const preview = document.getElementById("previewLogo");
+    if(preview) preview.src = logoUrl;
   } catch (err) {
     console.error("Logo error:", err);
     alert("❌ Failed to prscess logo image.");
@@ -1017,7 +1042,7 @@ document.getElementById("logoInput")?.addEventListener("change", async function 
     wrapper.appendChild(btnHapus);
 
     const container = document.getElementById(tipe === "ruangan" ? "flipbookRuanganPreview" : "flipbookMenuPreview");
-    container.appendChild(wrapper);
+    if(container) container.appendChild(wrapper);
   }
 
   function tambahGambar(tipe) {
@@ -1128,14 +1153,19 @@ async function simpanData() {
       document.getElementById("namaRestoran").value = data.namaRestoran || "";
       document.getElementById("restoAddress").value = data.restoAddress || "";
       document.getElementById("restoPhone").value = data.restoPhone || "";
-      if (data.logo) document.getElementById("previewLogo").src = data.logo;
+      if (data.logo) {
+        const previewLogo = document.getElementById("previewLogo");
+        if(previewLogo) previewLogo.src = data.logo;
+      }
 
       if (Array.isArray(data.nomorWaAdmin)) {
         const container = document.getElementById("nomorWaContainer");
-        container.innerHTML = "";
-        data.nomorWaAdmin.forEach(() => tambahNomorWa());
-        const inputs = container.querySelectorAll(".nomor-wa");
-        data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+        if(container){
+          container.innerHTML = "";
+          data.nomorWaAdmin.forEach(() => tambahNomorWa());
+          const inputs = container.querySelectorAll(".nomor-wa");
+          data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+        }
       }
 
       if (Array.isArray(data.menuPromo)) { menuPromo = data.menuPromo; renderPromoUI(); }
@@ -1155,16 +1185,16 @@ async function simpanData() {
   // ====================== RESET & BACKUP ======================
   async function resetData() {
     if (!confirm("Are you sure you want to delete all data?")) return;
-    try { await clearDataDB(); location.reload(); } 
+    try { await clearDataDB(); location.reload(); }
     catch(err) { alert("❌ Failed to delete data: "+err.message); }
   }
 
   async function backupData() {
     try {
       const data = await loadDataFromDB();
-      if (!data) { 
-        alert("No data to backup!"); 
-        return; 
+      if (!data) {
+        alert("No data to backup!");
+        return;
       }
 
       const filename = `menuva-backup-${Date.now()}.json`;
@@ -1181,7 +1211,7 @@ async function simpanData() {
 
       // alert sukses saja, tanpa innerHTML
       alert(`✅ Backup successful! File ${filename} Ready to-download.`);
-      
+
     } catch (err) {
       alert("❌ Backup failed: " + err.message);
       console.error(err);
@@ -1215,13 +1245,13 @@ async function simpanData() {
 
    function generateDynamicLink(baseUrl, data) {
   try {
-    
+
     const jsonData = JSON.stringify(data);
 
-    
+
     const encoded = encodeURIComponent(jsonData);
 
-    
+
     const link = `${baseUrl}?data=${encoded}`;
     return link;
   } catch (err) {
@@ -1285,6 +1315,12 @@ function updateShareUI() {
   const qrContainer = document.getElementById("qrcodePreview");
   if (qrContainer) {
     qrContainer.innerHTML = ""; // bersihkan dulu
+    // pastikan library qrcode sudah di-include di HTML:
+    // <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    if (typeof QRCode === "undefined" || !QRCode.toCanvas) {
+      qrContainer.textContent = "❌ QRCode library not found.";
+      return;
+    }
     QRCode.toCanvas(link, { width: 128 }, function (error, canvas) {
       if (error) {
         console.error(error);
@@ -1322,6 +1358,19 @@ function updateShareUI() {
   }
 }
 
+// Listen broadcast dari tab lain (jika ada), supaya halaman ini bisa reload data kalau perlu
+if (bc) {
+  bc.onmessage = (ev) => {
+    if (ev.data && ev.data.type === 'MENUVA_DATA_UPDATED') {
+      // jika halaman admin di tab lain update data, kita reload isi form
+      loadData().catch(err => console.error("Failed reload after broadcast:", err));
+    }
+    if (ev.data && ev.data.type === 'MENUVA_DATA_CLEARED') {
+      // jika data dihapus di tab lain, reload
+      loadData().catch(err => console.error("Failed reload after broadcast:", err));
+    }
+  };
+}
 </script>
 
 <div class="fixed-bar">
@@ -1342,3 +1391,4 @@ function updateShareUI() {
 </script>
 
 </html>
+
