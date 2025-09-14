@@ -593,59 +593,43 @@ function openDB() {
     };
   });
 }
-
-// ================== Simpan data ke DB ==================
-async function saveDataToDB(data) {
-  const db = await openDB();
-
+// Simpan JSON ke IndexedDB
+function saveDataToDB(data) {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error("DB not initialized"));
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // pastikan restoId selalu ada
-    let restoId = data.restoId;
-    if (!restoId) {
-      const nama = (data.namaRestoran || "").trim();
-      restoId = slugify(nama) || ("resto" + Date.now());
-      data.restoId = restoId;
-    }
-
-    const req = store.put(data); // langsung pakai restoId sbg keyPath
+    // simpan pakai key tetap "profile"
+    const req = store.put(data, "profile");
 
     req.onsuccess = () => {
-      console.log("✅ Data saved:", restoId);
-      resolve(restoId);
+      console.log("✅ Data saved to IndexedDB:", data);
+      resolve();
     };
     req.onerror = () => {
-      console.error("❌ Failed Save Data:", req.error);
+      console.error("❌ Failed to save:", req.error);
       reject(req.error);
     };
   });
 }
 
-
- function loadDataFromDB() {
+// Load JSON dari IndexedDB
+function loadDataFromDB() {
   return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("Not Initialized"));
+    if (!db) return reject(new Error("DB not initialized"));
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
-    const req = store.get(2);
+
+    // ambil pakai key tetap "profile"
+    const req = store.get("profile");
 
     req.onsuccess = () => {
-      const result = req.result;
-      if (result) {
-        // buang "id" supaya data yang di-restore bersih
-        const { id, ...data } = result;
-        resolve(data);
-      } else {
-        resolve({});
-      }
+      resolve(req.result || {}); // kalau kosong, return {}
     };
-
     req.onerror = () => reject(req.error);
   });
 }
-
 
   function clearDataDB() {
     return new Promise((resolve, reject) => {
@@ -1361,4 +1345,5 @@ function updateShareUI() {
 </script>
 
 </html>
+
 
