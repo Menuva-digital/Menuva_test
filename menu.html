@@ -340,33 +340,26 @@ function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 2);
 
-    request.onerror = () => reject("❌ failed open database IndexedDB.");
+    request.onerror = () => reject("❌ Failed open database IndexedDB.");
 
     request.onsuccess = (event) => {
       const db = event.target.result;
       try {
         const tx = db.transaction(STORE_NAME, "readonly");
         const store = tx.objectStore(STORE_NAME);
-        const getAllReq = store.getAll();
 
-        getAllReq.onsuccess = () => {
-          const allData = getAllReq.result;
-          if (!allData || allData.length === 0) return resolve(null);
+        // langsung ambil key "main"
+        const getReq = store.get("main");
 
-          let data;
-          if (restoId) {
-            data = allData.find(item => item.restoId === restoId);
-          }
-          // fallback ke data pertama kalau tidak ketemu
-          if (!data) data = allData[0];
-
+        getReq.onsuccess = () => {
+          const data = getReq.result;
           if (!data) return resolve(null);
 
           const { id, ...cleanData } = data;
           resolve(cleanData);
         };
 
-        getAllReq.onerror = () => reject("❌ failed read data from object store.");
+        getReq.onerror = () => reject("❌ Failed read data from object store.");
       } catch (e) {
         reject("❌ Error: " + e.message);
       }
@@ -380,7 +373,6 @@ function loadDataFromDB(restoId) {
     };
   });
 }
-
 
 // ====================== Render fungsi yg sudah ada ======================
 function renderFlipbookGallery(containerId, images, warningId) {
@@ -526,10 +518,11 @@ window.onload = async () => {
     alert("Gagal load data menu.");
   }
 };
-
 </script>
+
 </body>
 </html>
+
 
 
 
