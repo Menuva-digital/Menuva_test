@@ -538,10 +538,6 @@ button {
       💡 Use this feature before switching devices or clearing your browser data.
     </div>
   </div>
-
-</body>
-</html>
-
  <script>
   let db;
   const DB_NAME = "MenuvaDB";
@@ -572,13 +568,41 @@ button {
     });
   }
 
-  function saveDataToDB(data) {
+  // ================== Open DB sekali aja ==================
+let dbConn = null;
+
+function openDB() {
   return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("Not Initialized"));
+    if (dbConn) return resolve(dbConn);
+
+    const request = indexedDB.open(DB_NAME, 2);
+
+    request.onerror = () => reject("❌ Failed to open IndexedDB");
+
+    request.onsuccess = (event) => {
+      dbConn = event.target.result;
+      resolve(dbConn);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "restoId" }); 
+        // pake restoId sbg key utama
+      }
+    };
+  });
+}
+
+// ================== Simpan data ke DB ==================
+async function saveDataToDB(data) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // pastikan restoId ada sebelum save
+    // pastikan restoId selalu ada
     let restoId = data.restoId;
     if (!restoId) {
       const nama = (data.namaRestoran || "").trim();
@@ -586,12 +610,11 @@ button {
       data.restoId = restoId;
     }
 
-    // simpan dengan id=1 sebagai anchor record utama
-    const req = store.put({ id: 2, ...data });
+    const req = store.put(data); // langsung pakai restoId sbg keyPath
 
     req.onsuccess = () => {
       console.log("✅ Data saved:", restoId);
-      resolve(restoId); // return restoId biar bisa dipakai lanjut
+      resolve(restoId);
     };
     req.onerror = () => {
       console.error("❌ Failed Save Data:", req.error);
@@ -1054,6 +1077,7 @@ function slugify(text) {
     .replace(/\-\-+/g, '-');    // ganti "--" menjadi "-"
 }
 
+// ================== Ambil semua data dari form + simpan ==================
 async function simpanData() {
   try {
     const namaRestoran = document.getElementById("namaRestoran").value.trim();
@@ -1062,7 +1086,7 @@ async function simpanData() {
     const logo = document.getElementById("previewLogo").src || "";
     const nomorWaAdmin = Array.from(document.querySelectorAll(".nomor-wa")).map(i => i.value);
 
-    // === Generate restoId permanen dari phone ===
+    // === restoId permanen dari phone ===
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
       restoIdEl = document.createElement("input");
@@ -1074,15 +1098,14 @@ async function simpanData() {
     let restoId = restoIdEl.value.trim();
     if (!restoId) {
       if (!restoPhone) {
-        console.error("Phone number is required to generate permanent restoId.");
         alert("❌ Please input the restaurant phone number before saving!");
-        return; // stop proses simpan kalau no hp kosong
+        return;
       }
-      restoId = restoPhone;   // gunakan no hp sebagai restoId permanen
+      restoId = restoPhone; // nomor hp jadi restoId permanen
       restoIdEl.value = restoId;
     }
 
-    // Ambil semua menu (termasuk special)
+    // === Ambil semua menu ===
     const menuData = [
       ...ambilMenu("menuFoodContainer"),
       ...ambilMenu("menuSnackContainer"),
@@ -1090,13 +1113,12 @@ async function simpanData() {
       ...ambilMenu("menuSpecialContainer")
     ];
 
-    // Pastikan variabel global ada
     const promo = typeof menuPromo !== "undefined" ? menuPromo : [];
     const flipRuangan = typeof flipbookRuanganImages !== "undefined" ? flipbookRuanganImages : [];
     const flipMenu = typeof flipbookMenuImages !== "undefined" ? flipbookMenuImages : [];
 
     const data = {
-      restoId,          // 🔑 pakai no hp sebagai ID permanen
+      restoId,
       namaRestoran,
       restoAddress,
       restoPhone,
@@ -1111,16 +1133,13 @@ async function simpanData() {
 
     await saveDataToDB(data);
 
-    // 🔑 tampilkan tombol share & generate link + QR
-    updateShareUI();
-
-    alert(`✅ All data saved successfully!: ${restoId}`);
+    updateShareUI(); // link + QR code
+    alert(`✅ All data saved successfully! restoId: ${restoId}`);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Failed to save data:", err);
     alert("❌ Failed to save data.");
   }
 }
-
   async function loadData() {
     try {
       await initDB();
@@ -1342,3 +1361,4 @@ function updateShareUI() {
 </script>
 
 </html>
+
