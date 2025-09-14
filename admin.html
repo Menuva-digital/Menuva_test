@@ -538,6 +538,10 @@ button {
       💡 Use this feature before switching devices or clearing your browser data.
     </div>
   </div>
+
+</body>
+</html>
+
  <script>
   let db;
   const DB_NAME = "MenuvaDB";
@@ -545,128 +549,77 @@ button {
   const DB_VERSION = 2;
   
   // ====================== IndexedDB ======================
-function initDB() {
-  return new Promise((resolve, reject) => {
-    if (db) return resolve(db); // jika sudah terbuka, langsung return
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => reject(request.error);
 
-    request.onerror = (e) => reject(request.error || e);
-
-    request.onupgradeneeded = (event) => {
-      const _db = event.target.result;
-      if (! _db.objectStoreNames.contains(STORE_NAME)) {
-        _db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
-      }
-      if (! _db.objectStoreNames.contains("roomData")) {
-        _db.createObjectStore("roomData", { keyPath: "id", autoIncrement: true });
-      }
-    };
-
-    request.onsuccess = (event) => {
-      db = event.target.result;
-
-      // jika ada perubahan versi di tab lain, tutup koneksi agar user bisa reload
-      db.onversionchange = () => {
-        try { db.close(); } catch(e) {}
-        db = null;
-        console.warn("IndexedDB versionchange: connection closed. Reload page to reopen DB.");
+      request.onupgradeneeded = (event) => {
+        db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("roomData")) {
+          db.createObjectStore("roomData", { keyPath: "id", autoIncrement: true });
+        }
       };
 
-      resolve(db);
-    };
-  });
-}
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        resolve();
+      };
+    });
+  }
 
-  // ================== Open DB sekali aja ==================
-let dbConn = null;
-
-function openDB() {
+  function saveDataToDB(data) {
   return new Promise((resolve, reject) => {
-    if (dbConn) return resolve(dbConn);
-
-    const request = indexedDB.open(DB_NAME, 2);
-
-    request.onerror = () => reject("❌ Failed to open IndexedDB");
-
-    request.onsuccess = (event) => {
-      dbConn = event.target.result;
-      resolve(dbConn);
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "restoId" }); 
-        // pake restoId sbg key utama
-      }
-    };
-  });
-}
-// ======= Robust saveDataToDB (replace existing) =======
-async function saveDataToDB(data) {
-  await initDB();
-
-  return new Promise((resolve, reject) => {
-    try {
-      if (!data || typeof data !== "object") {
-        return reject(new Error("Invalid data type: expected object"));
-      }
-
-      // pastikan restoId ada
-      if (!data.restoId || String(data.restoId).trim() === "") {
-        if (data.restoPhone && String(data.restoPhone).trim() !== "") {
-          data.restoId = String(data.restoPhone).trim();
-        } else {
-          data.restoId = slugify(String(data.namaRestoran || ("resto" + Date.now())));
-        }
-      } else {
-        data.restoId = String(data.restoId).trim();
-      }
-
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-
-      // karena store pakai keyPath: "restoId", cukup kasih data saja
-      const req = store.put(data);
-
-      req.onsuccess = () => resolve(data.restoId);
-      req.onerror = () => reject(req.error || new Error("Failed to put data"));
-
-      tx.onabort = () => reject(new Error("Transaction aborted"));
-      tx.onerror = () => reject(tx.error || new Error("Transaction error"));
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-
-// Load JSON dari IndexedDB
-async function loadDataFromDB(restoId = null) {
-  await initDB();
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
+    if (!db) return reject(new Error("Not Initialized"));
+    const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    let req;
-    if (restoId) {
-      req = store.get(restoId); // ambil berdasarkan restoId
-    } else {
-      req = store.getAll(); // fallback ambil semua, nanti return pertama kalau ada
+    // pastikan restoId ada sebelum save
+    let restoId = data.restoId;
+    if (!restoId) {
+      const nama = (data.namaRestoran || "").trim();
+      restoId = slugify(nama) || ("resto" + Date.now());
+      data.restoId = restoId;
     }
+
+    // simpan dengan id=1 sebagai anchor record utama
+    const req = store.put({ id: 1, ...data });
+
+    req.onsuccess = () => {
+      console.log("✅ Data saved:", restoId);
+      resolve(restoId); // return restoId biar bisa dipakai lanjut
+    };
+    req.onerror = () => {
+      console.error("❌ Failed Save Data:", req.error);
+      reject(req.error);
+    };
+  });
+}
+
+
+ function loadDataFromDB() {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error("Not Initialized"));
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(2);
 
     req.onsuccess = () => {
       const result = req.result;
-      if (restoId) {
-        resolve(result || {}); // object tunggal atau {}
+      if (result) {
+        // buang "id" supaya data yang di-restore bersih
+        const { id, ...data } = result;
+        resolve(data);
       } else {
-        if (Array.isArray(result) && result.length > 0) resolve(result[0]);
-        else resolve({});
+        resolve({});
       }
     };
 
-    req.onerror = () => reject(req.error || new Error("Failed to read from store"));
+    req.onerror = () => reject(req.error);
   });
 }
 
@@ -1109,7 +1062,7 @@ async function simpanData() {
     const logo = document.getElementById("previewLogo").src || "";
     const nomorWaAdmin = Array.from(document.querySelectorAll(".nomor-wa")).map(i => i.value);
 
-    // === restoId permanen dari phone ===
+    // === Generate restoId permanen dari phone ===
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
       restoIdEl = document.createElement("input");
@@ -1121,14 +1074,15 @@ async function simpanData() {
     let restoId = restoIdEl.value.trim();
     if (!restoId) {
       if (!restoPhone) {
+        console.error("Phone number is required to generate permanent restoId.");
         alert("❌ Please input the restaurant phone number before saving!");
-        return;
+        return; // stop proses simpan kalau no hp kosong
       }
-      restoId = restoPhone; // nomor hp jadi restoId permanen
+      restoId = restoPhone;   // gunakan no hp sebagai restoId permanen
       restoIdEl.value = restoId;
     }
 
-    // === Ambil semua menu ===
+    // Ambil semua menu (termasuk special)
     const menuData = [
       ...ambilMenu("menuFoodContainer"),
       ...ambilMenu("menuSnackContainer"),
@@ -1136,12 +1090,13 @@ async function simpanData() {
       ...ambilMenu("menuSpecialContainer")
     ];
 
+    // Pastikan variabel global ada
     const promo = typeof menuPromo !== "undefined" ? menuPromo : [];
     const flipRuangan = typeof flipbookRuanganImages !== "undefined" ? flipbookRuanganImages : [];
     const flipMenu = typeof flipbookMenuImages !== "undefined" ? flipbookMenuImages : [];
 
     const data = {
-      restoId,
+      restoId,          // 🔑 pakai no hp sebagai ID permanen
       namaRestoran,
       restoAddress,
       restoPhone,
@@ -1154,50 +1109,48 @@ async function simpanData() {
       rooms: ambilSemuaRoom()
     };
 
-    await saveDataToDB(data); // ✅ pakai key "profile"
+    await saveDataToDB(data);
 
+    // 🔑 tampilkan tombol share & generate link + QR
     updateShareUI();
-    alert(`✅ All data saved successfully! restoId: ${restoId}`);
+
+    alert(`✅ All data saved successfully!: ${restoId}`);
   } catch (err) {
-    console.error("❌ Failed to save data:", err);
+    console.error(err);
     alert("❌ Failed to save data.");
   }
 }
 
-// === Load data ke form ===
-async function loadData() {
-  try {
-    await initDB();
-    const data = await loadDataFromDB(); // ✅ load pakai key "profile"
+  async function loadData() {
+    try {
+      await initDB();
+      const data = await loadDataFromDB();
+      document.getElementById("namaRestoran").value = data.namaRestoran || "";
+      document.getElementById("restoAddress").value = data.restoAddress || "";
+      document.getElementById("restoPhone").value = data.restoPhone || "";
+      if (data.logo) document.getElementById("previewLogo").src = data.logo;
 
-    document.getElementById("namaRestoran").value = data.namaRestoran || "";
-    document.getElementById("restoAddress").value = data.restoAddress || "";
-    document.getElementById("restoPhone").value = data.restoPhone || "";
-    if (data.logo) document.getElementById("previewLogo").src = data.logo;
+      if (Array.isArray(data.nomorWaAdmin)) {
+        const container = document.getElementById("nomorWaContainer");
+        container.innerHTML = "";
+        data.nomorWaAdmin.forEach(() => tambahNomorWa());
+        const inputs = container.querySelectorAll(".nomor-wa");
+        data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+      }
 
-    if (Array.isArray(data.nomorWaAdmin)) {
-      const container = document.getElementById("nomorWaContainer");
-      container.innerHTML = "";
-      data.nomorWaAdmin.forEach(() => tambahNomorWa());
-      const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+      if (Array.isArray(data.menuPromo)) { menuPromo = data.menuPromo; renderPromoUI(); }
+      if (Array.isArray(data.menu)) data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
+      if (Array.isArray(data.rooms)) restoreRoomFromData(data.rooms);
+
+      flipbookRuanganImages = data.flipbookRuanganImages || [];
+      flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
+
+      flipbookMenuImages = data.flipbookMenuImages || [];
+      flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
+    } catch (err) {
+      console.error(err);
     }
-
-    if (Array.isArray(data.menuPromo)) { menuPromo = data.menuPromo; renderPromoUI(); }
-    if (Array.isArray(data.menu)) data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
-    if (Array.isArray(data.rooms)) restoreRoomFromData(data.rooms);
-
-    flipbookRuanganImages = data.flipbookRuanganImages || [];
-    flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
-
-    flipbookMenuImages = data.flipbookMenuImages || [];
-    flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
-
-  } catch (err) {
-    console.error(err);
   }
-}
-
 
   // ====================== RESET & BACKUP ======================
   async function resetData() {
@@ -1235,61 +1188,23 @@ async function loadData() {
     }
   }
 
-function restoreDataFromFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      let json = JSON.parse(e.target.result);
-
-      console.log("Restore file parsed:", json);
-
-      // Jika file berisi array -> insert each element
-      if (Array.isArray(json)) {
-        // proses sekuensial supaya tidak overload transaction
-        for (const entry of json) {
-          try {
-            await saveDataToDB(entry);
-            console.log("Restored entry:", entry?.restoId || "(generated)");
-          } catch (entryErr) {
-            console.error("Failed to restore entry:", entry, entryErr);
-          }
-        }
-        alert("✅ Restore completed for array file. Reloading...");
+  function restoreDataFromFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const json = JSON.parse(e.target.result);
+        await saveDataToDB(json);
+        alert("✅ Data restored successfully! The page will reload....");
         location.reload();
-        return;
+      } catch(err) {
+        console.error(err);
+        alert("❌ Failed to read JSON file.");
       }
-
-      // Jika file berisi wrapper { profile: {...} } support itu
-      if (json.profile && typeof json.profile === "object") {
-        json = json.profile;
-      } else if (json.data && typeof json.data === "object") {
-        json = json.data;
-      }
-
-      // Pastikan restoId selalu ada
-      if (!json.restoId || String(json.restoId).trim() === "") {
-        if (json.restoPhone && String(json.restoPhone).trim() !== "") {
-          json.restoId = String(json.restoPhone).trim();
-        } else {
-          json.restoId = slugify(String(json.namaRestoran || ("resto" + Date.now())));
-        }
-      }
-
-      console.log("Restoring data with restoId:", json.restoId, json);
-
-      await saveDataToDB(json);
-      alert("✅ Data restored successfully! The page will reload....");
-      location.reload();
-    } catch(err) {
-      console.error("❌ Failed to read JSON file:", err);
-      alert("❌ Failed to read JSON file. See console for details.");
-    }
-  };
-  reader.readAsText(file);
-}
+    };
+    reader.readAsText(file);
+  }
 
   // ====================== INIT ======================
   window.addEventListener("DOMContentLoaded", async () => {
@@ -1427,11 +1342,3 @@ function updateShareUI() {
 </script>
 
 </html>
-
-
-
-
-
-
-
-
