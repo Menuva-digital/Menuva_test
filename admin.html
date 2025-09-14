@@ -1234,30 +1234,37 @@ async function loadData() {
     }
   }
 
- function restoreDataFromFile(event) {
+function restoreDataFromFile(event) {
   const file = event.target.files[0];
   if (!file) return;
+
   const reader = new FileReader();
   reader.onload = async e => {
     try {
       const json = JSON.parse(e.target.result);
 
-      // pastikan json.restoId ada (prioritaskan restoPhone jika ada)
-      if (!json.restoId) {
-        if (json.restoPhone) json.restoId = json.restoPhone.toString().trim();
-        else json.restoId = slugify(json.namaRestoran || ("resto" + Date.now()));
+      // ✅ Pastikan restoId selalu ada
+      if (!json.restoId || json.restoId.trim() === "") {
+        if (json.restoPhone && json.restoPhone.trim() !== "") {
+          json.restoId = json.restoPhone.trim(); // pakai no hp
+        } else {
+          json.restoId = slugify(json.namaRestoran || ("resto" + Date.now()));
+        }
       }
+
+      console.log("Restoring data with restoId:", json.restoId);
 
       await saveDataToDB(json);
       alert("✅ Data restored successfully! The page will reload....");
       location.reload();
     } catch(err) {
-      console.error(err);
+      console.error("❌ Failed to read JSON file:", err);
       alert("❌ Failed to read JSON file.");
     }
   };
   reader.readAsText(file);
 }
+
   // ====================== INIT ======================
   window.addEventListener("DOMContentLoaded", async () => {
     await initDB();
@@ -1394,6 +1401,7 @@ function updateShareUI() {
 </script>
 
 </html>
+
 
 
 
