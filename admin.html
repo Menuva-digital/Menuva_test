@@ -1062,6 +1062,43 @@ function slugify(text) {
 }
 
 // ================== Ambil semua data dari form + simpan ==================
+// === Simpan ke IndexedDB pakai key tetap "profile" ===
+function saveDataToDB(data) {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error("DB not initialized"));
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+
+    const req = store.put(data, "profile"); // 🔑 selalu disimpan dengan key "profile"
+
+    req.onsuccess = () => {
+      console.log("✅ Data saved:", data);
+      resolve();
+    };
+    req.onerror = () => {
+      console.error("❌ Failed to save:", req.error);
+      reject(req.error);
+    };
+  });
+}
+
+// === Ambil data dari IndexedDB ===
+function loadDataFromDB() {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error("DB not initialized"));
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+
+    const req = store.get("profile"); // 🔑 ambil data dengan key "profile"
+
+    req.onsuccess = () => {
+      resolve(req.result || {}); // kalau belum ada, return object kosong
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// === Simpan data dari form ===
 async function simpanData() {
   try {
     const namaRestoran = document.getElementById("namaRestoran").value.trim();
@@ -1115,45 +1152,50 @@ async function simpanData() {
       rooms: ambilSemuaRoom()
     };
 
-    await saveDataToDB(data);
+    await saveDataToDB(data); // ✅ pakai key "profile"
 
-    updateShareUI(); // link + QR code
+    updateShareUI();
     alert(`✅ All data saved successfully! restoId: ${restoId}`);
   } catch (err) {
     console.error("❌ Failed to save data:", err);
     alert("❌ Failed to save data.");
   }
 }
-  async function loadData() {
-    try {
-      await initDB();
-      const data = await loadDataFromDB();
-      document.getElementById("namaRestoran").value = data.namaRestoran || "";
-      document.getElementById("restoAddress").value = data.restoAddress || "";
-      document.getElementById("restoPhone").value = data.restoPhone || "";
-      if (data.logo) document.getElementById("previewLogo").src = data.logo;
 
-      if (Array.isArray(data.nomorWaAdmin)) {
-        const container = document.getElementById("nomorWaContainer");
-        container.innerHTML = "";
-        data.nomorWaAdmin.forEach(() => tambahNomorWa());
-        const inputs = container.querySelectorAll(".nomor-wa");
-        data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
-      }
+// === Load data ke form ===
+async function loadData() {
+  try {
+    await initDB();
+    const data = await loadDataFromDB(); // ✅ load pakai key "profile"
 
-      if (Array.isArray(data.menuPromo)) { menuPromo = data.menuPromo; renderPromoUI(); }
-      if (Array.isArray(data.menu)) data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
-      if (Array.isArray(data.rooms)) restoreRoomFromData(data.rooms);
+    document.getElementById("namaRestoran").value = data.namaRestoran || "";
+    document.getElementById("restoAddress").value = data.restoAddress || "";
+    document.getElementById("restoPhone").value = data.restoPhone || "";
+    if (data.logo) document.getElementById("previewLogo").src = data.logo;
 
-      flipbookRuanganImages = data.flipbookRuanganImages || [];
-      flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
-
-      flipbookMenuImages = data.flipbookMenuImages || [];
-      flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
-    } catch (err) {
-      console.error(err);
+    if (Array.isArray(data.nomorWaAdmin)) {
+      const container = document.getElementById("nomorWaContainer");
+      container.innerHTML = "";
+      data.nomorWaAdmin.forEach(() => tambahNomorWa());
+      const inputs = container.querySelectorAll(".nomor-wa");
+      data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
     }
+
+    if (Array.isArray(data.menuPromo)) { menuPromo = data.menuPromo; renderPromoUI(); }
+    if (Array.isArray(data.menu)) data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
+    if (Array.isArray(data.rooms)) restoreRoomFromData(data.rooms);
+
+    flipbookRuanganImages = data.flipbookRuanganImages || [];
+    flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
+
+    flipbookMenuImages = data.flipbookMenuImages || [];
+    flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
+
+  } catch (err) {
+    console.error(err);
   }
+}
+
 
   // ====================== RESET & BACKUP ======================
   async function resetData() {
@@ -1345,5 +1387,6 @@ function updateShareUI() {
 </script>
 
 </html>
+
 
 
