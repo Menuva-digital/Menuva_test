@@ -399,42 +399,22 @@ function getDataFromURL() {
 }
 
 // ====================== Ambil data dari IndexedDB ======================
-function loadDataFromDB(restoId) {
+function loadDataFromDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open("MenuvaDB", 2);
 
-    request.onerror = () => reject("❌ Failed open database IndexedDB.");
+    req.onerror = () => reject(req.error);
+    req.onsuccess = (e) => {
+      const db = e.target.result;
+      const tx = db.transaction("menuvaData", "readonly");
+      const store = tx.objectStore("menuvaData");
+      const getReq = store.get(1); // 🔑 langsung id=1 anchor
 
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      try {
-        const tx = db.transaction(STORE_NAME, "readonly");
-        const store = tx.objectStore(STORE_NAME);
-
-        // ✅ ambil berdasarkan restoId, bukan hardcode "main"
-        const getReq = store.get(restoId);
-
-        getReq.onsuccess = () => {
-          const data = getReq.result;
-          if (!data) return resolve(null);
-          resolve(data);
-        };
-
-        getReq.onerror = () => reject("❌ Failed read data from object store.");
-      } catch (e) {
-        reject("❌ Error: " + e.message);
-      }
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
-      }
+      getReq.onsuccess = () => resolve(getReq.result || null);
+      getReq.onerror = () => reject(getReq.error);
     };
   });
 }
-
 // ====================== Render fungsi yg sudah ada ======================
 function renderFlipbookGallery(containerId, images, warningId) {
   const container = document.getElementById(containerId);
@@ -661,6 +641,7 @@ document.addEventListener("DOMContentLoaded", watchDBChanges);
 </script>
 </body>
 </html>
+
 
 
 
