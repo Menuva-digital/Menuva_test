@@ -581,7 +581,7 @@ function initDB() {
 
     const req = store.put(payload);
     req.onsuccess = () => {
-      console.log("✅ Data saved to DB", payload);
+      console.log("✅ Data saved", payload);
       resolve(payload);
     };
     req.onerror = () => reject(req.error);
@@ -1109,46 +1109,46 @@ async function simpanData() {
   }
 }
 
- async function loadData() {
+async function loadData() {
   try {
     await initDB();
     const data = await loadDataFromDB();
     if (!data) return;
 
+    // isi form di halaman admin
     document.getElementById("namaRestoran").value = data.namaRestoran || "";
     document.getElementById("restoAddress").value = data.restoAddress || "";
     document.getElementById("restoPhone").value = data.restoPhone || "";
-
     if (data.logo) document.getElementById("previewLogo").src = data.logo;
 
+    // nomor WA
     if (Array.isArray(data.nomorWaAdmin)) {
       const container = document.getElementById("nomorWaContainer");
       container.innerHTML = "";
       data.nomorWaAdmin.forEach(() => tambahNomorWa());
       const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v, i) => inputs[i].value = v);
+      data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
     }
 
-    if (Array.isArray(data.menuPromo)) {
-      menuPromo = data.menuPromo;
-      renderPromoUI();
+    // promo, menu, rooms
+    if (Array.isArray(data.menuPromo)) { 
+      menuPromo = data.menuPromo; 
+      renderPromoUI(); 
     }
-
     if (Array.isArray(data.menu)) {
-      data.menu.forEach(m =>
-        tambahMenu(m.kategori, m.nama, m.harga, m.image)
-      );
+      data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
     }
-
     if (Array.isArray(data.rooms)) {
       restoreRoomFromData(data.rooms);
     }
 
+    // flipbook
     flipbookRuanganImages = data.flipbookRuanganImages || [];
     flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
 
     flipbookMenuImages = data.flipbookMenuImages || [];
     flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
+
   } catch (err) {
     console.error("❌ loadData gagal:", err);
   }
@@ -1371,6 +1371,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 </html>
+
 
 
 
