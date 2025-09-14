@@ -157,7 +157,7 @@
 }
 
   /* fullscreen overlay */
-.fullscreen-overlay {
+    .fullscreen-overlay {
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -188,6 +188,24 @@
     z-index: 10000;
     user-select: none;
   }
+
+  /* Tombol navigasi kiri/kanan */
+  .fullscreen-overlay .nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 40px;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+    padding: 10px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 50%;
+  }
+  .fullscreen-overlay .prev-btn { left: 20px; }
+  .fullscreen-overlay .next-btn { right: 20px; }
+    
     .section-title {
       text-align: center;
       font-weight: bold;
@@ -359,9 +377,10 @@ main, .container { padding-bottom: 70px; }
 
  <div class="fullscreen-overlay" id="fullscreenOverlay">
   <span class="close-btn" onclick="closeFullscreen()">✖</span>
+  <span class="nav-btn prev-btn" onclick="showPrev()">⟨</span>
   <img id="fullscreenImage" alt="Fullscreen Image" />
+  <span class="nav-btn next-btn" onclick="showNext()">⟩</span>
 </div>
-
   
  <button class="btn-book" onclick="window.location.href='book.html'">📖 Dine-in Menu</button>
   
@@ -594,7 +613,14 @@ window.onload = async () => {
 // panggil saat halaman load
 document.addEventListener("DOMContentLoaded", watchDBChanges);
 
-  function openFullscreen(src) {
+ let galleryImages = [];
+  let currentIndex = 0;
+
+  // buka fullscreen dengan index
+  function openFullscreen(src, index = 0, allImages = []) {
+    galleryImages = allImages;
+    currentIndex = index;
+
     const overlay = document.getElementById("fullscreenOverlay");
     const img = document.getElementById("fullscreenImage");
     img.src = src;
@@ -606,17 +632,36 @@ document.addEventListener("DOMContentLoaded", watchDBChanges);
     const img = document.getElementById("fullscreenImage");
     overlay.style.display = "none";
     img.src = "";
+    galleryImages = [];
+    currentIndex = 0;
   }
 
-  // ESC key buat close
+  function showPrev() {
+    if (!galleryImages.length) return;
+    currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
+    document.getElementById("fullscreenImage").src = galleryImages[currentIndex];
+  }
+
+  function showNext() {
+    if (!galleryImages.length) return;
+    currentIndex = (currentIndex + 1) % galleryImages.length;
+    document.getElementById("fullscreenImage").src = galleryImages[currentIndex];
+  }
+
+  // ESC untuk close, ArrowLeft/ArrowRight untuk navigasi
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeFullscreen();
+    } else if (e.key === "ArrowLeft") {
+      showPrev();
+    } else if (e.key === "ArrowRight") {
+      showNext();
     }
   });
 </script>
 </body>
 </html>
+
 
 
 
