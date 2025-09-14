@@ -545,28 +545,38 @@ button {
   const DB_VERSION = 2;
   
   // ====================== IndexedDB ======================
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+function initDB() {
+  return new Promise((resolve, reject) => {
+    if (db) return resolve(db); // jika sudah terbuka, langsung return
 
-      request.onerror = () => reject(request.error);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onupgradeneeded = (event) => {
-        db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("roomData")) {
-          db.createObjectStore("roomData", { keyPath: "id", autoIncrement: true });
-        }
+    request.onerror = (e) => reject(request.error || e);
+
+    request.onupgradeneeded = (event) => {
+      const _db = event.target.result;
+      if (! _db.objectStoreNames.contains(STORE_NAME)) {
+        _db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
+      }
+      if (! _db.objectStoreNames.contains("roomData")) {
+        _db.createObjectStore("roomData", { keyPath: "id", autoIncrement: true });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      db = event.target.result;
+
+      // jika ada perubahan versi di tab lain, tutup koneksi agar user bisa reload
+      db.onversionchange = () => {
+        try { db.close(); } catch(e) {}
+        db = null;
+        console.warn("IndexedDB versionchange: connection closed. Reload page to reopen DB.");
       };
 
-      request.onsuccess = (event) => {
-        db = event.target.result;
-        resolve();
-      };
-    });
-  }
+      resolve(db);
+    };
+  });
+}
 
   // ================== Open DB sekali aja ==================
 let dbConn = null;
@@ -594,42 +604,71 @@ function openDB() {
   });
 }
 // Simpan JSON ke IndexedDB
-function saveDataToDB(data) {
+async function saveDataToDB(data) {
+  await initDB(); // pastikan DB sudah ready
+
   return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("DB not initialized"));
+    // pastikan restoId ada (kita sepakat pakai phone sebagai restoId)
+    if (!data.restoId) {
+      if (data.restoPhone) {
+        data.restoId = data.restoPhone.toString().trim();
+      } else {
+        // fallback: buat ID dari nama atau timestamp, tapi idealnya ada phone
+        data.restoId = slugify(data.namaRestoran || ("resto" + Date.now()));
+      }
+    }
+
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // simpan pakai key tetap "profile"
-    const req = store.put(data, "profile");
+    // gunakan put(data) saja — restoId akan dipakai sebagai key karena keyPath sudah diset
+    const req = store.put(data);
 
     req.onsuccess = () => {
-      console.log("✅ Data saved to IndexedDB:", data);
-      resolve();
+      console.log("✅ Data saved:", data.restoId);
+      resolve(data.restoId);
     };
+
     req.onerror = () => {
-      console.error("❌ Failed to save:", req.error);
+      console.error("❌ Failed Save Data:", req.error);
       reject(req.error);
     };
+
+    // opsional: juga handle tx.onerror / tx.oncomplete
+    tx.onabort = () => reject(new Error("Transaction aborted"));
+    tx.onerror = () => reject(tx.error || new Error("Transaction error"));
   });
 }
 
 // Load JSON dari IndexedDB
-function loadDataFromDB() {
+async function loadDataFromDB(restoId = null) {
+  await initDB();
+
   return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("DB not initialized"));
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
 
-    // ambil pakai key tetap "profile"
-    const req = store.get("profile");
+    let req;
+    if (restoId) {
+      req = store.get(restoId); // ambil berdasarkan restoId
+    } else {
+      req = store.getAll(); // fallback ambil semua, nanti return pertama kalau ada
+    }
 
     req.onsuccess = () => {
-      resolve(req.result || {}); // kalau kosong, return {}
+      const result = req.result;
+      if (restoId) {
+        resolve(result || {}); // object tunggal atau {}
+      } else {
+        if (Array.isArray(result) && result.length > 0) resolve(result[0]);
+        else resolve({});
+      }
     };
-    req.onerror = () => reject(req.error);
+
+    req.onerror = () => reject(req.error || new Error("Failed to read from store"));
   });
 }
+
 
   function clearDataDB() {
     return new Promise((resolve, reject) => {
@@ -686,7 +725,7 @@ function loadDataFromDB() {
   }
 
   function hapusPromo(index) {
-    menuPromo.splice(index, 2);
+    menuPromo.splice(index, 1);
     renderPromoUI();
   }
 
@@ -1195,24 +1234,30 @@ async function loadData() {
     }
   }
 
-  function restoreDataFromFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const json = JSON.parse(e.target.result);
-        await saveDataToDB(json);
-        alert("✅ Data restored successfully! The page will reload....");
-        location.reload();
-      } catch(err) {
-        console.error(err);
-        alert("❌ Failed to read JSON file.");
-      }
-    };
-    reader.readAsText(file);
-  }
+ function restoreDataFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const json = JSON.parse(e.target.result);
 
+      // pastikan json.restoId ada (prioritaskan restoPhone jika ada)
+      if (!json.restoId) {
+        if (json.restoPhone) json.restoId = json.restoPhone.toString().trim();
+        else json.restoId = slugify(json.namaRestoran || ("resto" + Date.now()));
+      }
+
+      await saveDataToDB(json);
+      alert("✅ Data restored successfully! The page will reload....");
+      location.reload();
+    } catch(err) {
+      console.error(err);
+      alert("❌ Failed to read JSON file.");
+    }
+  };
+  reader.readAsText(file);
+}
   // ====================== INIT ======================
   window.addEventListener("DOMContentLoaded", async () => {
     await initDB();
@@ -1349,6 +1394,7 @@ function updateShareUI() {
 </script>
 
 </html>
+
 
 
 
