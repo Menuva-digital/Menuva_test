@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reserve Room</title>
+<style>
+/* ===================== RESET & THEME ===================== */
+* { box-sizing: border-box; margin:0; padding:0; }
+
+:root {
+  --bg: #1e3c72;          /* biru elegan buat background */
+  --surface: #ffffff;
+  --text: #1c2d4f;
+  --muted: #5c6f91;
+  --border: #c3d4f7;
+  --primary: #1f70ff;
+  --success: #25d366;
+  --card-light: #ffffff;
+  --card-dark: #1c2333;
+  --chip: #dce7ff;        /* ✅ tambahin ini buat default terang */
+  --shadow: 0 6px 24px rgba(0,0,0,.08);
+}
+
+body.dark {
+  --bg: #0e1116;
+  --surface: #141922;
+  --text: #e6ebff;
+  --muted: #aab6db;
+  --border: #263148;
+  --primary: #4da3ff;
+  --chip: #0f1a2a;
+  --shadow: 0 8px 28px rgba(0,0,0,.5);
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--bg);  /* gak perlu !important kalau variablenya fix */
+  color: var(--text);
+  transition: background .3s, color .3s;
+  padding-bottom: 50px;
+}
+
+header {
+  position: relative;
+  text-align: center;
+  padding: 16px 20px;
+}
+
+header .header-inner {
+  display: flex;
+  justify-content: center; /* konten utama di tengah */
+  align-items: center;
+  position: relative;
+}
+
+header .center-info {
+  display: flex;
+  flex-direction: column; /* Biar logo di atas, teks di bawah */
+  align-items: center;
+  gap: 6px;
+}
+
+header img#restoLogo {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+header h1 {
+  font-size: 1.2rem;
+  margin: 0;
+  color: var(--text, #fff);
+}
+
+header .contact-info {
+  font-size: 0.8rem;
+  color: var(--text, #fff);
+  line-height: 1.3;
+}
+header .dark-toggle {
+  position: absolute;
+  right: 20px;
+  top: 20px;            /* lebih naik */
+  transform: none;      /* buang translate biar patok ke atas */
+  font-size: 1.3rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text, #fff);
+}
+.fixed-bar {
+  position: fixed;       /* kalau mau selalu nempel bawah */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;         /* kunci supaya button sejajar */
+  justify-content: space-between;
+  gap: 10px;             /* jarak antar tombol */
+  padding: 10px;
+  background: linear-gradient(135deg,#1e3c72,#2a5298);
+}
+
+.fixed-bar button {
+  flex: 1;               /* ukuran sama rata */
+  padding: 12px 0;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+}
+
+.btn-wa {
+  background: var(--success);
+}
+
+.btn-back {
+  background: #d8cd33;
+  color: #000;
+}
+
+  #restoName,
+.contact-info,
+.contact-info div {
+  color: #ffffff !important;  /* paksa putih bersih */
+}
+
+  /* ===================== MAIN CONTAINER ===================== */
+  .main-container {
+    width: 95%;
+    max-width: 900px;
+    margin: 20px auto;
+    background: var(--card-light);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    transition: background .3s, color .3s;
+  }
+  body.dark .main-container { background: var(--card-dark); }
+  
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* selalu 3 kolom */
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tabs button {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 999px;      /* bikin oval/pill */
+  border: 1px solid #ccc;
+  cursor: pointer;
+  background: #f5f5f5;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+/* efek hover */
+.tabs button:hover {
+  background: #e0e0e0;
+}
+
+/* tab aktif */
+.tabs button.active {
+  background: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+  /* ===================== GRID ===================== */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(140px,1fr));
+    gap: 12px;
+  }
+  .hidden { display: none; }
+
+  /* ===================== ROOM CARD ===================== */
+  .room-card {
+    background: var(--card-light);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    font-size: 0.85rem;
+    border: 1px solid #ddd;
+    transition: background .3s, color .3s;
+  }
+  body.dark .room-card { background: var(--card-dark); border-color: #444; }
+  .room-card img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; }
+  .room-card h3 { font-size: 0.95rem; margin: 4px 0; }
+  .room-card p { margin: 2px 0; font-size: 0.8rem; }
+  .room-card button {
+    margin-top: 6px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    background: var(--success);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  /* ===================== RESERVASI FORM ===================== */
+  .reservasi-container { margin-top: 20px; }
+  #cartPreview { background: var(--chip); padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; }
+  .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 4px; flex-wrap: wrap; }
+
+  .form-input {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+  }
+  .form-input label { font-size: 0.85rem; margin-bottom: 4px; }
+  .form-input input,
+  .form-input textarea {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.85rem;
+    width: 100%;
+  }
+  .form-input textarea { resize: vertical; min-height: 60px; }
+ 
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width: 500px) {
+    header .header-inner { flex-direction: column; align-items: flex-start; gap: 6px; }
+    header h1 { font-size: 1rem; }
+    .room-card img { height: 80px; }
+  }
+/* Cart Item */
+.cart-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface, #f8f8f8);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  font-size: 14px;
+  color: var(--text, #333);
+  flex-wrap: wrap; /* biar responsif kalau sempit */
+}
+
+/* Kontainer tombol qty biar sejajar */
+.qty-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* Tombol umum ( + / - ) */
+.qty-controls button {
+  background: linear-gradient(145deg, #4e73df, #224abe);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+}
+
+.qty-controls button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.25);
+  background: linear-gradient(145deg, #5a82f0, #2d4fd1);
+}
+
+/* Tombol hapus ❌ lebih kecil */
+.cart-item .remove-btn {
+  background: linear-gradient(145deg, #e74c3c, #c0392b);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+}
+
+.cart-item .remove-btn:hover {
+  background: linear-gradient(145deg, #ff6655, #e74c3c);
+}
+#loadingIndicator {
+  display: none;
+}
+#loadingIndicator.active {
+  display: block;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="center-info">
+      <img id="restoLogo" alt="Logo" />
+      <h1 id="restoName">Resto Name</h1>
+      <div class="contact-info">
+        <div id="alamatRestoranDisplay"></div>
+        <div id="teleponRestoranDisplay"></div>
+      </div>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()">🌙</button>
+  </div>
+</header>
+<div id="loadingIndicator" style="text-align:center; padding:20px; font-size:0.9rem; color:#666;">
+  ⏳ Loading data...
+</div>
+
+<div class="main-container" id="app">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="active" data-target="rooms">Rooms</button>
+    <button data-target="meetings">Meeting Rooms</button>
+    <button data-target="packages">Packages</button>
+  </div>
+
+  <!-- Grid -->
+  <section id="rooms" class="grid"></section>
+  <section id="meetings" class="grid hidden"></section>
+  <section id="packages" class="grid hidden"></section>
+  <p id="empty" class="hidden" style="text-align:center;color:#666;margin-top:8px">Data Empty.</p>
+
+  <!-- Cart + Form -->
+  <div class="reservasi-container">
+    <div id="cartPreview"><p><i>No choice</i></p></div>
+    <p id="cartTotal">Total: 0</p>
+    <br>
+    <div class="form-input"><label>Orderer Name</label><input type="text" id="custName"></div>
+    <div class="form-input"><label>Address</label><input type="text" id="custAddress"></div>
+    <div class="form-input"><label>Telephone Number</label><input type="text" id="custPhone"></div>
+    <div class="form-input"><label>Date Used</label><input type="date" id="custDate"></div>
+    <div class="form-input"><label>Notes</label><textarea id="custNote"></textarea></div>
+
+   <!-- Bottom Buttons -->
+<div class="fixed-bar">
+  <button class="btn-wa" id="btnSend">📤 Send Request</button>
+  <button class="btn-back" onclick="history.back()">🔙 Back To Menu</button>
+</div>
+</div>
+</div>
+
+<script>
+  let db;
+  const DB_NAME = "MenuvaDB";
+  const STORE_NAME = "menuvaData";
+  const DB_VERSION = 2;
+  let restoData = {}; // akan diisi dari DB
+
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = e => { db = e.target.result; resolve(); };
+    });
+  }
+
+  function loadDataFromDB() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(1);
+      req.onsuccess = () => resolve(req.result || {});
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  let cart = [];
+
+  // Dark Mode
+  function applyTheme() {
+    const saved = localStorage.getItem('menuva_theme');
+    if (saved === 'dark') document.body.classList.add('dark');
+    document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+  }
+  function toggleDark() {
+    document.body.classList.toggle('dark');
+    localStorage.setItem('menuva_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+    document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+  }
+
+  // Build Card
+  function buatCard(room) {
+    return `
+      <div class="room-card">
+        <img src="${room.image}" alt="${room.nama}">
+        <h3>${room.nama}</h3>
+        <p><b>Price:</b> ${room.harga.toLocaleString()}</p>
+        <p><b>Capacity:</b> ${room.kapasitas} person</p>
+        <p><b>Room size:</b> ${room.luas} m²</p>
+        <p>${room.deskripsi}</p>
+        <button onclick='tambahKeCart(${JSON.stringify(room)})'>Add To Cart</button>
+      </div>
+    `;
+  }
+
+  // Cart
+  function updateCart() {
+    const preview = document.getElementById("cartPreview");
+    const totalEl = document.getElementById("cartTotal");
+    if(cart.length===0){
+      preview.innerHTML = "<p><i>There are no selected items.</i></p>";
+      totalEl.innerText = "Total: 0";
+      return;
+    }
+    preview.innerHTML = "";
+    let total = 0;
+    cart.forEach((item, idx)=>{
+      const subtotal = item.harga * item.qty;
+      total += subtotal;
+      const div = document.createElement("div");
+      div.className = "cart-item";
+     div.innerHTML = `
+  <span>${item.nama} - ${item.harga.toLocaleString()} x ${item.qty} = <b>${subtotal.toLocaleString()}</b></span>
+  ${item.kategori==="package" ? `
+    <div class="qty-controls">
+      <button onclick="ubahQty(${idx},-1)">-</button>
+      <span>${item.qty}</span>
+      <button onclick="ubahQty(${idx},1)">+</button>
+    </div>` : ""}
+  <button class="remove-btn" onclick="hapusDariCart(${idx})">X</button>
+`;
+
+      preview.appendChild(div);
+    });
+    totalEl.innerText = "Total:  "+total.toLocaleString();
+  }
+
+  function tambahKeCart(room){
+    const idx = cart.findIndex(r=>r.nama===room.nama);
+    if(idx>=0) cart[idx].qty++;
+    else cart.push({...room, qty:1});
+    updateCart();
+  }
+  function hapusDariCart(i){ cart.splice(i,1); updateCart(); }
+  function ubahQty(i,d){ cart[i].qty+=d; if(cart[i].qty<1) cart[i].qty=1; updateCart(); }
+
+  // Display Data
+  function tampilkanData(){
+    if(!restoData || !restoData.namaRestoran){
+      document.getElementById("empty").classList.remove("hidden");
+      return;
+    }
+
+    // Header
+    document.getElementById("restoLogo").src = restoData.logo || "";
+    document.getElementById("restoName").innerText = restoData.namaRestoran || "Resto Name";
+    document.getElementById("alamatRestoranDisplay").innerText = restoData.restoAddress || "";
+    document.getElementById("teleponRestoranDisplay").innerText = restoData.restoPhone || "";
+
+    // Grid
+    const grids = {rooms:document.getElementById("rooms"), meetings:document.getElementById("meetings"), packages:document.getElementById("packages")};
+    Object.values(grids).forEach(g=>g.innerHTML="");
+
+    let total=0;
+    (restoData.rooms || []).forEach(room=>{
+      total++;
+      if(room.kategori==="hotel") grids.rooms.innerHTML += buatCard(room);
+      else if(room.kategori==="meeting") grids.meetings.innerHTML += buatCard(room);
+      else if(room.kategori==="package") grids.packages.innerHTML += buatCard(room);
+    });
+    document.getElementById("empty").classList.toggle("hidden", total>0);
+  }
+
+  // Tabs
+  function setupTabs(){
+    document.querySelectorAll(".tabs button").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll(".grid").forEach(sec=>sec.classList.add("hidden"));
+        document.getElementById(btn.dataset.target).classList.remove("hidden");
+      });
+    });
+  }
+
+  // WA send
+  function setupWA(){
+    document.getElementById("btnSend").addEventListener("click", ()=>{
+      if(!restoData.nomorWaAdmin || restoData.nomorWaAdmin.length===0){ alert("Admin's WhatsApp number has not been set."); return; }
+      if(cart.length===0){ alert("Cart is still empty."); return; }
+
+      const adminNo = restoData.nomorWaAdmin[0].replace(/[^0-9]/g,"");
+      let pesan = `Hello ${restoData.namaRestoran || "Admin"}, I want a reservation:\n\n`;
+      cart.forEach((item,i)=>{ pesan += `${i+1}. ${item.nama} - ${item.harga.toLocaleString()} x ${item.qty} = ${(item.harga*item.qty).toLocaleString()}\n`; });
+      let total = cart.reduce((a,b)=>a+(b.harga*b.qty),0);
+      pesan += `\nTotal: ${total.toLocaleString()}\n\n`;
+      pesan += `Name: ${document.getElementById("custName").value}\n`;
+      pesan += `Address: ${document.getElementById("custAddress").value}\n`;
+      pesan += `Phone Number: ${document.getElementById("custPhone").value}\n`;
+      pesan += `Date: ${document.getElementById("custDate").value}\n`;
+      pesan += `Notes: ${document.getElementById("custNote").value}\n`;
+      window.open(`https://wa.me/${adminNo}?text=${encodeURIComponent(pesan)}`,"_blank");
+    });
+  }
+
+  // Init
+document.addEventListener("DOMContentLoaded", async ()=>{
+  applyTheme();
+  document.getElementById("loadingIndicator").classList.add("active");
+
+  await initDB();
+  restoData = await loadDataFromDB();
+
+  tampilkanData();
+  setupTabs();
+  setupWA();
+
+  // matikan loader setelah data tampil
+  document.getElementById("loadingIndicator").classList.remove("active");
+});
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dine-In Book</title>
+  <style>
+    /* =====================
+       THEME (Light / Dark)
+       ===================== */
+    :root {
+      --bg: #f4f8ff;
+      --surface: #ffffff;
+      --text: #1f2a44;
+      --muted: #6b7a99;
+      --border: #d8e1ff;
+      --brand: #1f70ff;
+      --brand-2: #2a5298;
+      --brand-3: #1e3c72;
+      --chip: #eef4ff;
+      --danger: #e54646;
+      --success: #25d366;
+      --shadow: 0 6px 24px rgba(0,0,0,.08);
+      --qty-btn-bg: #eef4ff;  /* light mode, biru muda */
+      --qty-btn-text: #1f2a44; /* warna teks tombol */
+    }
+    body.dark {
+      --bg: #0e1116;
+      --surface: #141922;
+      --text: #e6ebff;
+      --muted: #aab6db;
+      --border: #263148;
+      --brand: #4da3ff;
+      --chip: #0f1a2a;
+      --shadow: 0 8px 28px rgba(0,0,0,.5);
+       --qty-btn-bg: #263148;  /* dark mode, biru gelap */
+       --qty-btn-text: #e6ebff; /* teks putih terang */
+    }
+
+    /* =====================
+       BASE
+       ===================== */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg); color: var(--text); transition: background .3s, color .3s; padding-bottom: 60px;
+    }
+    img { max-width: 100%; display: block; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+
+ header {
+  width: 100%; 
+  background: linear-gradient(90deg, var(--brand-2), var(--brand-3));
+  color: #fff;
+  padding: 16px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0; 
+  z-index: 50;
+  box-shadow: var(--shadow);
+}
+
+.header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* biar kiri dan kanan rata atas */
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.resto-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#restoName {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  white-space: normal;   /* ⬅️ biar text bisa turun */
+  word-break: break-word; /* ⬅️ kalau kepanjangan, pecah */
+}
+
+.contact-info {
+  font-size: 12px;
+  opacity: .9;
+  white-space: normal;   /* ⬅️ jangan pakai nowrap */
+  word-break: break-word;
+}
+.header-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  max-width: 120px; /* ⬅️ batasi lebar */
+}
+
+.dark-toggle {
+ width: 44px; height: 44px; 
+  border-radius: 0; 
+  border: none;
+  background: transparent; 
+  color: #fff; 
+  cursor: pointer; 
+  font-size: 20px; /* lebih kecil */ 
+  line-height: 1; 
+  margin-bottom: 6px; /* kasih jarak ke bawah */
+}
+
+.locale-select {
+  font-size: 12px;   /* kecil */
+  padding: 4px 6px;  /* tipis */
+  border-radius: 6px;
+  border: 0; 
+  background: rgba(255,255,255,.12); 
+  color: #fff; 
+  font-weight: 600;
+  max-width: 120px; /* jangan melar */
+}
+#restoLogo {
+  height: 44px;
+  width: 44px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255,255,255,.1);
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  #restoLogo {
+    height: 36px;
+    width: 36px;
+  }
+}
+
+
+    /* =====================
+       TABS
+       ===================== */
+    .tabs-wrap { background: var(--surface); position: sticky; top: 96px; z-index: 40; box-shadow: var(--shadow); }
+    .tabs { display: flex; gap: 8px; padding: 10px; justify-content: center; flex-wrap: wrap; }
+    .tab { padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--chip); color: var(--text); cursor: pointer; font-weight: 600; }
+    .tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+   /* =====================
+   GRID CONTENT
+   ===================== */
+.tab-content { 
+  display: none; 
+  padding: 20px 0; 
+}
+.tab-content.active { 
+  display: block; 
+}
+
+.grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+  gap: 16px; 
+}
+
+/* HP Portrait → 3 card */
+@media screen and (max-width: 600px) and (orientation: portrait) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .menu-thumb { height: 100px; }
+  .menu-title { font-size: 14px; }
+  .menu-desc { font-size: 12px; }
+}
+
+/* HP Landscape → 6 card */
+@media screen and (max-width: 900px) and (orientation: landscape) {
+  .grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .menu-thumb { height: 90px; }
+  .menu-title { font-size: 13px; }
+  .menu-desc { font-size: 11px; }
+}
+
+/* Tablet → 4 card */
+@media screen and (min-width: 601px) and (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Desktop → 5 card */
+@media screen and (min-width: 1025px) {
+  .grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.menu-card {
+  background: var(--surface); 
+  border: 1px solid var(--border); 
+  border-radius: 8px; 
+  box-shadow: var(--shadow);
+  padding: 8px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 0;   /* ⬅️ hapus gap biar title & price nempel */
+  cursor: pointer; 
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.menu-card:hover { 
+  transform: translateY(-2px); 
+}
+.menu-thumb { 
+  aspect-ratio: 1 / 1; 
+  height: auto;         
+  border-radius: 8px;
+  object-fit: cover; 
+  background: #e9eefc; 
+}
+.menu-title { 
+  font-weight: 700; 
+  font-size: 12px; 
+  text-align: center;
+  margin: 2px 0 0 0;   /* ⬅️ kasih jarak tipis */
+}
+
+.menu-price {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  margin: 2px 0 0 0;   /* ⬅️ jarak kecil aja */
+}
+
+  /* =====================
+   PROMO GRID & CARD
+   ===================== */
+.promo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.promo-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  transition: transform 0.2s ease;
+}
+
+.promo-card:hover {
+  transform: translateY(-4px);
+}
+
+.promo-card img {
+  width: 100%;
+  height: 150px;           /* seragam tinggi gambar */
+  object-fit: cover;
+  border-radius: 10px;
+  background: #e9eefc;
+}
+
+/* badge */
+.promo-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #ffcc00;
+  color: #222;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+
+/* text */
+.promo-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.promo-menu-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.promo-menu-desc {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.promo-price {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand-2);
+}
+
+.promo-count {
+  font-size: 13px;
+  color: #e33;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+
+    /* =====================
+       CART
+       ===================== */
+    footer { background: var(--surface); margin-top: 24px; box-shadow: var(--shadow); }
+    .footer-inner { padding: 18px 0 24px; }
+
+    .cart { border: 1px solid var(--border); border-radius: 16px; padding: 12px; background: var(--surface); }
+    .cart h3 { margin: 6px 6px 10px; font-size: 18px; }
+    .cart-empty { color: var(--muted); padding: 8px; }
+
+    .cart-row { display: grid; grid-template-columns: 1fr 76px 92px 28px; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px dashed var(--border); }
+    .cart-row:last-child { border-bottom: none; }
+    .qty-wrap { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+    .qty-wrap button {
+     width: 28px;
+     height: 28px;
+     border: 0;
+     background: var(--qty-btn-bg);  /* warna sesuai mode */
+     color: var(--qty-btn-text);     /* teks juga berubah */
+     cursor: pointer;
+     font-weight: 800;
+     border-radius: 6px; /* opsional biar lebih modern */
+    }
+    .qty-wrap input { width: 36px; text-align: center; border: 0; background: transparent; color: var(--text); font-weight: 700; }
+    .price-right { text-align: right; font-weight: 700; }
+    .remove-btn { border: 0; background: transparent; color: var(--danger); font-size: 18px; cursor: pointer; }
+
+    .cart-total { padding: 10px 8px 0; display: flex; justify-content: space-between; font-weight: 800; }
+
+    /* =====================
+       FORM
+       ===================== */
+    .form { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 4px; color: var(--muted); }
+    .form input, .form textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+    .form textarea { grid-column: 1 / -1; min-height: 80px; resize: vertical; }
+
+    .actions { display: flex; gap: 10px; margin-top: 12px; }
+    .btn { flex: 1; padding: 12px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 800; }
+    .btn-wa { background: var(--success); color: #fff; }
+    .btn-back { background: #f39c12; color: #fff; }
+
+    /* =====================
+       RESPONSIVE
+       ===================== */
+    @media (max-width: 640px) {
+      .header-inner { grid-template-columns: 56px 1fr 120px; }
+      #restoLogo { height: 48px; width: 48px; }
+      .tabs-wrap { top: 88px; }
+      .form { grid-template-columns: 1fr; }
+      .cart-row { grid-template-columns: 1fr 84px 84px 28px; }
+      .header-controls { gap:6px; }
+    }
+    .order-count {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--brand);
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 50%;
+      display: none; /* default hidden kalau qty = 0 */
+    }
+.settings {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column; /* toggle di atas, dropdown di bawah */
+  align-items: flex-end;
+  gap: 20px; /* <<-- jarak antar toggle & dropdown */
+}
+/* =====================
+   FIXED BAR BAWAH
+   ===================== */
+.fixed-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 100;
+}
+
+.fixed-bar button {
+  flex: 1; /* biar tombol rata lebar */
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  transition: 0.2s;
+}
+
+.btn-wa {
+  background: var(--brand-2);
+  color: #fff;
+}
+
+.btn-back {
+  background: #ddd;
+  color: #222;
+}
+
+.btn-wa:hover { background: var(--brand-3); }
+.btn-back:hover { background: #ccc; }
+
+</style>
+</head>
+<body>
+ <header>
+  <div class="header-inner">
+    <!-- kiri -->
+    <div class="header-left">
+      <img id="restoLogo" alt="Logo" />
+      <div class="resto-info">
+        <h1 id="restoName">Resto Name</h1>
+        <div class="contact-info">
+          <div id="alamatRestoranDisplay"></div>
+          <div id="teleponRestoranDisplay"></div>
+        </div>
+      </div>
+    </div>
+    <!-- KANAN: Dark mode toggle + Dropdown -->
+    <div class="header-controls">
+      <button class="dark-toggle" onclick="toggleDark()" title="Toggle theme">🌙</button>
+      <select id="localeSelect" class="locale-select" title="Change locale / currency">
+        <option value="auto">Auto (browser)</option>
+        <option value="en-US|USD">US — USD</option>
+        <option value="id-ID|IDR">INA — IDR</option>
+        <option value="en-GB|GBP">UK — GBP</option>
+        <option value="de-DE|EUR">Germany — EUR</option>
+        <option value="ja-JP|JPY">Japan — JPY</option>
+        <option value="zh-CN|CNY">China — CNY</option>
+        <option value="fr-FR|EUR">France — EUR</option>
+      </select>
+    </div>
+  </div>
+</header>
+  <!-- ===================== TABS ===================== -->
+  <div class="tabs-wrap">
+    <div class="container">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('food')">Food</div>
+        <div class="tab" onclick="switchTab('snack')">Snack & Dessert</div>
+        <div class="tab" onclick="switchTab('drink')">Drink</div>
+        <div class="tab" onclick="switchTab('special')">Special</div>
+        <div class="tab" onclick="switchTab('promo')">Promo</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CONTENT ===================== -->
+  <main class="container">
+    <section id="food" class="tab-content active"><div class="grid" id="foodGrid"></div></section>
+    <section id="snack" class="tab-content"><div class="grid" id="snackGrid"></div></section>
+    <section id="drink" class="tab-content"><div class="grid" id="drinkGrid"></div></section>
+    <section id="special" class="tab-content"><div class="grid" id="specialGrid"></div></section>
+    <section id="promo" class="tab-content"><div class="grid" id="promoGrid"></div></section>
+  </main>
+
+  <!-- ===================== FOOTER / CART + FORM ===================== -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="cart" id="cartBox">
+        <h3>🛒 Your Cart</h3>
+        <div id="cartRows" class="cart-rows"></div>
+        <div id="cartEmpty" class="cart-empty">No items choice</div>
+        <div class="cart-total">
+          <div>Total</div>
+          <div id="cartTotal"> 0</div>
+        </div>
+
+        <div class="form">
+          <div>
+            <label for="custName">Customer Name</label>
+            <input type="text" id="custName" placeholder="e.g. John Doe" />
+          </div>
+          <div>
+            <label for="custTable">Table No</label>
+            <input type="text" id="custTable" placeholder="e.g. A12" />
+          </div>
+          <div>
+            <label for="custDate">Date</label>
+            <input type="text" id="custDate" readonly />
+          </div>
+          <div>
+            <label for="custTime">Time</label>
+            <input type="text" id="custTime" readonly />
+          </div>
+          <div style="grid-column: 1/-1;">
+            <label for="custNote">Special Request / Notes</label>
+            <textarea id="custNote" placeholder="e.g. no spicy, extra sauce"></textarea>
+          </div>
+        </div>
+       <!-- FIXED BAR BAWAH -->
+         <div class="fixed-bar">
+         <button class="btn btn-wa" onclick="sendOrder()">📤 Submit Order</button>
+         <button class="btn btn-back" onclick="history.back()">🔙 Back</button>
+         </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ===================== STATE =====================
+    let menuData = [];
+    let menuPromo = [];
+    let restoData = {};
+
+    // Cart items: { key, nama, harga (number), qty (number) }
+    let cart = [];
+
+    // Currency/locale state (hybrid)
+    // stored keys: 'menuva_localeChoice' -> 'auto' or 'en-US|USD' etc
+    const LOCALE_KEY = 'menuva_localeChoice';
+
+    // ===================== CURRENCY / LOCALE HELPERS =====================
+    // Basic mapping fallback from language prefixes to default currency
+    const localeToCurrencyFallback = {
+      'id': 'IDR',
+      'en-US': 'USD',
+      'en': 'USD',
+      'en-GB': 'GBP',
+      'de': 'EUR',
+      'fr': 'EUR',
+      'ja': 'JPY',
+      'zh': 'CNY'
+    };
+
+    function parseLocaleCurrency(value) {
+      // value may be 'auto' or 'en-US|USD'
+      if (!value || value === 'auto') return { mode: 'auto' };
+      const parts = String(value).split('|');
+      return { mode: 'manual', locale: parts[0] || '', currency: parts[1] || '' };
+    }
+
+    function detectBrowserLocaleCurrency() {
+      const locale = navigator.language || 'en-US';
+      // try to pick currency by locale mapping
+      let currency = localeToCurrencyFallback[locale.split('-')[0]] || localeToCurrencyFallback[locale] || 'IDR';
+      // if full locale maps to currency explicitly
+      if (localeToCurrencyFallback[locale]) currency = localeToCurrencyFallback[locale];
+      return { locale, currency };
+    }
+
+    function getActiveLocaleCurrency() {
+      const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
+      const parsed = parseLocaleCurrency(saved);
+      if (parsed.mode === 'auto') {
+        return detectBrowserLocaleCurrency();
+      } else {
+        return { locale: parsed.locale || detectBrowserLocaleCurrency().locale, currency: parsed.currency || detectBrowserLocaleCurrency().currency };
+      }
+    }
+
+    function saveLocaleChoice(value) {
+      localStorage.setItem(LOCALE_KEY, value);
+    }
+
+    // Format price using Intl.NumberFormat
+    // amount expected in *units* (e.g. 150000 for IDR 150.000)
+    function formatPrice(amount, currency, locale) {
+      if (!isFinite(Number(amount))) amount = 0;
+      amount = Number(amount);
+      // For some currencies like IDR, standard is 0 fraction digits.
+      const zeroFractionCurrencies = ['IDR', 'JPY', 'KRW'];
+      const opts = {
+        style: 'currency',
+        currency: currency || 'IDR',
+        maximumFractionDigits: zeroFractionCurrencies.includes((currency || '').toUpperCase()) ? 0 : 2,
+        minimumFractionDigits: zeroFractionCurrencies.includes((currency || '').toUpperCase()) ? 0 : 2
+      };
+      try {
+        return new Intl.NumberFormat(locale || undefined, opts).format(amount);
+      } catch (e) {
+        // fallback
+        return (currency ? currency + ' ' : '') + amount.toLocaleString();
+      }
+    }
+
+    // Convenience wrapper to read active settings then format
+    function formatWithActive(amount) {
+      const ac = getActiveLocaleCurrency();
+      return formatPrice(amount, ac.currency, ac.locale);
+    }
+
+    // ===================== UTILS =====================
+    function switchTab(id) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const tabEl = Array.from(document.querySelectorAll('.tab')).find(t => t.getAttribute('onclick') === `switchTab('${id}')`);
+      if (tabEl) tabEl.classList.add('active');
+      const content = document.getElementById(id);
+      if (content) content.classList.add('active');
+    }
+
+    // ===================== DARK MODE =====================
+    function applyTheme() {
+      const saved = localStorage.getItem('menuva_theme');
+      if (saved === 'dark') document.body.classList.add('dark');
+      document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    }
+    function toggleDark() {
+      document.body.classList.toggle('dark');
+      localStorage.setItem('menuva_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+      document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    }
+
+    // ===================== CART =====================
+    function addToCart(name, price) {
+      // Normalize price to number
+      const harga = typeof price === 'string' ? parseFloat(String(price).replace(/[^0-9.]/g, '')) : Number(price);
+      const key = name; // simple key by name; change if you have id
+      const idx = cart.findIndex(i => i.key === key);
+      if (idx >= 0) cart[idx].qty += 1; else cart.push({ key, nama: name, harga: harga || 0, qty: 1 });
+      renderCart();
+    }
+    function updateQty(index, delta) {
+      if (!cart[index]) return;
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) cart.splice(index, 1);
+      renderCart();
+    }
+    function removeFromCart(index) {
+      cart.splice(index, 1);
+      renderCart();
+    }
+    function renderCart() {
+      const rows = document.getElementById('cartRows');
+      const empty = document.getElementById('cartEmpty');
+      rows.innerHTML = '';
+      if (cart.length === 0) {
+        empty.style.display = 'block';
+        document.getElementById('cartTotal').textContent = formatWithActive(0);
+        return;
+      }
+      empty.style.display = 'none';
+      let total = 0;
+      cart.forEach((c, i) => {
+        const subtotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
+        total += subtotal;
+        const row = document.createElement('div');
+        row.className = 'cart-row';
+        row.innerHTML = `
+          <div><strong>${escapeHtml(c.nama)}</strong><div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div></div>
+          <div class="qty-wrap">
+            <button onclick="updateQty(${i}, -1)">-</button>
+            <input type="text" value="${c.qty}" readonly />
+            <button onclick="updateQty(${i}, 1)">+</button>
+          </div>
+          <div class="price-right">${formatWithActive(subtotal)}</div>
+          <button class="remove-btn" title="Remove" onclick="removeFromCart(${i})">✕</button>
+        `;
+        rows.appendChild(row);
+      });
+      document.getElementById('cartTotal').textContent = formatWithActive(total);
+    }
+
+    // ===================== RENDER MENU =====================
+    function renderMenu() {
+      const map = { food: 'foodGrid', snack: 'snackGrid', drink: 'drinkGrid', special: 'specialGrid' };
+      Object.keys(map).forEach(k => {
+        const grid = document.getElementById(map[k]);
+        grid.innerHTML = '';
+        const items = (menuData || []).filter(m => m.kategori === k);
+        if (!items || items.length === 0) {
+          grid.innerHTML = '<div class="cart-empty">No item yet</div>';
+          return;
+        }
+        items.forEach(m => {
+          const card = document.createElement('div');
+          card.className = 'menu-card';
+          // ✅ panggil tambahPesanan biar counter muncul
+          card.onclick = () => tambahPesanan(m, card);
+          // Ensure harga numeric
+          const hargaNum = Number(m.harga) || 0;
+          card.innerHTML = `
+            ${m.image ? `<img class="menu-thumb" src="${m.image}" alt="${escapeHtml(m.nama)}">` : `<div class="menu-thumb"></div>`}
+            <div class="menu-title">${escapeHtml(m.nama)}</div>
+            <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
+            <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
+            <span class="order-count">0</span>
+          `;
+          grid.appendChild(card);
+        });
+      });
+    }
+
+    function tambahPesanan(item, cardEl) {
+      // update cart
+      const existing = cart.find(c => c.nama === item.nama);
+      const hargaNum = Number(item.harga) || 0;
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        // store only necessary fields to avoid leaking DB structure
+        cart.push({ key: item.nama, nama: item.nama, harga: hargaNum, qty: 1 });
+      }
+
+      // update tampilan counter di card
+      const counter = cardEl.querySelector(".order-count");
+      if (counter) {
+        const cartItem = cart.find(c => c.nama === item.nama);
+        counter.textContent = cartItem.qty;
+        counter.style.display = "inline-block"; // kalau awalnya hidden
+      }
+
+      renderCart(); // supaya preview cart ikut update
+    }
+
+    // ===================== RENDER PROMO + COUNTDOWN =====================
+    let promoCountdownTimer = null;
+
+    function renderPromo() {
+      const grid = document.getElementById('promoGrid');
+      grid.innerHTML = '';
+      const now = Date.now();
+      const promos = (menuPromo || []).filter(p => {
+        if (!p.tanggalAkhir) return true;
+        const end = new Date(p.tanggalAkhir).getTime();
+        return isFinite(end) ? end > now : true;
+      });
+
+      if (!promos || promos.length === 0) {
+        grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
+        stopPromoCountdown();
+        return;
+      }
+
+      promos.forEach(p => {
+        // create card
+        const card = document.createElement('div');
+        card.className = 'menu-card promo-card';
+
+        // prepare canonical item object (so tambahPesanan sees same fields as normal menu)
+        const item = {
+          nama: p.namaMenu || p.namaPromo || 'Promo Item',
+          harga: Number(p.harga) || 0,
+          deskripsi: p.deskripsi || '',
+          image: p.image || ''
+        };
+
+        // click -> add to cart via tambahPesanan
+        card.addEventListener('click', (ev) => {
+          // prevent double clicks if expired (optional)
+          if (p.tanggalAkhir) {
+            const end = new Date(p.tanggalAkhir).getTime();
+            if (isFinite(end) && Date.now() > end) return;
+          }
+          tambahPesanan(item, card);
+        });
+
+        // PROMO badge
+        const badge = document.createElement('span');
+        badge.className = 'promo-badge';
+        badge.textContent = 'PROMO';
+        card.appendChild(badge);
+
+        // image or placeholder
+        if (p.image) {
+          const img = document.createElement('img');
+          img.className = 'menu-thumb';
+          img.src = p.image;
+          img.alt = p.namaPromo || item.nama;
+          card.appendChild(img);
+        } else {
+          const ph = document.createElement('div');
+          ph.className = 'menu-thumb';
+          card.appendChild(ph);
+        }
+
+        // title
+        const title = document.createElement('div');
+        title.className = 'menu-title';
+        title.textContent = p.namaPromo || p.namaMenu || '';
+        card.appendChild(title);
+
+        // desc
+        const desc = document.createElement('div');
+        desc.className = 'menu-desc';
+        desc.textContent = p.deskripsi || '';
+        card.appendChild(desc);
+
+        // price
+        const price = document.createElement('div');
+        price.className = 'menu-price';
+        const hargaNum = Number(p.harga) || 0;
+        price.dataset.price = hargaNum;
+        price.textContent = formatWithActive(hargaNum);
+        card.appendChild(price);
+
+        // countdown element (if any)
+        if (p.tanggalAkhir) {
+          const c = document.createElement('div');
+          c.className = 'promo-count';
+          c.dataset.end = p.tanggalAkhir;
+          card.appendChild(c);
+        }
+
+        // order count (hidden by default)
+        const counter = document.createElement('span');
+        counter.className = 'order-count';
+        counter.textContent = '0';
+        counter.style.display = 'none';
+        card.appendChild(counter);
+
+        // append to grid
+        grid.appendChild(card);
+      });
+
+      startPromoCountdown();
+    }
+
+    function startPromoCountdown() {
+      stopPromoCountdown();
+      const tick = () => {
+        const nodes = document.querySelectorAll('.promo-count[data-end]');
+        const now = Date.now();
+        nodes.forEach(el => {
+          const end = new Date(el.dataset.end).getTime();
+          if (!isFinite(end)) { el.textContent = ''; return; }
+          const diff = end - now;
+          if (diff <= 0) { el.textContent = 'Expired'; return; }
+          const d = Math.floor(diff / 86400000);
+          const h = Math.floor((diff % 86400000) / 3600000);
+          const m = Math.floor((diff % 3600000) / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          el.textContent = `Ends in ${d}d ${h}h ${m}m ${s}s`;
+        });
+      };
+      tick();
+      promoCountdownTimer = setInterval(tick, 1000);
+    }
+
+    function stopPromoCountdown() {
+      if (promoCountdownTimer) {
+        clearInterval(promoCountdownTimer);
+        promoCountdownTimer = null;
+      }
+    }
+
+    // ===================== SEND ORDER (WhatsApp) =====================
+    function sendOrder() {
+      if (!restoData.nomorWaAdmin || restoData.nomorWaAdmin.length === 0) {
+        alert('WhatsApp admin not set');
+        return;
+      }
+      const name = document.getElementById('custName').value.trim();
+      const table = document.getElementById('custTable').value.trim();
+      if (!name || !table) { alert('Please fill customer name and table number!'); return; }
+      if (cart.length === 0) { alert('Cart is empty!'); return; }
+
+      const adminNo = String(restoData.nomorWaAdmin[0]).replace(/[^0-9]/g, '');
+      const date = document.getElementById('custDate').value;
+      const time = document.getElementById('custTime').value;
+      const note = document.getElementById('custNote').value.trim();
+
+      let msg = `🍽️ New Dine-in Order - ${restoData.namaRestoran || ''}
+
+`;
+      msg += `Name: ${name}
+`;
+      msg += `Table: ${table}
+`;
+      msg += `Date: ${date}
+`;
+      msg += `Time: ${time}
+
+`;
+      msg += `📝 Order:
+`;
+      let total = 0;
+      cart.forEach((c, i) => {
+        const line = `${i + 1}. ${c.nama}  x${c.qty}  -  ${formatWithActive(c.harga * c.qty)}`;
+        total += c.harga * c.qty;
+        msg += line + "\n";
+      });
+      msg += `
+Total: ${formatWithActive(total)}`;
+      if (note) msg += `
+
+Notes: ${note}`;
+
+      const url = `https://wa.me/${adminNo}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    }
+
+    // ===================== IndexedDB (load) =====================
+    const DB_NAME = 'MenuvaDB';
+const STORE_NAME = 'menuvaData';
+const DB_VERSION = 2; // sama dengan admin.html
+let db;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = (e) => { 
+      db = e.target.result; 
+      resolve(); 
+    };
+    // ❌ book.html cuma reader, jangan bikin object store baru
+  });
+}
+
+function loadDataFromDB() {
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(1); // id selalu 1 untuk data resto
+      req.onsuccess = () => resolve(req.result || {});
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      reject("❌ failed load data: " + e.message);
+    }
+  });
+}
+
+    // ===================== UTIL: escape HTML to avoid injection in dynamic html ====
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // ===================== LOCALE SELECT UI HANDLING =====================
+    function initLocaleSelect() {
+      const sel = document.getElementById('localeSelect');
+      // set select based on saved
+      const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
+      sel.value = saved;
+
+      sel.addEventListener('change', () => {
+        const val = sel.value;
+        saveLocaleChoice(val);
+        // re-render prices across the app
+        refreshAllPriceDisplays();
+      });
+
+      // If auto chosen, show derived locale/currency in placeholder? We'll keep simple.
+    }
+
+    function refreshAllPriceDisplays() {
+      // Reformat menu prices
+      document.querySelectorAll('.menu-price').forEach(el => {
+        const p = Number(el.dataset.price) || 0;
+        el.textContent = formatWithActive(p);
+      });
+      // Reformat promo prices (same selector)
+      document.querySelectorAll('.menu-price').forEach(el => {
+        const p = Number(el.dataset.price) || 0;
+        el.textContent = formatWithActive(p);
+      });
+      // Re-render cart to update totals & line items
+      renderCart();
+    }
+
+    // ===================== INIT =====================
+    window.addEventListener('DOMContentLoaded', async () => {
+      applyTheme();
+      initLocaleSelect();
+
+      await initDB();
+      const data = await loadDataFromDB();
+      restoData = data || {};
+      menuData = data.menu || [];
+      menuPromo = data.menuPromo || [];
+
+      // Header
+      document.getElementById('restoLogo').src = data.logo || '';
+      document.getElementById('restoName').innerText = data.namaRestoran || 'Nama Restoran';
+      document.getElementById('alamatRestoranDisplay').innerText = data.restoAddress || '';
+      document.getElementById('teleponRestoranDisplay').innerText = data.restoPhone || '';
+
+      // Date & Time (auto)
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      document.getElementById('custDate').value = dateStr;
+      document.getElementById('custTime').value = timeStr;
+
+      // Render content
+      renderMenu();
+      renderPromo();
+      renderCart();
+
+      // Ensure prices reflect locale choice on start (in case auto-detect)
+      refreshAllPriceDisplays();
+    });
+
+    // Optional: expose some functions for debugging
+    window._menuva = {
+      getActiveLocaleCurrency,
+      formatWithActive,
+      refreshAllPriceDisplays,
+      addToCart
+    };
+  </script>
+</body>
+</html>
