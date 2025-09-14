@@ -1174,7 +1174,7 @@ async function simpanData() {
     }
   }
 
- function restoreDataFromFile(event) {
+function restoreDataFromFile(event) {
   const file = event.target.files[0];
   if (!file) return;
 
@@ -1183,21 +1183,38 @@ async function simpanData() {
     try {
       let json = JSON.parse(e.target.result);
 
-      // kalau file dalam bentuk wrapper {profile: {...}}
-      if (json.profile) json = json.profile;
-      if (json.data) json = json.data;
+      // case: wrapper { profile: {...} } atau { data: {...} }
+      if (json.profile && typeof json.profile === "object") {
+        json = json.profile;
+      } else if (json.data && typeof json.data === "object") {
+        json = json.data;
+      }
 
+      // case: array → ambil index pertama aja
+      if (Array.isArray(json)) {
+        if (json.length === 0) throw new Error("File kosong");
+        json = json[0];
+      }
+
+      // tambahkan restoId kalau belum ada
+      if (!json.restoId) {
+        const nama = (json.namaRestoran || "").trim();
+        json.restoId = nama ? slugify(nama) : ("resto" + Date.now());
+      }
+
+      // simpan ke DB sebagai id=1 anchor
       await saveDataToDB(json);
+
       alert("✅ Data restored successfully! Reloading...");
       location.reload();
+
     } catch (err) {
       console.error("❌ Restore failed:", err);
-      alert("❌ Failed to restore JSON file.");
+      alert("❌ Failed to restore JSON file. Lihat console untuk detail.");
     }
   };
   reader.readAsText(file);
 }
-
   // ====================== INIT ======================
   window.addEventListener("DOMContentLoaded", async () => {
     await initDB();
@@ -1334,6 +1351,7 @@ function updateShareUI() {
 </script>
 
 </html>
+
 
 
 
