@@ -400,24 +400,125 @@ function getDataFromURL() {
 }
 
 // ====================== Ambil data dari IndexedDB ======================
+// ---------- Robust loadDataFromDB (ganti fungsi lama dengan ini) ----------
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME); // jangan paksa versi kalau gak perlu
 
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      console.error("IndexedDB open error:", req.error);
+      reject(req.error);
+    };
+
     req.onsuccess = (e) => {
       const db = e.target.result;
+
+      // cek apakah store ada
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        console.warn("Object store tidak ditemukan:", STORE_NAME, "available:", [...db.objectStoreNames]);
+        resolve(null);
+        return;
+      }
+
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
 
-      // ✅ ambil data sesuai restoId
-      const getReq = store.get(restoId);
+      // helper: get by key (promise)
+      const getByKey = (key) => new Promise((res, rej) => {
+        try {
+          const r = store.get(key);
+          r.onsuccess = () => res(r.result || null);
+          r.onerror = () => { console.warn("get(key) error for", key, r.error); res(null); };
+        } catch (err) { console.warn("getByKey exception", err); res(null); }
+      });
 
-      getReq.onsuccess = () => resolve(getReq.result || null);
-      getReq.onerror = () => reject(getReq.error);
+      (async () => {
+        try {
+          console.log("🔎 loadDataFromDB: mencoba lookup dengan restoId:", restoId);
+
+          // 1) coba ambil by key = restoId (paling ideal)
+          if (restoId) {
+            const byRestoid = await getByKey(restoId);
+            if (byRestoid) {
+              console.log("✅ Ditemukan by key (restoId).");
+              resolve(byRestoid);
+              return;
+            }
+            console.log("• Tidak ditemukan dengan key restoId");
+          } else {
+            console.log("• restoId tidak dikirim ke loadDataFromDB()");
+          }
+
+          // 2) coba ambil by key = 1 (legacy: banyak admin pakai id=1)
+          const byOne = await getByKey(1);
+          if (byOne) {
+            console.log("✅ Ditemukan by key = 1 (fallback).");
+            resolve(byOne);
+            return;
+          }
+          console.log("• Tidak ditemukan record dengan key = 1");
+
+          // 3) ambil semua dan cari property restoId pada value
+          const allReq = store.getAll();
+          allReq.onsuccess = () => {
+            const all = allReq.result || [];
+            console.log("📦 Semua record di store (jumlah):", all.length, all);
+            if (restoId) {
+              const found = all.find(r => r && (r.restoId == restoId || r.restoId === restoId));
+              if (found) {
+                console.log("✅ Ditemukan pada scan all records by property restoId.");
+                resolve(found);
+                return;
+              }
+              console.log("• Tidak ada record matching property restoId");
+            }
+
+            // 4) kalau cuma ada 1 record di DB, gunakan itu (useful untuk single-tenant installs)
+            if (all.length === 1) {
+              console.log("ℹ️ Hanya 1 record di DB, memakai record itu sebagai fallback.");
+              resolve(all[0]);
+              return;
+            }
+
+            // 5) semua gagal
+            console.warn("❌ Tidak ada data yang cocok ditemukan di IndexedDB.");
+            resolve(null);
+          };
+          allReq.onerror = () => {
+            console.warn("getAll() gagal:", allReq.error);
+            resolve(null);
+          };
+        } catch (err) {
+          console.error("loadDataFromDB internal error:", err);
+          resolve(null);
+        }
+      })();
     };
   });
 }
+// ---------- Debug helper: dump isi store ke console ----------
+function dumpMenuvaStore() {
+  const req = indexedDB.open(DB_NAME);
+  req.onerror = () => console.error("IndexedDB open error:", req.error);
+  req.onsuccess = (e) => {
+    const db = e.target.result;
+    if (!db.objectStoreNames.contains(STORE_NAME)) {
+      console.warn("Store tidak ada:", STORE_NAME, "available:", [...db.objectStoreNames]);
+      return;
+    }
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const all = store.getAll();
+    all.onsuccess = () => {
+      console.log("===== DUMP menuvaData store =====");
+      console.log("count:", all.result.length);
+      all.result.forEach((r, i) => console.log(i, r));
+      console.log("=================================");
+    };
+    all.onerror = () => console.error("getAll error:", all.error);
+  };
+}
+
 
 // ====================== Render fungsi yg sudah ada ======================
 function renderFlipbookGallery(containerId, images, warningId) {
@@ -600,6 +701,7 @@ window.onload = async () => {
 </script>
 </body>
 </html>
+
 
 
 
