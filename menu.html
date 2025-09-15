@@ -418,6 +418,7 @@ function loadDataFromDB(restoId) {
     };
   });
 }
+
 // ====================== Render fungsi yg sudah ada ======================
 function renderFlipbookGallery(containerId, images, warningId) {
   const container = document.getElementById(containerId);
@@ -529,11 +530,11 @@ function startCountdown(tanggalAkhir, elementId) {
 }
 
 // ====================== Refresh otomatis jika DB berubah ======================
-async function watchDBChanges() {
+async function watchDBChanges(restoId) {
   let lastData = null;
 
   async function checkUpdates() {
-    const data = await loadDataFromDB();
+    const data = await loadDataFromDB(restoId);
     if (!data) return;
 
     const dataStr = JSON.stringify(data);
@@ -571,14 +572,7 @@ window.onload = async () => {
 
     // render UI...
     console.log("✅ Data berhasil di-load:", data);
-    document.getElementById("namaRestoDisplay").textContent = data.namaRestoran || "Menu Restoran";
-    // dll...
-  } catch (err) {
-    console.error(err);
-    alert("❌ Gagal load data menu.");
-  }
-};
-    // --- Render resto ---
+
     const logoElem = document.getElementById("logoResto");
     if (data.logo) {
       logoElem.src = data.logo;
@@ -596,14 +590,14 @@ window.onload = async () => {
     renderFlipbookGallery("flipbookMenuGallery", data.flipbookMenuImages, "menuWarning");
 
     // mulai pantau perubahan DB
-    watchDBChanges();
+    watchDBChanges(restoId);
 
   } catch (err) {
     console.error(err);
-    alert("Gagal load data menu.");
+    alert("❌ Gagal load data menu.");
   }
 };
 </script>
-
 </body>
 </html>
+
