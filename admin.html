@@ -582,8 +582,12 @@ async function saveDataToDB(data) {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // langsung pakai restoId (no telp) sebagai key
-    const payload = { ...data }; 
+    const restoId = data.restoId || localStorage.getItem("restoId");
+    if (!restoId) {
+      return reject(new Error("❌ restoId kosong saat save"));
+    }
+
+    const payload = { restoId, ...data };
 
     const req = store.put(payload);
     req.onsuccess = () => {
@@ -594,14 +598,18 @@ async function saveDataToDB(data) {
   });
 }
 
-// load
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error("Not Initialized"));
+    if (!restoId) {
+      console.error("❌ restoId kosong saat load");
+      return resolve(null);
+    }
+
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
 
-    const req = store.get(restoId); // ambil berdasarkan nomor telp
+    const req = store.get(restoId);
     req.onsuccess = () => {
       const data = req.result;
       if (data) {
@@ -619,6 +627,7 @@ function loadDataFromDB(restoId) {
     };
   });
 }
+
   function clearDataDB() {
     return new Promise((resolve, reject) => {
       if (!db) return reject(new Error("DB belum diinisialisasi"));
@@ -1435,6 +1444,7 @@ function updateShareUI() {
   });
 </script>
 </html>
+
 
 
 
