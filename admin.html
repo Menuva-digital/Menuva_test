@@ -575,14 +575,15 @@ function initDB() {
     };
   });
 }
-   async function saveDataToDB(data) {
+ // simpan
+async function saveDataToDB(data) {
   await initDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // pakai id=1 anchor utama
-    const payload = { id: 1, ...data };
+    // langsung pakai restoId (no telp) sebagai key
+    const payload = { ...data }; 
 
     const req = store.put(payload);
     req.onsuccess = () => {
@@ -592,21 +593,22 @@ function initDB() {
     req.onerror = () => reject(req.error);
   });
 }
-// HANYA ambil data dari DB, jangan isi form
-function loadDataFromDB() {
+
+// load
+function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error("Not Initialized"));
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
-    const req = store.get(1);
 
+    const req = store.get(restoId); // ambil berdasarkan nomor telp
     req.onsuccess = () => {
       const data = req.result;
       if (data) {
         console.log("📂 Data loaded:", data);
-        resolve(data); // balikin data aja
+        resolve(data);
       } else {
-        console.warn("⚠️ Tidak ada data ditemukan.");
+        console.warn("⚠️ Tidak ada data ditemukan untuk", restoId);
         resolve(null);
       }
     };
@@ -1433,6 +1435,7 @@ function updateShareUI() {
   });
 </script>
 </html>
+
 
 
 
