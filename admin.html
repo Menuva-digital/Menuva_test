@@ -549,56 +549,57 @@ button {
 
  <script>
 console.log("Admin Script Version: 2025-09-15-01");
- let db;
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 2;
 
 // ====================== Init DB ======================
+let db;
 function initDB() {
   return new Promise((resolve, reject) => {
-    if (db) return resolve(db);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
 
-    req.onerror = () => reject(req.error);
-    req.onsuccess = (e) => {
+    request.onupgradeneeded = (e) => {
+      db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        // Key utama: restoId (no telp)
+        db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
+        console.log("🆕 ObjectStore dibuat dengan keyPath restoId");
+      }
+    };
+
+    request.onsuccess = (e) => {
       db = e.target.result;
       resolve(db);
     };
-
-    req.onupgradeneeded = (e) => {
-      const _db = e.target.result;
-      if (!_db.objectStoreNames.contains(STORE_NAME)) {
-        _db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
   });
 }
- // simpan
+
+// ================== SAVE ==================
 async function saveDataToDB(data) {
   await initDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // ambil restoId dari data atau localStorage
-    const restoId = data.restoId || localStorage.getItem("restoId");
-    if (!restoId) {
+    if (!data.restoId) {
       return reject(new Error("❌ restoId kosong saat save"));
     }
 
-    // pastikan restoId ikut tersimpan
-    const payload = { restoId, ...data };
-
-    const req = store.put(payload);
+    const req = store.put(data);
     req.onsuccess = () => {
-      console.log("✅ Data saved", payload);
-      resolve(payload);
+      console.log("✅ Data saved", data);
+      resolve(data);
     };
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      console.error("❌ Gagal save:", req.error);
+      reject(req.error);
+    };
   });
 }
+
 
 
 function loadDataFromDB(restoId) {
@@ -1077,23 +1078,14 @@ async function simpanData() {
     const logo = document.getElementById("previewLogo").src || "";
     const nomorWaAdmin = Array.from(document.querySelectorAll(".nomor-wa")).map(i => i.value);
 
-    
     if (!restoPhone) {
       alert("❌ Please input the restaurant phone number before saving!");
       hideLoader();
       return;
     }
-    const restoId = restoPhone;
 
-    // buat hidden input biar konsisten
-    let restoIdEl = document.getElementById("restoId");
-    if (!restoIdEl) {
-      restoIdEl = document.createElement("input");
-      restoIdEl.type = "hidden";
-      restoIdEl.id = "restoId";
-      document.body.appendChild(restoIdEl);
-    }
-    restoIdEl.value = restoId;
+    // Gunakan phone sebagai restoId
+    const restoId = restoPhone;
 
     const menuData = [
       ...ambilMenu("menuFoodContainer"),
@@ -1107,7 +1099,7 @@ async function simpanData() {
     const flipMenu = typeof flipbookMenuImages !== "undefined" ? flipbookMenuImages : [];
 
     const data = {
-      restoId,
+      restoId,          // ✅ key utama
       namaRestoran,
       restoAddress,
       restoPhone,
@@ -1447,6 +1439,7 @@ function updateShareUI() {
   });
 </script>
 </html>
+
 
 
 
