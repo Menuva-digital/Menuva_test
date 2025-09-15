@@ -547,30 +547,38 @@ button {
 </body>
 </html>
 
- <script>
-console.log("Admin Script Version: 2025-09-15-01");
+<script>
+console.log("Admin Script Version: 2025-09-15-FINAL");
+
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
-const DB_VERSION = 2;
+const DB_VERSION = 2; // naikin kalau perlu perubahan schema lagi
 
 // ====================== Init DB ======================
 let db;
 function initDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    if (db) return resolve(db);
 
-    request.onerror = () => reject(request.error);
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = (e) => {
+    req.onerror = () => {
+      console.error("IndexedDB open error:", req.error);
+      reject(req.error);
+    };
+
+    req.onupgradeneeded = (e) => {
       db = e.target.result;
+      // buat objectStore baru jika belum ada
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        // Key utama: restoId (no telp)
         db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
-        console.log("🆕 ObjectStore dibuat dengan keyPath restoId");
+        console.log("🆕 ObjectStore dibuat dengan keyPath 'restoId'");
+      } else {
+        console.log("ℹ️ ObjectStore already exists:", STORE_NAME);
       }
     };
 
-    request.onsuccess = (e) => {
+    req.onsuccess = (e) => {
       db = e.target.result;
       resolve(db);
     };
@@ -581,17 +589,22 @@ function initDB() {
 async function saveDataToDB(data) {
   await initDB();
   return new Promise((resolve, reject) => {
+    if (!data || typeof data !== "object") return reject(new Error("Invalid data"));
+
+    // pastikan restoId ada (safety)
+    const restoId = data.restoId || data.restoPhone || null;
+    if (!restoId) return reject(new Error("❌ restoId kosong saat save"));
+
+    // pastikan properti restoId secara eksplisit ada pada object yang disimpan
+    const payload = { ...data, restoId };
+
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
+    const req = store.put(payload);
 
-    if (!data.restoId) {
-      return reject(new Error("❌ restoId kosong saat save"));
-    }
-
-    const req = store.put(data);
     req.onsuccess = () => {
-      console.log("✅ Data saved", data);
-      resolve(data);
+      console.log("✅ Data saved", payload);
+      resolve(payload);
     };
     req.onerror = () => {
       console.error("❌ Gagal save:", req.error);
@@ -600,112 +613,133 @@ async function saveDataToDB(data) {
   });
 }
 
-
-
-function loadDataFromDB(restoId) {
+// ================== LOAD ==================
+// Jika restoId diberikan -> ambil dengan key.
+// Jika restoId null -> kembalikan first record (useful for single-tenant installs / migration).
+async function loadDataFromDB(restoId = null) {
+  await initDB();
   return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error("Not Initialized"));
-    if (!restoId) {
-      console.error("❌ restoId kosong saat load");
-      return resolve(null);
-    }
-
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
 
-    const req = store.get(restoId);
-    req.onsuccess = () => {
-      const data = req.result;
-      if (data) {
-        console.log("📂 Data loaded:", data);
-        resolve(data);
-      } else {
-        console.warn("⚠️ Tidak ada data ditemukan untuk", restoId);
+    // jika restoId valid, langsung get by key
+    if (restoId) {
+      try {
+        const req = store.get(restoId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => {
+          console.warn("get by key error:", req.error);
+          resolve(null);
+        };
+      } catch (err) {
+        console.error("get by key exception:", err);
         resolve(null);
       }
-    };
+      return;
+    }
 
-    req.onerror = () => {
-      console.error("❌ Failed load:", req.error);
-      reject(req.error);
-    };
+    // restoId tidak diberikan -> fallback: ambil semua dan return first record (jika ada)
+    try {
+      const allReq = store.getAll();
+      allReq.onsuccess = () => {
+        const all = allReq.result || [];
+        if (all.length === 0) return resolve(null);
+        // prefer record that has restoId, else just return first
+        const firstWithKey = all.find(r => r && (r.restoId || r.restoPhone));
+        resolve(firstWithKey || all[0]);
+      };
+      allReq.onerror = () => {
+        console.warn("getAll error:", allReq.error);
+        resolve(null);
+      };
+    } catch (err) {
+      console.error("getAll exception:", err);
+      resolve(null);
+    }
   });
 }
 
-  function clearDataDB() {
-    return new Promise((resolve, reject) => {
-      if (!db) return reject(new Error("DB belum diinisialisasi"));
+// ====================== CLEAR DB ======================
+function clearDataDB() {
+  return new Promise(async (resolve, reject) => {
+    await initDB();
+    try {
       const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
       const req = store.clear();
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
-    });
-  }
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
-  // ====================== Variabel Global ======================
-  let menuPromo = [];
-  let flipbookRuanganImages = [];
-  let flipbookMenuImages = [];
+// ====================== Variabel Global ======================
+let menuPromo = [];
+let flipbookRuanganImages = [];
+let flipbookMenuImages = [];
 
-  // ====================== PROMO ======================
-  function renderPromoUI() {
-    const container = document.getElementById("promoContainer");
-    container.innerHTML = "";
-    menuPromo.forEach((promo, index) => {
-      const div = document.createElement("div");
-      div.className = "menu-item";
-      div.innerHTML = `
-        <input type="text" placeholder="Promo Name" value="${promo.namaPromo || ""}" onchange="updatePromo(${index}, 'namaPromo', this.value)">
-        <input type="file" accept="image/*" onchange="uploadPromoImage(event, ${index})">
-        <img id="promoImgPreview${index}" src="${promo.image || ""}" style="max-height:80px; margin:5px 0">
-        <input type="text" placeholder="Deskription Promo" value="${promo.deskripsi || ""}" onchange="updatePromo(${index}, 'deskripsi', this.value)">
-        <input type="number" placeholder="Promo Price" value="${promo.harga || ""}" onchange="updatePromo(${index}, 'harga', this.value)">
-        <input type="text" placeholder="Kategori Promo" value="${promo.kategori || ""}" onchange="updatePromo(${index}, 'kategori', this.value)">
-        <input type="date" value="${promo.tanggalAkhir || ""}" onchange="updatePromo(${index}, 'tanggalAkhir', this.value)">
-        <button class="btn-danger" onclick="hapusPromo(${index})">Delete Promo List</button>
-      `;
-      container.appendChild(div);
-    });
-  }
+// ====================== PROMO ======================
+function renderPromoUI() {
+  const container = document.getElementById("promoContainer");
+  if (!container) return;
+  container.innerHTML = "";
+  menuPromo.forEach((promo, index) => {
+    const div = document.createElement("div");
+    div.className = "menu-item";
+    div.innerHTML = `
+      <input type="text" placeholder="Promo Name" value="${promo.namaPromo || ""}" onchange="updatePromo(${index}, 'namaPromo', this.value)">
+      <input type="file" accept="image/*" onchange="uploadPromoImage(event, ${index})">
+      <img id="promoImgPreview${index}" src="${promo.image || ""}" style="max-height:80px; margin:5px 0">
+      <input type="text" placeholder="Deskription Promo" value="${promo.deskripsi || ""}" onchange="updatePromo(${index}, 'deskripsi', this.value)">
+      <input type="number" placeholder="Promo Price" value="${promo.harga || ""}" onchange="updatePromo(${index}, 'harga', this.value)">
+      <input type="text" placeholder="Kategori Promo" value="${promo.kategori || ""}" onchange="updatePromo(${index}, 'kategori', this.value)">
+      <input type="date" value="${promo.tanggalAkhir || ""}" onchange="updatePromo(${index}, 'tanggalAkhir', this.value)">
+      <button class="btn-danger" onclick="hapusPromo(${index})">Delete Promo List</button>
+    `;
+    container.appendChild(div);
+  });
+}
 
-  function tambahPromo(promo = {}) {
-    menuPromo.push({
-      namaPromo: promo.namaPromo || "",
-      image: promo.image || "",
-      deskripsi: promo.deskripsi || "",
-      harga: promo.harga || "",
-      kategori: promo.kategori || "",
-      tanggalAkhir: promo.tanggalAkhir || "",
-    });
-    renderPromoUI();
-  }
+function tambahPromo(promo = {}) {
+  menuPromo.push({
+    namaPromo: promo.namaPromo || "",
+    image: promo.image || "",
+    deskripsi: promo.deskripsi || "",
+    harga: promo.harga || "",
+    kategori: promo.kategori || "",
+    tanggalAkhir: promo.tanggalAkhir || ""
+  });
+  renderPromoUI();
+}
 
-  function updatePromo(index, key, value) {
-    if (!menuPromo[index]) return;
-    menuPromo[index][key] = value;
-  }
+function updatePromo(index, key, value) {
+  if (!menuPromo[index]) return;
+  menuPromo[index][key] = value;
+}
 
-  function hapusPromo(index) {
+function hapusPromo(index) {
   menuPromo.splice(index, 1);
   renderPromoUI();
   if (window._saveTimeout) clearTimeout(window._saveTimeout);
   window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
 }
-  function uploadPromoImage(event, index) {
-    const file = event.target.files[0];
-    if (!file) return;
-    resizeIfNeeded(file)
-      .then((resized) => {
-        document.getElementById(`promoImgPreview${index}`).src = resized;
-        updatePromo(index, "image", resized);
-      })
-      .catch(err => console.error("Failed upload promo:", err));
-  }
 
- // ====================== MENU ======================
+function uploadPromoImage(event, index) {
+  const file = event.target.files[0];
+  if (!file) return;
+  resizeIfNeeded(file)
+    .then((resized) => {
+      const el = document.getElementById(`promoImgPreview${index}`);
+      if (el) el.src = resized;
+      updatePromo(index, "image", resized);
+    })
+    .catch(err => console.error("Failed upload promo:", err));
+}
+
+// ====================== MENU ======================
 function tambahMenu(kategori = "food", nama = "", harga = "", image = "") {
-  // Mapping kategori ke container
   const containerId = {
     food: "menuFoodContainer",
     snack: "menuSnackContainer",
@@ -742,11 +776,10 @@ function uploadMenuImage(event, inputEl) {
       const preview = inputEl.parentElement.querySelector(".menuPreview");
       preview.src = resized;
       preview.style.display = "block";
-      inputEl.setAttribute("data-image", resized); // simpan base64 ke attribute
+      inputEl.setAttribute("data-image", resized);
     })
     .catch(err => console.error("Upload menu image failed:", err));
 }
-
 
 function ambilMenu(containerId) {
   const container = document.getElementById(containerId);
@@ -758,7 +791,7 @@ function ambilMenu(containerId) {
     const nama = inputs[0]?.value || "";
     const harga = parseInt(inputs[1]?.value || "0");
     const kategori = inputs[2]?.value || "food";
-    const image = inputs[3]?.getAttribute("data-image") || ""; // ambil base64 dari attribute
+    const image = inputs[3]?.getAttribute("data-image") || "";
 
     if (nama && harga) {
       result.push({ nama, harga, kategori, image });
@@ -768,190 +801,191 @@ function ambilMenu(containerId) {
   return result;
 }
 
-  // ====================== ROOM ======================
-  function tambahRoom(kategori) {
+// ====================== ROOM ======================
+function tambahRoom(kategori) {
+  const containerId = {
+    hotel: "roomHotelContainer",
+    meeting: "meetingRoomContainer",
+    package: "packageContainer"
+  }[kategori];
+  if (!containerId) return;
+  const container = document.getElementById(containerId);
+  const wrapper = document.createElement("div");
+  wrapper.className = "room-form";
+  wrapper.innerHTML = `
+    <input type="text" class="room-nama" placeholder="Name" />
+    <input type="number" class="room-harga" placeholder="Price" />
+    <input type="number" class="room-kapasitas" placeholder="Capacity (Person)" />
+    <input type="number" class="room-luas" placeholder="room size (m²)" />
+    <textarea class="room-deskripsi" placeholder="notes"></textarea>
+    <div class="gambar-preview-wrapper">
+      <img class="gambar-preview" style="display:none; max-width:120px; margin-top:6px;" />
+      <button class="hapus-gambar" onclick="hapusGambarRoom(this)" style="display:none;">×</button>
+    </div>
+    <button class="btn-upload-gambar room-image-upload" onclick="uploadGambarRoom(this)">🖼️ Upload Image</button>
+    <button class="btn-hapus-room" onclick="hapusFormRoom(this)">🗑️ Delete</button>
+    <hr>
+  `;
+  container.appendChild(wrapper);
+}
+
+function ambilSemuaRoom() {
+  const kategoriIds = [
+    { id: "roomHotelContainer", kategori: "hotel" },
+    { id: "meetingRoomContainer", kategori: "meeting" },
+    { id: "packageContainer", kategori: "package" }
+  ];
+  const hasil = [];
+  kategoriIds.forEach(({ id, kategori }) => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    const forms = container.querySelectorAll(".room-form");
+    forms.forEach(form => {
+      const nama = form.querySelector(".room-nama")?.value || "";
+      const harga = parseInt(form.querySelector(".room-harga")?.value || "0");
+      const kapasitas = parseInt(form.querySelector(".room-kapasitas")?.value || "0");
+      const luas = parseInt(form.querySelector(".room-luas")?.value || "0");
+      const deskripsi = form.querySelector(".room-deskripsi")?.value || "";
+      const image = form.querySelector(".room-image-upload")?.getAttribute("data-image") || "";
+
+      if (nama && harga) {
+        hasil.push({
+          id: "R" + Date.now() + Math.floor(Math.random() * 1000),
+          nama,
+          harga,
+          kapasitas,
+          luas,
+          deskripsi,
+          image,
+          kategori
+        });
+      }
+    });
+  });
+  return hasil;
+}
+
+function restoreRoomFromData(rooms = []) {
+  rooms.forEach(room => {
+    tambahRoom(room.kategori);
     const containerId = {
       hotel: "roomHotelContainer",
       meeting: "meetingRoomContainer",
       package: "packageContainer"
-    }[kategori];
-    if (!containerId) return;
+    }[room.kategori];
     const container = document.getElementById(containerId);
-    const wrapper = document.createElement("div");
-    wrapper.className = "room-form";
-    wrapper.innerHTML = `
-      <input type="text" class="room-nama" placeholder="Name" />
-      <input type="number" class="room-harga" placeholder="Price" />
-      <input type="number" class="room-kapasitas" placeholder="Capacity (Person)" />
-      <input type="number" class="room-luas" placeholder="room size (m²)" />
-      <textarea class="room-deskripsi" placeholder="notes"></textarea>
-      <div class="gambar-preview-wrapper">
-        <img class="gambar-preview" style="display:none; max-width:120px; margin-top:6px;" />
-        <button class="hapus-gambar" onclick="hapusGambarRoom(this)" style="display:none;">×</button>
-      </div>
-      <button class="btn-upload-gambar room-image-upload" onclick="uploadGambarRoom(this)">🖼️ Upload Image</button>
-      <button class="btn-hapus-room" onclick="hapusFormRoom(this)">🗑️ Delete</button>
-      <hr>
-    `;
-    container.appendChild(wrapper);
-  }
+    const forms = container.querySelectorAll(".room-form");
+    const lastForm = forms[forms.length - 1];
+    lastForm.querySelector(".room-nama").value = room.nama || "";
+    lastForm.querySelector(".room-harga").value = room.harga || "";
+    lastForm.querySelector(".room-kapasitas").value = room.kapasitas || "";
+    lastForm.querySelector(".room-luas").value = room.luas || "";
+    lastForm.querySelector(".room-deskripsi").value = room.deskripsi || "";
+    const preview = lastForm.querySelector(".gambar-preview");
+    const hapusBtn = lastForm.querySelector(".hapus-gambar");
+    const uploadBtn = lastForm.querySelector(".room-image-upload");
+    if (room.image) {
+      preview.src = room.image;
+      preview.style.display = "block";
+      hapusBtn.style.display = "flex";
+      uploadBtn.setAttribute("data-image", room.image);
+    }
+  });
+}
 
-  function ambilSemuaRoom() {
-    const kategoriIds = [
-      { id: "roomHotelContainer", kategori: "hotel" },
-      { id: "meetingRoomContainer", kategori: "meeting" },
-      { id: "packageContainer", kategori: "package" }
-    ];
-    const hasil = [];
-    kategoriIds.forEach(({ id, kategori }) => {
-      const container = document.getElementById(id);
-      if (!container) return;
-      const forms = container.querySelectorAll(".room-form");
-      forms.forEach(form => {
-        const nama = form.querySelector(".room-nama")?.value || "";
-        const harga = parseInt(form.querySelector(".room-harga")?.value || "0");
-        const kapasitas = parseInt(form.querySelector(".room-kapasitas")?.value || "0");
-        const luas = parseInt(form.querySelector(".room-luas")?.value || "0");
-        const deskripsi = form.querySelector(".room-deskripsi")?.value || "";
-        const image = form.querySelector(".room-image-upload")?.getAttribute("data-image") || "";
-
-        if (nama && harga) {
-          hasil.push({
-            id: "R" + Date.now() + Math.floor(Math.random() * 1000), // ✅ id unik
-            nama,
-            harga,
-            kapasitas,
-            luas,
-            deskripsi,
-            image,
-            kategori
-          });
-        }
-      });
-    });
-    return hasil;
-  }
-
-  function restoreRoomFromData(rooms = []) {
-    rooms.forEach(room => {
-      tambahRoom(room.kategori);
-      const containerId = {
-        hotel: "roomHotelContainer",
-        meeting: "meetingRoomContainer",
-        package: "packageContainer"
-      }[room.kategori];
-      const container = document.getElementById(containerId);
-      const forms = container.querySelectorAll(".room-form");
-      const lastForm = forms[forms.length - 1];
-      lastForm.querySelector(".room-nama").value = room.nama || "";
-      lastForm.querySelector(".room-harga").value = room.harga || "";
-      lastForm.querySelector(".room-kapasitas").value = room.kapasitas || "";
-      lastForm.querySelector(".room-luas").value = room.luas || "";
-      lastForm.querySelector(".room-deskripsi").value = room.deskripsi || "";
-      const preview = lastForm.querySelector(".gambar-preview");
-      const hapusBtn = lastForm.querySelector(".hapus-gambar");
-      const uploadBtn = lastForm.querySelector(".room-image-upload");
-      if (room.image) {
-        preview.src = room.image;
-        preview.style.display = "block";
-        hapusBtn.style.display = "flex";
-        uploadBtn.setAttribute("data-image", room.image);
-      }
-    });
-  }
-
-  function uploadGambarRoom(button) {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.style.display = "none";
-    input.onchange = function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        const wrapper = button.closest(".room-form");
-        const preview = wrapper.querySelector(".gambar-preview");
-        const hapusBtn = wrapper.querySelector(".hapus-gambar");
-        const imageUrl = event.target.result;
-        preview.src = imageUrl;
-        preview.style.display = "block";
-        hapusBtn.style.display = "flex";
-        button.setAttribute("data-image", imageUrl);
-      };
-      reader.readAsDataURL(file);
+function uploadGambarRoom(button) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.style.display = "none";
+  input.onchange = function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      const wrapper = button.closest(".room-form");
+      const preview = wrapper.querySelector(".gambar-preview");
+      const hapusBtn = wrapper.querySelector(".hapus-gambar");
+      const imageUrl = event.target.result;
+      preview.src = imageUrl;
+      preview.style.display = "block";
+      hapusBtn.style.display = "flex";
+      button.setAttribute("data-image", imageUrl);
     };
-    document.body.appendChild(input);
-    input.click();
-    document.body.removeChild(input);
-  }
+    reader.readAsDataURL(file);
+  };
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+}
 
-  function hapusGambarRoom(button) {
-    const wrapper = button.closest(".room-form");
-    const preview = wrapper.querySelector(".gambar-preview");
-    const uploadBtn = wrapper.querySelector(".room-image-upload");
-    preview.src = "";
-    preview.style.display = "none";
-    button.style.display = "none";
-    if (uploadBtn) uploadBtn.removeAttribute("data-image");
-  }
+function hapusGambarRoom(button) {
+  const wrapper = button.closest(".room-form");
+  const preview = wrapper.querySelector(".gambar-preview");
+  const uploadBtn = wrapper.querySelector(".room-image-upload");
+  preview.src = "";
+  preview.style.display = "none";
+  button.style.display = "none";
+  if (uploadBtn) uploadBtn.removeAttribute("data-image");
+}
 
- function hapusFormRoom(button) {
+function hapusFormRoom(button) {
   const form = button.closest(".room-form");
   if (form) {
     form.remove();
-    // Simpan perubahan ke DB supaya update langsung permanen
-    // Debounce kecil untuk mencegah banyak panggilan beruntun
     if (window._saveTimeout) clearTimeout(window._saveTimeout);
     window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
   }
 }
 
-  async function tampilkanListRoom() {
-    try {
-      const data = await loadDataFromDB();
-      const listContainer = document.getElementById("listRuangan");
-      if (!listContainer) return; // ✅ jika elemen tidak ada, skip saja
+// ====================== UI: tampilkan list room (terpisah) ======================
+async function tampilkanListRoom() {
+  try {
+    const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
+    const data = await loadDataFromDB(restoId);
+    const listContainer = document.getElementById("listRuangan");
+    if (!listContainer) return;
 
-      listContainer.innerHTML = "";
+    listContainer.innerHTML = "";
 
-      if (!data.rooms || data.rooms.length === 0) {
-        listContainer.innerHTML = "<p>Tidak ada ruangan yang tersedia.</p>";
-        return;
-      }
-
-      data.rooms.forEach((room, index) => {
-        const item = document.createElement("div");
-        item.classList.add("room-card");
-        item.innerHTML = `
-          <strong>Ruangan ${index + 1}</strong><br>
-          🏷️ Nama: ${room.nama}<br>
-          💼 Kategori: ${room.kategori}<br>
-          💰 Harga: Rp${room.harga}<br>
-          👥 Kapasitas: ${room.kapasitas || "-"} orang<br>
-          📐 Luas: ${room.luas || "-"} m²<br>
-          📝 Catatan: ${room.deskripsi || "-"}
-          <hr>
-        `;
-        listContainer.appendChild(item);
-      });
-    } catch (err) {
-      console.error("Failed to display room list:", err);
+    if (!data || !Array.isArray(data.rooms) || data.rooms.length === 0) {
+      listContainer.innerHTML = "<p>Tidak ada ruangan yang tersedia.</p>";
+      return;
     }
-  }
 
-  // ====================== NOMOR WA ======================
-  function tambahNomorWa() {
-    const container = document.getElementById("nomorWaContainer");
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "nomor-wa";
-    input.placeholder = "Example: 6281234567890";
-    container.appendChild(input);
+    data.rooms.forEach((room, index) => {
+      const item = document.createElement("div");
+      item.classList.add("room-card");
+      item.innerHTML = `
+        <strong>Ruangan ${index + 1}</strong><br>
+        🏷️ Nama: ${room.nama}<br>
+        💼 Kategori: ${room.kategori}<br>
+        💰 Harga: Rp${room.harga}<br>
+        👥 Kapasitas: ${room.kapasitas || "-"} orang<br>
+        📐 Luas: ${room.luas || "-"} m²<br>
+        📝 Catatan: ${room.deskripsi || "-"}
+        <hr>
+      `;
+      listContainer.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Failed to display room list:", err);
   }
+}
 
-  // ====================== IMAGE ======================
-  async function resizeIfNeeded(file, targetSizeKB = 100, maxWidth = 1280) {
+// ====================== NOMOR WA ======================
+function tambahNomorWa() {
+  const container = document.getElementById("nomorWaContainer");
+  if (!container) return;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "nomor-wa";
+  input.placeholder = "Example: 6281234567890";
+  container.appendChild(input);
+}
+
+// ====================== IMAGE helper (resize) ======================
+async function resizeIfNeeded(file, targetSizeKB = 100, maxWidth = 1280) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
@@ -965,7 +999,6 @@ function ambilMenu(containerId) {
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          // Mulai compress loop sampai <= targetSizeKB
           let quality = 0.9;
           let dataUrl = canvas.toDataURL("image/jpeg", quality);
           let sizeKB = Math.round((dataUrl.length * 3 / 4) / 1024);
@@ -989,93 +1022,97 @@ function ambilMenu(containerId) {
   });
 }
 
-// Example: upload logo
+// logo input listener
 document.getElementById("logoInput")?.addEventListener("change", async function (e) {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    const logoUrl = await resizeIfNeeded(file, 100); // target 100KB
-    document.getElementById("previewLogo").src = logoUrl;
+    const logoUrl = await resizeIfNeeded(file, 100);
+    const preview = document.getElementById("previewLogo");
+    if (preview) preview.src = logoUrl;
   } catch (err) {
     console.error("Logo error:", err);
-    alert("❌ Failed to prscess logo image.");
+    alert("❌ Failed to process logo image.");
   }
 });
 
-  function renderImagePreview(tipe, url) {
-    const img = document.createElement("img");
-    img.src = url;
-    img.style.maxWidth = "100px";
-    img.style.margin = "5px";
-    img.style.borderRadius = "5px";
-    img.style.boxShadow = "0 1px 4px rgba(0,0,0,0.1)";
+// ====================== flipbook / preview helpers ======================
+function renderImagePreview(tipe, url) {
+  const img = document.createElement("img");
+  img.src = url;
+  img.style.maxWidth = "100px";
+  img.style.margin = "5px";
+  img.style.borderRadius = "5px";
+  img.style.boxShadow = "0 1px 4px rgba(0,0,0,0.1)";
 
-    const wrapper = document.createElement("div");
-    wrapper.style.display = "inline-block";
-    wrapper.style.position = "relative";
-    wrapper.style.margin = "5px";
+  const wrapper = document.createElement("div");
+  wrapper.style.display = "inline-block";
+  wrapper.style.position = "relative";
+  wrapper.style.margin = "5px";
 
-    const btnHapus = document.createElement("button");
-    btnHapus.className = "btn-hapus-gambar";
-    btnHapus.setAttribute("aria-label", "Hapus Gambar");
-    btnHapus.innerHTML = "×";
-    btnHapus.style.position = "absolute";
-    btnHapus.style.top = "2px";
-    btnHapus.style.right = "2px";
-    btnHapus.onclick = () => {
-      wrapper.remove();
-      if (tipe === "ruangan") flipbookRuanganImages = flipbookRuanganImages.filter(s => s !== url);
-      else flipbookMenuImages = flipbookMenuImages.filter(s => s !== url);
-    };
+  const btnHapus = document.createElement("button");
+  btnHapus.className = "btn-hapus-gambar";
+  btnHapus.setAttribute("aria-label", "Hapus Gambar");
+  btnHapus.innerHTML = "×";
+  btnHapus.style.position = "absolute";
+  btnHapus.style.top = "2px";
+  btnHapus.style.right = "2px";
+  btnHapus.onclick = () => {
+    wrapper.remove();
+    if (tipe === "ruangan") flipbookRuanganImages = flipbookRuanganImages.filter(s => s !== url);
+    else flipbookMenuImages = flipbookMenuImages.filter(s => s !== url);
+  };
 
-    wrapper.appendChild(img);
-    wrapper.appendChild(btnHapus);
+  wrapper.appendChild(img);
+  wrapper.appendChild(btnHapus);
 
-    const container = document.getElementById(tipe === "ruangan" ? "flipbookRuanganPreview" : "flipbookMenuPreview");
-    container.appendChild(wrapper);
-  }
+  const container = document.getElementById(tipe === "ruangan" ? "flipbookRuanganPreview" : "flipbookMenuPreview");
+  if (container) container.appendChild(wrapper);
+}
 
-  function tambahGambar(tipe) {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.style.display = "none";
-    input.onchange = async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      try {
-        const url = await resizeIfNeeded(file);
-        renderImagePreview(tipe, url);
-        if (tipe === "ruangan") flipbookRuanganImages.push(url);
-        else flipbookMenuImages.push(url);
-      } catch (err) {
-        console.error(err);
-        alert("❌ Gagal memproses gambar.");
-      }
-    };
-    document.body.appendChild(input);
-    input.click();
-    document.body.removeChild(input);
-  }
+function tambahGambar(tipe) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.style.display = "none";
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const url = await resizeIfNeeded(file);
+      renderImagePreview(tipe, url);
+      if (tipe === "ruangan") flipbookRuanganImages.push(url);
+      else flipbookMenuImages.push(url);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Gagal memproses gambar.");
+    }
+  };
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+}
 
-   // Fungsi slugify sederhana (untuk bikin URL-friendly)
+// ====================== slugify ======================
 function slugify(text) {
   return text
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')       // ganti spasi dengan "-"
-    .replace(/[^\w\-]+/g, '')   // hapus karakter non-alphanumeric
-    .replace(/\-\-+/g, '-');    // ganti "--" menjadi "-"
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
 }
+
+// ====================== SIMPAN (form -> DB) ======================
 async function simpanData() {
   try {
-    showLoader(); // ⏳ mulai loading
+    showLoader();
 
-    const namaRestoran = document.getElementById("namaRestoran").value.trim();
-    const restoAddress = document.getElementById("restoAddress").value.trim();
-    const restoPhone = document.getElementById("restoPhone").value.trim();
-    const logo = document.getElementById("previewLogo").src || "";
+    const namaRestoran = document.getElementById("namaRestoran")?.value.trim() || "";
+    const restoAddress = document.getElementById("restoAddress")?.value.trim() || "";
+    const restoPhone = document.getElementById("restoPhone")?.value.trim() || "";
+    const logo = document.getElementById("previewLogo")?.src || "";
     const nomorWaAdmin = Array.from(document.querySelectorAll(".nomor-wa")).map(i => i.value);
 
     if (!restoPhone) {
@@ -1084,7 +1121,6 @@ async function simpanData() {
       return;
     }
 
-    // Gunakan phone sebagai restoId
     const restoId = restoPhone;
 
     const menuData = [
@@ -1094,12 +1130,12 @@ async function simpanData() {
       ...ambilMenu("menuSpecialContainer")
     ];
 
-    const promo = typeof menuPromo !== "undefined" ? menuPromo : [];
-    const flipRuangan = typeof flipbookRuanganImages !== "undefined" ? flipbookRuanganImages : [];
-    const flipMenu = typeof flipbookMenuImages !== "undefined" ? flipbookMenuImages : [];
+    const promo = Array.isArray(menuPromo) ? menuPromo : [];
+    const flipRuangan = Array.isArray(flipbookRuanganImages) ? flipbookRuanganImages : [];
+    const flipMenu = Array.isArray(flipbookMenuImages) ? flipbookMenuImages : [];
 
     const data = {
-      restoId,          // ✅ key utama
+      restoId,
       namaRestoran,
       restoAddress,
       restoPhone,
@@ -1113,34 +1149,47 @@ async function simpanData() {
     };
 
     await saveDataToDB(data);
-    updateShareUI();
 
+    // sinkron hidden restoId (dipakai UI)
+    let restoIdEl = document.getElementById("restoId");
+    if (!restoIdEl) {
+      restoIdEl = document.createElement("input");
+      restoIdEl.type = "hidden";
+      restoIdEl.id = "restoId";
+      document.body.appendChild(restoIdEl);
+    }
+    restoIdEl.value = restoId;
+
+    updateShareUI();
     alert(`✅ All data saved successfully!: ${restoId}`);
   } catch (err) {
     console.error(err);
     alert("❌ Failed to save data.");
   } finally {
-    hideLoader(); // ✅ selesai loading
+    hideLoader();
   }
 }
 
-let loadDataCalls = 0;
-   
+// ====================== LOAD (DB -> form) ======================
 async function loadData() {
-  loadDataCalls++;
-  console.log("🔄 loadData dipanggil ke-", loadDataCalls);
-
   try {
-    showLoader(); // ⏳ mulai loading
+    showLoader();
 
     await initDB();
-    const data = await loadDataFromDB();
+
+    // prioritas: hidden restoId (dari simpan), lalu input restoPhone
+    const restoIdCandidate = document.getElementById("restoId")?.value
+      || document.getElementById("restoPhone")?.value
+      || null;
+
+    const data = await loadDataFromDB(restoIdCandidate);
     if (!data) {
       console.warn("⚠️ Tidak ada data tersimpan di DB");
       return;
     }
     console.log("📦 Data berhasil di-load dari DB:", data);
 
+    // clear UI containers to avoid duplicates
     const clearIds = [
       "promoContainer","menuFoodContainer","menuSnackContainer",
       "menuDrinkContainer","menuSpecialContainer","roomHotelContainer",
@@ -1152,6 +1201,7 @@ async function loadData() {
       if (el) el.innerHTML = "";
     });
 
+    // reset arrays
     menuPromo = [];
     flipbookRuanganImages = [];
     flipbookMenuImages = [];
@@ -1162,46 +1212,42 @@ async function loadData() {
     document.getElementById("restoPhone").value = data.restoPhone || "";
 
     if (data.logo) {
-      document.getElementById("previewLogo").src = data.logo;
+      const preview = document.getElementById("previewLogo");
+      if (preview) preview.src = data.logo;
       console.log("🖼️ Logo berhasil di-load");
     }
 
     // nomor WA
     if (Array.isArray(data.nomorWaAdmin)) {
-      console.log("📱 Load nomor WA admin:", data.nomorWaAdmin);
       const container = document.getElementById("nomorWaContainer");
-      container.innerHTML = "";
-      data.nomorWaAdmin.forEach(() => tambahNomorWa());
-      const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+      if (container) {
+        container.innerHTML = "";
+        data.nomorWaAdmin.forEach(() => tambahNomorWa());
+        const inputs = container.querySelectorAll(".nomor-wa");
+        data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+      }
     }
 
     // promo
-    if (Array.isArray(data.menuPromo)) { 
-      console.log("🎟️ Load promo:", data.menuPromo.length);
-      menuPromo = data.menuPromo.slice(); 
-      renderPromoUI(); 
+    if (Array.isArray(data.menuPromo)) {
+      menuPromo = data.menuPromo.slice();
+      renderPromoUI();
     }
 
     // menu
     if (Array.isArray(data.menu)) {
-      console.log("🍽️ Load menu:", data.menu.length);
       data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
     }
 
     // rooms
     if (Array.isArray(data.rooms)) {
-      console.log("🏨 Load rooms:", data.rooms.length);
       restoreRoomFromData(data.rooms);
     }
 
     // flipbook
     flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
-    console.log("📖 Flipbook ruangan:", flipbookRuanganImages.length);
     flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
-
     flipbookMenuImages = (data.flipbookMenuImages || []).slice();
-    console.log("📖 Flipbook menu:", flipbookMenuImages.length);
     flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
 
     // sinkron hidden restoId
@@ -1218,86 +1264,78 @@ async function loadData() {
   } catch (err) {
     console.error("❌ loadData Failed:", err);
   } finally {
-    hideLoader(); // ✅ selesai loading
+    hideLoader();
   }
 }
 
-function showLoader() {
-  document.getElementById("loader").style.display = "block";
-}
-function hideLoader() {
-  document.getElementById("loader").style.display = "none";
-}
-  // ====================== RESET & BACKUP ======================
-  async function resetData() {
-    if (!confirm("Are you sure you want to delete all data?")) return;
-    try { await clearDataDB(); location.reload(); } 
-    catch(err) { alert("❌ Failed to delete data: "+err.message); }
+// ====================== RESET & BACKUP ======================
+async function resetData() {
+  if (!confirm("Are you sure you want to delete all data?")) return;
+  try {
+    await clearDataDB();
+    location.reload();
+  } catch(err) {
+    alert("❌ Failed to delete data: "+err.message);
   }
+}
 
-  async function backupData() {
-    try {
-      const data = await loadDataFromDB();
-      if (!data) { 
-        alert("No data to backup!"); 
-        return; 
-      }
-
-      const filename = `menuva-backup-${Date.now()}.json`;
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-
-      // trigger download otomatis
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // alert sukses saja, tanpa innerHTML
-      alert(`✅ Backup successful! File ${filename} Ready to-download.`);
-      
-    } catch (err) {
-      alert("❌ Backup failed: " + err.message);
-      console.error(err);
+async function backupData() {
+  try {
+    const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
+    const data = await loadDataFromDB(restoId);
+    if (!data) {
+      alert("No data to backup!");
+      return;
     }
-  }
 
+    const filename = `menuva-backup-${Date.now()}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    alert(`✅ Backup successful! File ${filename} ready to-download.`);
+  } catch (err) {
+    alert("❌ Backup failed: " + err.message);
+    console.error(err);
+  }
+}
+
+// ====================== Restore from file ======================
 function restoreDataFromFile(event) {
   const file = event.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
       let json = JSON.parse(e.target.result);
 
-      // case: wrapper { profile: {...} } atau { data: {...} }
-      if (json.profile && typeof json.profile === "object") {
-        json = json.profile;
-      } else if (json.data && typeof json.data === "object") {
-        json = json.data;
-      }
+      // unwrap common wrappers
+      if (json.profile && typeof json.profile === "object") json = json.profile;
+      else if (json.data && typeof json.data === "object") json = json.data;
 
-      // case: array → ambil index pertama aja
+      // if array -> pick first
       if (Array.isArray(json)) {
         if (json.length === 0) throw new Error("File kosong");
         json = json[0];
       }
 
-      // tambahkan restoId kalau belum ada
+      // ensure restoId: prefer restoPhone, else nama slug, else timestamp
       if (!json.restoId) {
-        const nama = (json.namaRestoran || "").trim();
-        json.restoId = nama ? slugify(nama) : ("resto" + Date.now());
+        json.restoId = json.restoPhone || (json.namaRestoran ? slugify(json.namaRestoran) : ("resto" + Date.now()));
       }
+      // also ensure restoPhone exists
+      if (!json.restoPhone) json.restoPhone = json.restoId;
 
-      // simpan ke DB sebagai id=1 anchor
       await saveDataToDB(json);
 
       alert("✅ Data restored successfully! Reloading...");
       location.reload();
-
     } catch (err) {
       console.error("❌ Restore failed:", err);
       alert("❌ Failed to restore JSON file. Lihat console untuk detail.");
@@ -1305,33 +1343,30 @@ function restoreDataFromFile(event) {
   };
   reader.readAsText(file);
 }
-  // ====================== INIT ======================
-  window.addEventListener("DOMContentLoaded", async () => {
-    await initDB();
-    await loadData();
-    tampilkanListRoom();
-  });
 
-   function generateDynamicLink(baseUrl, data) {
+// ====================== INIT ======================
+window.addEventListener("DOMContentLoaded", async () => {
+  await initDB();
+  await loadData();
+  tampilkanListRoom();
+});
+
+// ====================== Links / QR helpers ======================
+function generateDynamicLink(baseUrl, data) {
   try {
-    
     const jsonData = JSON.stringify(data);
-
-    
     const encoded = encodeURIComponent(jsonData);
-
-    
-    const link = `${baseUrl}?data=${encoded}`;
-    return link;
+    return `${baseUrl}?data=${encoded}`;
   } catch (err) {
     console.error("Gagal generate link:", err);
     return null;
   }
 }
 
-   async function createMenuvaLink() {
+async function createMenuvaLink() {
   try {
-    const data = await loadDataFromDB(); // ambil data dari DB
+    const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
+    const data = await loadDataFromDB(restoId);
     const link = generateDynamicLink("https://menuva.github.io/view.html", data);
     console.log("Dynamic Link:", link);
     return link;
@@ -1339,30 +1374,25 @@ function restoreDataFromFile(event) {
     console.error("Error createMenuvaLink:", err);
   }
 }
-// ====================== HELPER GET CUSTOMER LINK ======================
+
 function getCustomerLink() {
   const restoId = document.getElementById("restoId")?.value;
   if (!restoId) return null;
-
-  // Ambil base path folder saat ini
   const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
   return `${window.location.origin}${basePath}/menu.html?resto=${encodeURIComponent(restoId)}`;
 }
 
-
-// ====================== OPEN CUSTOMER PAGE ======================
 function openCustomerPage() {
   const link = getCustomerLink();
   if (!link) return alert("❌ Please click Save All first");
   window.open(link, "_blank");
 }
 
-// ====================== UPDATE SHARE UI ======================
+// update share UI + QR generation (uses qrcode library)
 function updateShareUI() {
   const link = getCustomerLink();
   if (!link) return;
 
-  // === Tombol Copy Link ===
   const btnCopy = document.getElementById("btnSalinLink");
   if (btnCopy) {
     btnCopy.style.display = "inline-block";
@@ -1373,27 +1403,24 @@ function updateShareUI() {
     };
   }
 
-  // === Tombol See Customer Page ===
   const btnSee = document.getElementById("btnOpenCustomer");
   if (btnSee) {
     btnSee.style.display = "inline-block";
     btnSee.onclick = () => window.open(link, "_blank");
   }
 
-  // === Generate QR Code ===
   const qrContainer = document.getElementById("qrcodePreview");
-  if (qrContainer) {
-    qrContainer.innerHTML = ""; // bersihkan dulu
+  if (!qrContainer) return;
+  qrContainer.innerHTML = "";
+  if (typeof QRCode !== "undefined") {
     QRCode.toCanvas(link, { width: 128 }, function (error, canvas) {
       if (error) {
         console.error(error);
         qrContainer.textContent = "❌ Failed to generate QR";
         return;
       }
-
       qrContainer.appendChild(canvas);
 
-      // === Tombol Download QR ===
       const btnDownload = document.getElementById("btnDownloadQR");
       if (btnDownload) {
         btnDownload.style.display = "inline-block";
@@ -1405,7 +1432,6 @@ function updateShareUI() {
         };
       }
 
-      // === Tombol Print QR ===
       const btnPrint = document.getElementById("btnPrintQR");
       if (btnPrint) {
         btnPrint.style.display = "inline-block";
@@ -1418,10 +1444,22 @@ function updateShareUI() {
         };
       }
     });
+  } else {
+    // fallback: show link text
+    qrContainer.textContent = link;
   }
 }
-</script>
 
+// ====================== Loader ======================
+function showLoader() {
+  const el = document.getElementById("loader");
+  if (el) el.style.display = "block";
+}
+function hideLoader() {
+  const el = document.getElementById("loader");
+  if (el) el.style.display = "none";
+}
+</script>
 <div class="fixed-bar">
   <button onclick="window.location.href='index.html'" class="btn-success">🔒 Logout</button>
   <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
@@ -1439,6 +1477,7 @@ function updateShareUI() {
   });
 </script>
 </html>
+
 
 
 
