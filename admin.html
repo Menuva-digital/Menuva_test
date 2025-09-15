@@ -582,11 +582,13 @@ async function saveDataToDB(data) {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
+    // ambil restoId dari data atau localStorage
     const restoId = data.restoId || localStorage.getItem("restoId");
     if (!restoId) {
       return reject(new Error("❌ restoId kosong saat save"));
     }
 
+    // pastikan restoId ikut tersimpan
     const payload = { restoId, ...data };
 
     const req = store.put(payload);
@@ -597,6 +599,7 @@ async function saveDataToDB(data) {
     req.onerror = () => reject(req.error);
   });
 }
+
 
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
@@ -1444,6 +1447,7 @@ function updateShareUI() {
   });
 </script>
 </html>
+
 
 
 
