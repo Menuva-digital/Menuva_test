@@ -44,7 +44,7 @@
   max-width: 900px;
   margin: 30px auto;
   padding: 20px 25px;
-  background-color: rgba(255, 255, 255, 0.9); /* putih lembut, agak transparan */
+  background-color: rgba(30, 60, 114, 0.05); /* biru lembut, transparan */
   border-radius: 12px;  /* sudut agak bulat */
   box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* shadow tipis biar floating */
   color: #333; /* teks tetap terbaca */
@@ -52,17 +52,19 @@
 
 
   /* ================== Section Titles ================== */
-  .section-title {
-    text-align: center;
-    font-weight: bold;
-    font-size: 20px;
-    margin: 30px 0 20px;
-    border-bottom: 2px solid #ccc;
-    padding-bottom: 5px;
-    display: inline-block;
-  }
-  h1{
-    text-align: center;}
+.section-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 20px;
+  margin: 30px 0 20px;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 5px;
+  display: block;          /* bikin full width */
+  width: fit-content;      /* garis bawah hanya selebar teks */
+  margin-left: auto;
+  margin-right: auto;      /* center horizontal */
+}
+
   /* ================== Promo Grid ================== */
   .promo-grid {
     display: flex;
@@ -424,6 +426,7 @@ window.onload = async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
