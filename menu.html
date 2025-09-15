@@ -309,51 +309,67 @@ function showNext(){
 }
 
 // Render Promo
-function renderPromo(promoList){
+function renderPromo(promoList) {
   const promoContainer = document.getElementById("promoContainer");
+  const promoWarning = document.getElementById("promoWarning");
   promoContainer.innerHTML = "";
-  const warning = document.getElementById("promoWarning");
-  warning.textContent = "";
+  promoWarning.textContent = "";
 
-  if(!promoList || promoList.length===0){ warning.textContent = "❌ No promo data available."; return; }
+  if (!promoList || promoList.length === 0) {
+    promoWarning.textContent = "❌ No promo data available.";
+    return;
+  }
 
-  promoList.forEach((promo,index)=>{
-    const card = document.createElement("div");
-    card.className = "promo-item";
+  promoList.forEach((promo, index) => {
+    const promoCard = document.createElement("div");
+    promoCard.className = "promo-item";
 
+    // Badge
     const badge = document.createElement("div");
     badge.className = "promo-badge";
     badge.textContent = promo.badge || "Promo";
-    card.appendChild(badge);
+    promoCard.appendChild(badge);
 
+    // Gambar
     const img = document.createElement("img");
-    img.src = promo.image;
-    img.alt = promo.namaMenu;
-    card.appendChild(img);
+    img.src = promo.image || "";
+    img.alt = promo.namaMenu || "Promo Image";
+    promoCard.appendChild(img);
 
+    // Nama Promo (h3)
     const title = document.createElement("h3");
-    title.textContent = promo.namaMenu;
-    card.appendChild(title);
+    title.textContent = promo.namaMenu || "Nama Promo Tidak Tersedia";
+    promoCard.appendChild(title);
 
+    // Deskripsi
     const desc = document.createElement("p");
-    desc.textContent = promo.deskripsi;
-    card.appendChild(desc);
+    desc.textContent = promo.deskripsi || "-";
+    promoCard.appendChild(desc);
 
+    // Harga
     const price = document.createElement("div");
     price.className = "promo-price";
-    price.textContent = `Rp ${parseInt(promo.harga).toLocaleString("id-ID")}`;
-    card.appendChild(price);
+    if (promo.harga !== undefined) {
+      price.textContent = `Rp ${parseInt(promo.harga).toLocaleString("id-ID")}`;
+    } else {
+      price.textContent = "-";
+    }
+    promoCard.appendChild(price);
 
+    // Countdown
     const countdown = document.createElement("div");
     countdown.className = "countdown";
     countdown.id = `countdown-${index}`;
-    card.appendChild(countdown);
+    promoCard.appendChild(countdown);
 
-    promoContainer.appendChild(card);
+    promoContainer.appendChild(promoCard);
 
-    if(promo.tanggalAkhir){
-      startCountdown(promo.tanggalAkhir,countdown.id);
-    } else { countdown.textContent="Tanpa batas waktu"; }
+    // Start countdown
+    if (promo.tanggalAkhir) {
+      startCountdown(promo.tanggalAkhir, countdown.id);
+    } else {
+      countdown.textContent = "Tanpa batas waktu";
+    }
   });
 }
 
@@ -426,6 +442,7 @@ window.onload = async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
