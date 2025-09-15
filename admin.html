@@ -667,10 +667,11 @@ function loadDataFromDB() {
   }
 
   function hapusPromo(index) {
-    menuPromo.splice(index, 1);
-    renderPromoUI();
-  }
-
+  menuPromo.splice(index, 1);
+  renderPromoUI();
+  if (window._saveTimeout) clearTimeout(window._saveTimeout);
+  window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
+}
   function uploadPromoImage(event, index) {
     const file = event.target.files[0];
     if (!file) return;
@@ -875,10 +876,16 @@ function ambilMenu(containerId) {
     if (uploadBtn) uploadBtn.removeAttribute("data-image");
   }
 
-  function hapusFormRoom(button) {
-    const form = button.closest(".room-form");
-    if (form) form.remove();
+ function hapusFormRoom(button) {
+  const form = button.closest(".room-form");
+  if (form) {
+    form.remove();
+    // Simpan perubahan ke DB supaya update langsung permanen
+    // Debounce kecil untuk mencegah banyak panggilan beruntun
+    if (window._saveTimeout) clearTimeout(window._saveTimeout);
+    window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
   }
+}
 
   async function tampilkanListRoom() {
     try {
@@ -1108,21 +1115,53 @@ async function simpanData() {
     alert("❌ Failed to save data.");
   }
 }
+let loadDataCalls = 0;
 
 async function loadData() {
+  loadDataCalls++;
+  console.log("🔄 loadData dipanggil ke-", loadDataCalls);
+
   try {
     await initDB();
+    console.log("✅ initDB selesai");
+
     const data = await loadDataFromDB();
-    if (!data) return;
+    if (!data) {
+      console.warn("⚠️ Tidak ada data tersimpan di DB");
+      return;
+    }
+    console.log("📦 Data berhasil di-load dari DB:", data);
+
+    // --- CLEAR UI / STATE dulu supaya tidak duplikat ---
+    console.log("🧹 Clear semua container & reset state");
+    document.getElementById("promoContainer") && (document.getElementById("promoContainer").innerHTML = "");
+    document.getElementById("menuFoodContainer") && (document.getElementById("menuFoodContainer").innerHTML = "");
+    document.getElementById("menuSnackContainer") && (document.getElementById("menuSnackContainer").innerHTML = "");
+    document.getElementById("menuDrinkContainer") && (document.getElementById("menuDrinkContainer").innerHTML = "");
+    document.getElementById("menuSpecialContainer") && (document.getElementById("menuSpecialContainer").innerHTML = "");
+    document.getElementById("roomHotelContainer") && (document.getElementById("roomHotelContainer").innerHTML = "");
+    document.getElementById("meetingRoomContainer") && (document.getElementById("meetingRoomContainer").innerHTML = "");
+    document.getElementById("packageContainer") && (document.getElementById("packageContainer").innerHTML = "");
+    document.getElementById("flipbookRuanganPreview") && (document.getElementById("flipbookRuanganPreview").innerHTML = "");
+    document.getElementById("flipbookMenuPreview") && (document.getElementById("flipbookMenuPreview").innerHTML = "");
+    document.getElementById("listRuangan") && (document.getElementById("listRuangan").innerHTML = "");
+
+    menuPromo = [];
+    flipbookRuanganImages = [];
+    flipbookMenuImages = [];
 
     // isi form di halaman admin
     document.getElementById("namaRestoran").value = data.namaRestoran || "";
     document.getElementById("restoAddress").value = data.restoAddress || "";
     document.getElementById("restoPhone").value = data.restoPhone || "";
-    if (data.logo) document.getElementById("previewLogo").src = data.logo;
+    if (data.logo) {
+      document.getElementById("previewLogo").src = data.logo;
+      console.log("🖼️ Logo berhasil di-load");
+    }
 
     // nomor WA
     if (Array.isArray(data.nomorWaAdmin)) {
+      console.log("📱 Load nomor WA admin:", data.nomorWaAdmin);
       const container = document.getElementById("nomorWaContainer");
       container.innerHTML = "";
       data.nomorWaAdmin.forEach(() => tambahNomorWa());
@@ -1132,25 +1171,32 @@ async function loadData() {
 
     // promo, menu, rooms
     if (Array.isArray(data.menuPromo)) { 
-      menuPromo = data.menuPromo; 
+      console.log("🎟️ Load promo:", data.menuPromo.length);
+      menuPromo = data.menuPromo.slice(); 
       renderPromoUI(); 
     }
     if (Array.isArray(data.menu)) {
+      console.log("🍽️ Load menu:", data.menu.length);
       data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
     }
     if (Array.isArray(data.rooms)) {
+      console.log("🏨 Load rooms:", data.rooms.length);
       restoreRoomFromData(data.rooms);
     }
 
     // flipbook
-    flipbookRuanganImages = data.flipbookRuanganImages || [];
+    flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
+    console.log("📖 Flipbook ruangan:", flipbookRuanganImages.length);
     flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
 
-    flipbookMenuImages = data.flipbookMenuImages || [];
+    flipbookMenuImages = (data.flipbookMenuImages || []).slice();
+    console.log("📖 Flipbook menu:", flipbookMenuImages.length);
     flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
 
+    console.log("✅ loadData Done");
+
   } catch (err) {
-    console.error("❌ loadData gagal:", err);
+    console.error("❌ loadData Failed:", err);
   }
 }
 
@@ -1347,10 +1393,6 @@ function updateShareUI() {
     });
   }
 }
-// Auto load data saat halaman admin selesai dimuat
-document.addEventListener("DOMContentLoaded", () => {
-  loadData();
-});
 </script>
 
 <div class="fixed-bar">
@@ -1369,11 +1411,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 </script>
-
 </html>
-
-
-
-
-
-
