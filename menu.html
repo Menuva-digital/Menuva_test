@@ -1,52 +1,251 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>All Menu</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
-    margin: 0 0 70px 0;
-  }
-  h1 { text-align: center; margin-bottom: 5px; color: #ddd; }
-  .logo-resto { display: block; max-height: 80px; margin: 0 auto 10px; }
-  .nama-resto { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
-  .section-title { font-weight: bold; font-size: 20px; margin: 30px 0 20px; text-align:center; border-bottom:2px solid #ccc; padding-bottom:5px; display:inline-block; }
-  .warning { color: #e74c3c; text-align: center; margin-bottom: 20px; }
-  .promo-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 40px; justify-content: center; }
-  .promo-item { background:white; border:1px solid #ddd; border-radius:8px; padding:10px; width:275px; box-shadow:2px 2px 5px rgba(0,0,0,0.1); display:flex; flex-direction:column; align-items:center; text-align:center; position:relative; }
-  .promo-item img { width:100%; height:auto; object-fit:contain; border-radius:10px; margin-bottom:10px; display:block; }
-  .promo-item h3 { margin:0 0 6px 0; font-size:16px; }
-  .promo-item p { font-size:14px; color:#555; margin:0 0 10px 0; }
-  .promo-item button { background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; width:100%; }
-  .promo-item button:hover { background:#218838; }
-  .promo-badge { position:absolute; top:10px; left:10px; background:#ffcc00; color:#222; font-weight:800; font-size:13px; padding:4px 10px; border-radius:999px; text-transform:uppercase; box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none; }
-  .flipbook-section { margin-bottom:40px; }
-  .flipbook-gallery { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth; gap:10px; padding:10px; -webkit-overflow-scrolling:touch; scroll-padding:0 10px; }
-  .flipbook-gallery img { width:auto; max-width:80vw; max-height:70vh; height:auto; object-fit:cover; scroll-snap-align:center; flex-shrink:0; border-radius:10px; cursor:pointer; transition:transform 0.3s ease; border:2px solid #ccc; padding:2px; box-sizing:border-box; }
-  .flipbook-gallery img:hover { border-color:#28a745; box-shadow:0 0 6px rgba(40,167,69,0.5); }
-  @media(max-width:600px) { .flipbook-gallery img { max-width:90vw; max-height:50vh; } }
-  @media(min-width:600px) and (max-width:992px) { .flipbook-gallery img { max-width:85vw; max-height:60vh; } }
-  @media(min-width:992px) { .flipbook-gallery img { max-width:70vw; max-height:75vh; } }
-  .fullscreen-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:9999; }
-  .fullscreen-overlay img { max-width:95vw; max-height:90vh; border-radius:10px; transition:transform 0.3s ease; cursor:zoom-out; touch-action: pan-x pan-y; }
-  .fullscreen-overlay .close-btn { position:absolute; top:20px; right:30px; font-size:30px; font-weight:bold; color:#fff; cursor:pointer; z-index:10000; user-select:none; }
-  .fullscreen-overlay .nav-btn { position:absolute; top:50%; transform:translateY(-50%); font-size:40px; font-weight:bold; color:#fff; cursor:pointer; user-select:none; padding:10px; background:rgba(0,0,0,0.4); border-radius:50%; }
-  .fullscreen-overlay .prev-btn { left:20px; } .fullscreen-overlay .next-btn { right:20px; }
-  .countdown { font-size:14px; margin-bottom:10px; color:#ff5733; font-weight:bold; }
-  #infoResto { display:flex; flex-direction:column; align-items:center; justify-content:center; margin:20px auto; padding:10px 20px; max-width:500px; text-align:center; border:1px solid #eee; border-radius:8px; background-color:#f9f9f9; box-shadow:0 2px 8px rgba(0,0,0,0.05); font-size:15px; color:#333; }
-  #infoResto p { margin:5px 0; line-height:1.5; }
-  .fixed-bar { position:fixed; bottom:0; left:0; right:0; width:93%; background:linear-gradient(135deg,#1e3c72,#2a5298); box-shadow:0 -2px 6px rgba(0,0,0,0.1); display:flex; justify-content:center; gap:10px; padding:10px; z-index:1000; }
-  .fixed-bar button { flex:1; height:50px; font-size:14px; font-weight:bold; border-radius:8px; border:none; cursor:pointer; color:white; text-align:center; padding-top:6px; line-height:normal; transition:background-color 0.3s ease; }
-  .btn-order { background:#007bff; } .btn-room { background:#28a745; }
-  .btn-book { display:block; margin:20px auto; width:80%; padding:16px; font-size:1.2rem; text-align:center; background:#ffc107; color:#fff; border:none; border-radius:12px; cursor:pointer; transition:background 0.3s ease; }
-  .btn-book:hover { background:#e0a800; }
-  .fixed-bar button:hover { opacity:0.85; }
-  main, .container { padding-bottom:70px; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Menu</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      margin: 0 0 70px 0;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 5px;
+      color: #ddd;
+    }
+    .logo-resto {
+      display: block;
+      max-height: 80px;
+      margin: 0 auto 10px;
+    }
+    .nama-resto {
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 20px;
+      margin: 30px 0 20px;
+      position: relative;
+      display: inline-block;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom: 2px solid #ccc;
+      padding-bottom: 5px;
+    }
+    .warning {
+      color: #e74c3c;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .promo-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 40px;
+      justify-content: center;
+    }
+    .promo-item {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      width: 275px;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    .promo-item img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+    .promo-item h3 {
+      margin: 0 0 6px 0;
+      font-size: 16px;
+    }
+    .promo-item p {
+      font-size: 14px;
+      color: #555;
+      margin: 0 0 10px 0;
+    }
+    .promo-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #ffcc00;
+      color: #222;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      pointer-events: none;
+    }
+    .flipbook-section {
+      margin-bottom: 40px;
+    }
+    .flipbook-gallery {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      gap: 10px;
+      padding: 10px;
+      -webkit-overflow-scrolling: touch;
+      scroll-padding: 0 10px;
+    }
+    .flipbook-gallery img {
+      width: auto;
+      max-width: 80vw;
+      max-height: 70vh;
+      height: auto;
+      object-fit: cover;
+      scroll-snap-align: center;
+      flex-shrink: 0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+      border: 2px solid #ccc;
+      padding: 2px;
+      box-sizing: border-box;
+    }
+    .flipbook-gallery img:hover {
+      border-color: #28a745;
+      box-shadow: 0 0 6px rgba(40, 167, 69, 0.5);
+    }
+    /* Fullscreen overlay */
+    .fullscreen-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .fullscreen-overlay img {
+      max-width: 95vw;
+      max-height: 90vh;
+      border-radius: 10px;
+      transition: transform 0.3s ease;
+      cursor: zoom-out;
+      touch-action: pan-x pan-y;
+    }
+    .fullscreen-overlay .close-btn {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 30px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+      z-index: 10000;
+      user-select: none;
+    }
+    .fullscreen-overlay .nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 40px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+      padding: 10px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 50%;
+    }
+    .fullscreen-overlay .prev-btn { left: 20px; }
+    .fullscreen-overlay .next-btn { right: 20px; }
+
+    #infoResto {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 20px auto;
+      padding: 10px 20px;
+      max-width: 500px;
+      text-align: center;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      font-size: 15px;
+      color: #333;
+    }
+
+    .countdown {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #ff5733;
+      font-weight: bold;
+    }
+
+    .fixed-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 93%;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px;
+      z-index: 1000;
+    }
+    .fixed-bar button {
+      flex: 1;
+      height: 50px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      color: white;
+      text-align: center;
+      padding-top: 6px;
+      line-height: normal;
+      transition: background-color 0.3s ease;
+    }
+    .btn-order { background: #007bff; }
+    .btn-room  { background: #28a745; }
+    .btn-book {
+      display: block;
+      margin: 20px auto;
+      width: 80%;
+      padding: 16px;
+      font-size: 1.2rem;
+      text-align: center;
+      background: #ffc107;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .btn-book:hover { background-color: #e0a800; }
+    main, .container { padding-bottom: 70px; }
+    @media (max-width: 480px) {
+      .fixed-bar { flex-direction: row; padding: 8px 15px; gap: 5px; }
+      .fixed-bar button { font-size: 14px; padding: 10px 0; }
+    }
+  </style>
 </head>
 <body>
 
@@ -54,31 +253,32 @@
 <img id="logoResto" class="logo-resto" src="" alt="Logo Restoran" />
 <h1 id="namaRestoDisplay"></h1>
 <div id="infoResto">
-  <p id="alamatResto">📍 Address:</p>
-  <p id="teleponResto">📞 Telephone:</p>
+  <p id="alamatResto">📍 Address: </p>
+  <p id="teleponResto">📞 Telephone: </p>
 </div>
 
 <!-- Promo Section -->
-<section class="flipbook-section" id="promoSection">
+<section class="flipbook-section">
   <h1 class="section-title">🎉 Promo Special</h1>
   <div id="promoContainer" class="promo-grid"></div>
   <div id="promoWarning" class="warning"></div>
 </section>
 
 <!-- Flipbook Ruangan -->
-<section class="flipbook-section" id="flipbookRuanganSection">
+<section class="flipbook-section">
   <h1 class="section-title">📸 Room Gallery</h1>
   <div id="flipbookRuanganGallery" class="flipbook-gallery"></div>
   <div id="ruanganWarning" class="warning"></div>
 </section>
 
 <!-- Flipbook Menu -->
-<section class="flipbook-section" id="flipbookMenuSection">
+<section class="flipbook-section">
   <h1 class="section-title">📖 Menu Gallery</h1>
   <div id="flipbookMenuGallery" class="flipbook-gallery"></div>
   <div id="menuWarning" class="warning"></div>
 </section>
 
+<!-- Fullscreen overlay -->
 <div class="fullscreen-overlay" id="fullscreenOverlay">
   <span class="close-btn" onclick="closeFullscreen()">✖</span>
   <span class="nav-btn prev-btn" onclick="showPrev()">⟨</span>
@@ -86,8 +286,10 @@
   <span class="nav-btn next-btn" onclick="showNext()">⟩</span>
 </div>
 
+<!-- Tombol Dine-in -->
 <button class="btn-book" onclick="window.location.href='book.html'">📖 Dine-in Menu</button>
 
+<!-- Fixed Button Bar -->
 <div class="fixed-bar">
   <button class="btn-order" onclick="window.location.href='order.html'">🛒 Reserve</button>
   <button class="btn-room" onclick="window.location.href='room.html'">🏢 Room & Package</button>
@@ -97,24 +299,18 @@
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 
-// ====================== Resto ID ======================
-function getRestoId() {
+// Ambil restoId dari URL
+function getDataFromURL() {
   const params = new URLSearchParams(window.location.search);
-  let id = params.get("resto");
-  if (!id) {
-    id = localStorage.getItem("currentRestoId");
-  } else {
-    localStorage.setItem("currentRestoId", id);
-  }
-  return id;
+  return params.get("resto");
 }
 
-// ====================== Load data DB ======================
+// Load data dari IndexedDB
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME);
     req.onerror = () => reject(req.error);
-    req.onsuccess = e => {
+    req.onsuccess = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) { resolve(null); return; }
       const tx = db.transaction(STORE_NAME, "readonly");
@@ -126,92 +322,162 @@ function loadDataFromDB(restoId) {
   });
 }
 
-// ====================== Render Flipbook ======================
+// Render Flipbook
+let currentFullscreenIndex = 0;
+let currentImages = [];
 function renderFlipbookGallery(containerId, images, warningId) {
   const container = document.getElementById(containerId);
   const warning = document.getElementById(warningId);
   container.innerHTML = "";
   warning.textContent = "";
+
   if (!images || images.length === 0) { warning.textContent = "No pictures."; return; }
-  images.forEach((src,i)=>{
+
+  images.forEach((src,i) => {
     const img = document.createElement("img");
     img.src = src;
     img.alt = "Flipbook Image";
-    img.onclick = ()=>openFullscreen(src, i, images);
+    img.onclick = () => openFullscreen(src,i,images);
     container.appendChild(img);
   });
 }
-let currentImages=[], currentIndex=0;
-function openFullscreen(src, index, images){
+
+function openFullscreen(src,index,images){
+  currentFullscreenIndex = index;
   currentImages = images;
-  currentIndex = index;
-  const overlay = document.getElementById("fullscreenOverlay");
-  const img = document.getElementById("fullscreenImage");
-  img.src = src;
-  overlay.style.display="flex";
+  document.getElementById("fullscreenOverlay").style.display = "flex";
+  document.getElementById("fullscreenImage").src = src;
 }
-function closeFullscreen(){ document.getElementById("fullscreenOverlay").style.display="none"; }
+function closeFullscreen(){ 
+  document.getElementById("fullscreenOverlay").style.display = "none";
+  document.getElementById("fullscreenImage").src = "";
+}
+function showPrev(){ 
+  if(currentImages.length===0) return;
+  currentFullscreenIndex = (currentFullscreenIndex-1+currentImages.length)%currentImages.length;
+  document.getElementById("fullscreenImage").src = currentImages[currentFullscreenIndex];
+}
+function showNext(){ 
+  if(currentImages.length===0) return;
+  currentFullscreenIndex = (currentFullscreenIndex+1)%currentImages.length;
+  document.getElementById("fullscreenImage").src = currentImages[currentFullscreenIndex];
+}
 
-// Tombol navigasi fullscreen
-function showPrev(){ if(currentImages.length===0) return; currentIndex=(currentIndex-1+currentImages.length)%currentImages.length; document.getElementById("fullscreenImage").src=currentImages[currentIndex]; }
-function showNext(){ if(currentImages.length===0) return; currentIndex=(currentIndex+1)%currentImages.length; document.getElementById("fullscreenImage").src=currentImages[currentIndex]; }
-
-// ====================== Render Promo ======================
+// Render Promo
 function renderPromo(promoList){
   const promoContainer = document.getElementById("promoContainer");
-  promoContainer.innerHTML="";
-  const promoWarning = document.getElementById("promoWarning");
-  promoWarning.textContent="";
-  if(!promoList || promoList.length===0){ promoWarning.textContent="❌ No promo data available."; return; }
+  promoContainer.innerHTML = "";
+  const warning = document.getElementById("promoWarning");
+  warning.textContent = "";
+
+  if(!promoList || promoList.length===0){ warning.textContent = "❌ No promo data available."; return; }
+
   promoList.forEach((promo,index)=>{
-    const promoCard=document.createElement("div");
-    promoCard.className="promo-item";
-    const badge=document.createElement("div"); badge.className="promo-badge"; badge.textContent=promo.badge||"Promo"; promoCard.appendChild(badge);
-    const img=document.createElement("img"); img.src=promo.image; img.alt=promo.namaMenu; promoCard.appendChild(img);
-    const title=document.createElement("h3"); title.textContent=promo.namaMenu; promoCard.appendChild(title);
-    const desc=document.createElement("p"); desc.textContent=promo.deskripsi; promoCard.appendChild(desc);
-    const price=document.createElement("div"); price.className="promo-price"; price.textContent=`Rp ${parseInt(promo.harga).toLocaleString("id-ID")}`; promoCard.appendChild(price);
-    const countdown=document.createElement("div"); countdown.className="countdown"; countdown.id=`countdown-${index}`; promoCard.appendChild(countdown);
-    promoContainer.appendChild(promoCard);
-    if(promo.endDate){ startCountdown(promo.endDate, countdown.id); }
+    const card = document.createElement("div");
+    card.className = "promo-item";
+
+    const badge = document.createElement("div");
+    badge.className = "promo-badge";
+    badge.textContent = promo.badge || "Promo";
+    card.appendChild(badge);
+
+    const img = document.createElement("img");
+    img.src = promo.image;
+    img.alt = promo.namaMenu;
+    card.appendChild(img);
+
+    const title = document.createElement("h3");
+    title.textContent = promo.namaMenu;
+    card.appendChild(title);
+
+    const desc = document.createElement("p");
+    desc.textContent = promo.deskripsi;
+    card.appendChild(desc);
+
+    const price = document.createElement("div");
+    price.className = "promo-price";
+    price.textContent = `Rp ${parseInt(promo.harga).toLocaleString("id-ID")}`;
+    card.appendChild(price);
+
+    const countdown = document.createElement("div");
+    countdown.className = "countdown";
+    countdown.id = `countdown-${index}`;
+    card.appendChild(countdown);
+
+    promoContainer.appendChild(card);
+
+    if(promo.tanggalAkhir){
+      startCountdown(promo.tanggalAkhir,countdown.id);
+    } else { countdown.textContent="Tanpa batas waktu"; }
   });
 }
 
-// ====================== Countdown ======================
-function startCountdown(endDate,id){
-  const el=document.getElementById(id);
-  const interval=setInterval(()=>{
-    const now=new Date();
-    const end=new Date(endDate);
-    const diff=end-now;
-    if(diff<=0){ el.textContent="Promo berakhir"; clearInterval(interval); return; }
-    const d=Math.floor(diff/1000/60/60/24);
-    const h=Math.floor((diff/1000/60/60)%24);
-    const m=Math.floor((diff/1000/60)%60);
-    const s=Math.floor((diff/1000)%60);
-    el.textContent=`${d}d ${h}h ${m}m ${s}s`;
-  },1000);
+function startCountdown(tanggalAkhir,elementId){
+  function update(){
+    const deadline = new Date(tanggalAkhir).getTime();
+    const now = new Date().getTime();
+    const distance = deadline - now;
+    const el = document.getElementById(elementId);
+    if(!el) return;
+    if(distance<0){ el.textContent="Promotion has ended"; return; }
+    const d=Math.floor(distance/(1000*60*60*24));
+    const h=Math.floor((distance%(1000*60*60*24))/(1000*60*60));
+    const m=Math.floor((distance%(1000*60*60))/(1000*60));
+    const s=Math.floor((distance%(1000*60))/1000);
+    el.textContent=`Ends in : ${d}d ${h}h ${m}m ${s}s`;
+  }
+  update();
+  setInterval(update,1000);
 }
 
-// ====================== Main ======================
-async function initPage(){
-  const restoId = getRestoId();
-  if(!restoId) { alert("Resto ID tidak ditemukan!"); return; }
-
-  const data = await loadDataFromDB(restoId);
-  if(!data){ console.warn("No data found for restoId:",restoId); return; }
-
-  document.getElementById("logoResto").src = data.logo || "";
-  document.getElementById("namaRestoDisplay").textContent = data.namaResto || "Nama Restoran";
-  document.getElementById("alamatResto").textContent = "📍 Address: " + (data.alamat || "-");
-  document.getElementById("teleponResto").textContent = "📞 Telephone: " + (data.telepon || "-");
-
-  renderPromo(data.promoList);
-  renderFlipbookGallery("flipbookRuanganGallery", data.ruanganImages, "ruanganWarning");
-  renderFlipbookGallery("flipbookMenuGallery", data.menuImages, "menuWarning");
+// Watch DB Changes
+async function watchDBChanges(restoId){
+  let lastDataStr="";
+  async function checkUpdates(){
+    const data = await loadDataFromDB(restoId);
+    if(!data) return;
+    const current = JSON.stringify(data);
+    if(current!==lastDataStr){
+      lastDataStr = current;
+      console.log("🔄 Data updated, refreshing view...");
+      renderPromo(data.menuPromo);
+      renderFlipbookGallery("flipbookRuanganGallery",data.flipbookRuanganImages,"ruanganWarning");
+      renderFlipbookGallery("flipbookMenuGallery",data.flipbookMenuImages,"menuWarning");
+    }
+  }
+  await checkUpdates();
+  setInterval(checkUpdates,5000);
 }
 
-initPage();
+// Onload
+window.onload = async ()=>{
+  const restoId = getDataFromURL();
+  if(!restoId){
+    alert("❌ Resto ID tidak ditemukan di URL. Gunakan ?resto=0877xxxx");
+    return;
+  }
+  try{
+    const data = await loadDataFromDB(restoId);
+    if(!data){ console.warn("⚠️ Tidak ada data ditemukan untuk:",restoId); return; }
+
+    console.log("✅ Data berhasil di-load:",data);
+
+    const logoElem = document.getElementById("logoResto");
+    if(data.logo){ logoElem.src=data.logo; logoElem.style.display="block"; } 
+    else { logoElem.style.display="none"; }
+
+    document.getElementById("namaRestoDisplay").textContent = data.namaRestoran || "Menu Restoran";
+    document.getElementById("alamatResto").innerText = `📍 Address: ${data.restoAddress || '-'}`;
+    document.getElementById("teleponResto").innerText = `📞 Telephone: ${data.restoPhone || '-'}`;
+
+    renderPromo(data.menuPromo);
+    renderFlipbookGallery("flipbookRuanganGallery",data.flipbookRuanganImages,"ruanganWarning");
+    renderFlipbookGallery("flipbookMenuGallery",data.flipbookMenuImages,"menuWarning");
+
+    watchDBChanges(restoId);
+
+  } catch(err){ console.error("❌ Gagal load data menu:",err); }
+};
 </script>
 </body>
 </html>
