@@ -388,6 +388,7 @@ main, .container { padding-bottom: 70px; }
   <button class="btn-order" onclick="window.location.href='order.html'">🛒 Reserve</button>
   <button class="btn-room" onclick="window.location.href='room.html'">🏢 Room & Package</button>
 </div>
+  
 <script>
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
@@ -401,20 +402,21 @@ function getDataFromURL() {
 // ====================== Ambil data dari IndexedDB ======================
 function loadDataFromDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open("MenuvaDB", 2);
+    const req = indexedDB.open(DB_NAME, 2);
 
     req.onerror = () => reject(req.error);
     req.onsuccess = (e) => {
       const db = e.target.result;
-      const tx = db.transaction("menuvaData", "readonly");
-      const store = tx.objectStore("menuvaData");
-      const getReq = store.get(1); // 🔑 langsung id=1 anchor
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(1); // 🔑 sementara masih id=1 anchor
 
       getReq.onsuccess = () => resolve(getReq.result || null);
       getReq.onerror = () => reject(getReq.error);
     };
   });
 }
+
 // ====================== Render fungsi yg sudah ada ======================
 function renderFlipbookGallery(containerId, images, warningId) {
   const container = document.getElementById(containerId);
@@ -427,11 +429,11 @@ function renderFlipbookGallery(containerId, images, warningId) {
     return;
   }
 
-  images.forEach(src => {
+  images.forEach((src, i) => {
     const img = document.createElement("img");
     img.src = src;
     img.alt = "Flipbook Image";
-    img.onclick = () => openFullscreen(src);
+    img.onclick = () => openFullscreen(src, i, images);
     container.appendChild(img);
   });
 }
@@ -525,6 +527,30 @@ function startCountdown(tanggalAkhir, elementId) {
   setInterval(updateCountdown, 1000);
 }
 
+// ====================== Refresh otomatis jika DB berubah ======================
+async function watchDBChanges() {
+  let lastData = null;
+
+  async function checkUpdates() {
+    const data = await loadDataFromDB();
+    if (!data) return;
+
+    const dataStr = JSON.stringify(data);
+    if (dataStr !== lastData) {
+      lastData = dataStr;
+      console.log("🔄 Data changed, refreshing view...");
+
+      // render ulang data
+      renderPromo(data.menuPromo);
+      renderFlipbookGallery("flipbookRuanganGallery", data.flipbookRuanganImages, "ruanganWarning");
+      renderFlipbookGallery("flipbookMenuGallery", data.flipbookMenuImages, "menuWarning");
+    }
+  }
+
+  await checkUpdates();
+  setInterval(checkUpdates, 3000);
+}
+
 // ====================== Window onload ======================
 window.onload = async () => {
   const restoId = getDataFromURL();
@@ -535,7 +561,7 @@ window.onload = async () => {
   }
 
   try {
-    const data = await loadDataFromDB(restoId);
+    const data = await loadDataFromDB();
 
     if (!data) {
       console.warn("⚠️ Tidak ada data ditemukan di IndexedDB untuk restoId:", restoId);
@@ -559,88 +585,19 @@ window.onload = async () => {
     renderFlipbookGallery("flipbookRuanganGallery", data.flipbookRuanganImages, "ruanganWarning");
     renderFlipbookGallery("flipbookMenuGallery", data.flipbookMenuImages, "menuWarning");
 
+    // mulai pantau perubahan DB
+    watchDBChanges();
+
   } catch (err) {
     console.error(err);
     alert("Gagal load data menu.");
   }
 };
-  
-  async function watchDBChanges() {
-  let lastData = null;
-
-  async function checkUpdates() {
-    const db = await openDB();
-    const tx = db.transaction("resto", "readonly");
-    const store = tx.objectStore("resto");
-    const all = await store.getAll();
-    await tx.done;
-
-    const dataStr = JSON.stringify(all);
-    if (dataStr !== lastData) {
-      lastData = dataStr;
-      console.log("🔄 Data changed, refreshing view...");
-      renderMenu(all); // panggil fungsi render ulang
-    }
-  }
-
-  // cek pertama kali
-  await checkUpdates();
-
-  // polling setiap 3 detik
-  setInterval(checkUpdates, 3000);
-}
-
-// panggil saat halaman load
-document.addEventListener("DOMContentLoaded", watchDBChanges);
-
- let galleryImages = [];
-  let currentIndex = 0;
-
-  // buka fullscreen dengan index
-  function openFullscreen(src, index = 0, allImages = []) {
-    galleryImages = allImages;
-    currentIndex = index;
-
-    const overlay = document.getElementById("fullscreenOverlay");
-    const img = document.getElementById("fullscreenImage");
-    img.src = src;
-    overlay.style.display = "flex";
-  }
-
-  function closeFullscreen() {
-    const overlay = document.getElementById("fullscreenOverlay");
-    const img = document.getElementById("fullscreenImage");
-    overlay.style.display = "none";
-    img.src = "";
-    galleryImages = [];
-    currentIndex = 0;
-  }
-
-  function showPrev() {
-    if (!galleryImages.length) return;
-    currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
-    document.getElementById("fullscreenImage").src = galleryImages[currentIndex];
-  }
-
-  function showNext() {
-    if (!galleryImages.length) return;
-    currentIndex = (currentIndex + 1) % galleryImages.length;
-    document.getElementById("fullscreenImage").src = galleryImages[currentIndex];
-  }
-
-  // ESC untuk close, ArrowLeft/ArrowRight untuk navigasi
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeFullscreen();
-    } else if (e.key === "ArrowLeft") {
-      showPrev();
-    } else if (e.key === "ArrowRight") {
-      showNext();
-    }
-  });
 </script>
+
 </body>
 </html>
+
 
 
 
