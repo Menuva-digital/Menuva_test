@@ -1064,6 +1064,7 @@ async function simpanData() {
     const logo = document.getElementById("previewLogo").src || "";
     const nomorWaAdmin = Array.from(document.querySelectorAll(".nomor-wa")).map(i => i.value);
 
+    // --- Hidden restoId selalu sinkron ke restoPhone ---
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
       restoIdEl = document.createElement("input");
@@ -1072,15 +1073,13 @@ async function simpanData() {
       document.body.appendChild(restoIdEl);
     }
 
-    let restoId = restoIdEl.value.trim();
-    if (!restoId) {
-      if (!restoPhone) {
-        alert("❌ Please input the restaurant phone number before saving!");
-        return;
-      }
-      restoId = restoPhone;
-      restoIdEl.value = restoId;
+    if (!restoPhone) {
+      alert("❌ Please input the restaurant phone number before saving!");
+      return;
     }
+    // ✅ restoId = restoPhone
+    const restoId = restoPhone;
+    restoIdEl.value = restoId;
 
     const menuData = [
       ...ambilMenu("menuFoodContainer"),
@@ -1118,8 +1117,9 @@ async function simpanData() {
     hideLoader(); // ✅ selesai loading
   }
 }
+
 let loadDataCalls = 0;
-   
+
 async function loadData() {
   loadDataCalls++;
   console.log("🔄 loadData dipanggil ke-", loadDataCalls);
@@ -1137,17 +1137,17 @@ async function loadData() {
 
     // --- CLEAR UI / STATE dulu supaya tidak duplikat ---
     console.log("🧹 Clear semua container & reset state");
-    document.getElementById("promoContainer") && (document.getElementById("promoContainer").innerHTML = "");
-    document.getElementById("menuFoodContainer") && (document.getElementById("menuFoodContainer").innerHTML = "");
-    document.getElementById("menuSnackContainer") && (document.getElementById("menuSnackContainer").innerHTML = "");
-    document.getElementById("menuDrinkContainer") && (document.getElementById("menuDrinkContainer").innerHTML = "");
-    document.getElementById("menuSpecialContainer") && (document.getElementById("menuSpecialContainer").innerHTML = "");
-    document.getElementById("roomHotelContainer") && (document.getElementById("roomHotelContainer").innerHTML = "");
-    document.getElementById("meetingRoomContainer") && (document.getElementById("meetingRoomContainer").innerHTML = "");
-    document.getElementById("packageContainer") && (document.getElementById("packageContainer").innerHTML = "");
-    document.getElementById("flipbookRuanganPreview") && (document.getElementById("flipbookRuanganPreview").innerHTML = "");
-    document.getElementById("flipbookMenuPreview") && (document.getElementById("flipbookMenuPreview").innerHTML = "");
-    document.getElementById("listRuangan") && (document.getElementById("listRuangan").innerHTML = "");
+    document.getElementById("promoContainer")?.innerHTML = "";
+    document.getElementById("menuFoodContainer")?.innerHTML = "";
+    document.getElementById("menuSnackContainer")?.innerHTML = "";
+    document.getElementById("menuDrinkContainer")?.innerHTML = "";
+    document.getElementById("menuSpecialContainer")?.innerHTML = "";
+    document.getElementById("roomHotelContainer")?.innerHTML = "";
+    document.getElementById("meetingRoomContainer")?.innerHTML = "";
+    document.getElementById("packageContainer")?.innerHTML = "";
+    document.getElementById("flipbookRuanganPreview")?.innerHTML = "";
+    document.getElementById("flipbookMenuPreview")?.innerHTML = "";
+    document.getElementById("listRuangan")?.innerHTML = "";
 
     menuPromo = [];
     flipbookRuanganImages = [];
@@ -1157,6 +1157,17 @@ async function loadData() {
     document.getElementById("namaRestoran").value = data.namaRestoran || "";
     document.getElementById("restoAddress").value = data.restoAddress || "";
     document.getElementById("restoPhone").value = data.restoPhone || "";
+
+    // ✅ sinkron restoId ke hidden field
+    let restoIdEl = document.getElementById("restoId");
+    if (!restoIdEl) {
+      restoIdEl = document.createElement("input");
+      restoIdEl.type = "hidden";
+      restoIdEl.id = "restoId";
+      document.body.appendChild(restoIdEl);
+    }
+    restoIdEl.value = data.restoId || data.restoPhone || "";
+
     if (data.logo) {
       document.getElementById("previewLogo").src = data.logo;
       console.log("🖼️ Logo berhasil di-load");
@@ -1169,14 +1180,14 @@ async function loadData() {
       container.innerHTML = "";
       data.nomorWaAdmin.forEach(() => tambahNomorWa());
       const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+      data.nomorWaAdmin.forEach((v, i) => inputs[i].value = v);
     }
 
     // promo, menu, rooms
-    if (Array.isArray(data.menuPromo)) { 
+    if (Array.isArray(data.menuPromo)) {
       console.log("🎟️ Load promo:", data.menuPromo.length);
-      menuPromo = data.menuPromo.slice(); 
-      renderPromoUI(); 
+      menuPromo = data.menuPromo.slice();
+      renderPromoUI();
     }
     if (Array.isArray(data.menu)) {
       console.log("🍽️ Load menu:", data.menu.length);
@@ -1203,13 +1214,6 @@ async function loadData() {
     hideLoader(); // ✅ selesai loading
   }
 }
-function showLoader() {
-  document.getElementById("loader").style.display = "block";
-}
-function hideLoader() {
-  document.getElementById("loader").style.display = "none";
-}
-
 
   // ====================== RESET & BACKUP ======================
   async function resetData() {
@@ -1422,5 +1426,6 @@ function updateShareUI() {
   });
 </script>
 </html>
+
 
 
