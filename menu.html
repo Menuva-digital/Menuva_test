@@ -402,7 +402,7 @@ function getDataFromURL() {
 // ====================== Ambil data dari IndexedDB ======================
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 1);
 
     req.onerror = () => reject(req.error);
     req.onsuccess = (e) => {
@@ -600,4 +600,5 @@ window.onload = async () => {
 </script>
 </body>
 </html>
+
 
