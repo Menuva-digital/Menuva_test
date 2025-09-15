@@ -396,26 +396,18 @@ const STORE_NAME = "menuvaData";
 // ====================== Ambil restoId dari URL ======================
 function getDataFromURL() {
   const params = new URLSearchParams(window.location.search);
-  return params.get("resto"); // ?resto=xxx
+  return params.get("resto"); // ?resto=0877xxxx
 }
 
 // ====================== Ambil data dari IndexedDB ======================
-// ---------- Robust loadDataFromDB (ganti fungsi lama dengan ini) ----------
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME); // jangan paksa versi kalau gak perlu
+    const req = indexedDB.open(DB_NAME);
 
-    req.onerror = () => {
-      console.error("IndexedDB open error:", req.error);
-      reject(req.error);
-    };
-
+    req.onerror = () => reject(req.error);
     req.onsuccess = (e) => {
       const db = e.target.result;
-
-      // cek apakah store ada
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        console.warn("Object store tidak ditemukan:", STORE_NAME, "available:", [...db.objectStoreNames]);
         resolve(null);
         return;
       }
@@ -423,104 +415,40 @@ function loadDataFromDB(restoId) {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
 
-      // helper: get by key (promise)
-      const getByKey = (key) => new Promise((res, rej) => {
+      const getByKey = (key) => new Promise((res) => {
         try {
           const r = store.get(key);
           r.onsuccess = () => res(r.result || null);
-          r.onerror = () => { console.warn("get(key) error for", key, r.error); res(null); };
-        } catch (err) { console.warn("getByKey exception", err); res(null); }
+          r.onerror = () => res(null);
+        } catch {
+          res(null);
+        }
       });
 
       (async () => {
-        try {
-          console.log("🔎 loadDataFromDB: mencoba lookup dengan restoId:", restoId);
-
-          // 1) coba ambil by key = restoId (paling ideal)
-          if (restoId) {
-            const byRestoid = await getByKey(restoId);
-            if (byRestoid) {
-              console.log("✅ Ditemukan by key (restoId).");
-              resolve(byRestoid);
-              return;
-            }
-            console.log("• Tidak ditemukan dengan key restoId");
-          } else {
-            console.log("• restoId tidak dikirim ke loadDataFromDB()");
-          }
-
-          // 2) coba ambil by key = 1 (legacy: banyak admin pakai id=1)
-          const byOne = await getByKey(1);
-          if (byOne) {
-            console.log("✅ Ditemukan by key = 1 (fallback).");
-            resolve(byOne);
+        // 1) Coba ambil by restoPhone (primary sekarang)
+        if (restoId) {
+          const byPhone = await getByKey(restoId);
+          if (byPhone) {
+            resolve(byPhone);
             return;
           }
-          console.log("• Tidak ditemukan record dengan key = 1");
-
-          // 3) ambil semua dan cari property restoId pada value
-          const allReq = store.getAll();
-          allReq.onsuccess = () => {
-            const all = allReq.result || [];
-            console.log("📦 Semua record di store (jumlah):", all.length, all);
-            if (restoId) {
-              const found = all.find(r => r && (r.restoId == restoId || r.restoId === restoId));
-              if (found) {
-                console.log("✅ Ditemukan pada scan all records by property restoId.");
-                resolve(found);
-                return;
-              }
-              console.log("• Tidak ada record matching property restoId");
-            }
-
-            // 4) kalau cuma ada 1 record di DB, gunakan itu (useful untuk single-tenant installs)
-            if (all.length === 1) {
-              console.log("ℹ️ Hanya 1 record di DB, memakai record itu sebagai fallback.");
-              resolve(all[0]);
-              return;
-            }
-
-            // 5) semua gagal
-            console.warn("❌ Tidak ada data yang cocok ditemukan di IndexedDB.");
-            resolve(null);
-          };
-          allReq.onerror = () => {
-            console.warn("getAll() gagal:", allReq.error);
-            resolve(null);
-          };
-        } catch (err) {
-          console.error("loadDataFromDB internal error:", err);
-          resolve(null);
         }
+
+        // 2) fallback: scan all
+        const allReq = store.getAll();
+        allReq.onsuccess = () => {
+          const all = allReq.result || [];
+          const found = all.find(r => r.restoPhone === restoId);
+          resolve(found || null);
+        };
+        allReq.onerror = () => resolve(null);
       })();
     };
   });
 }
-// ---------- Debug helper: dump isi store ke console ----------
-function dumpMenuvaStore() {
-  const req = indexedDB.open(DB_NAME);
-  req.onerror = () => console.error("IndexedDB open error:", req.error);
-  req.onsuccess = (e) => {
-    const db = e.target.result;
-    if (!db.objectStoreNames.contains(STORE_NAME)) {
-      console.warn("Store tidak ada:", STORE_NAME, "available:", [...db.objectStoreNames]);
-      return;
-    }
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const all = store.getAll();
-    all.onsuccess = () => {
-      console.log("===== DUMP menuvaData store =====");
-      console.log("count:", all.result.length);
-      all.result.forEach((r, i) => console.log(i, r));
-      console.log("=================================");
-    };
-    all.onerror = () => console.error("getAll error:", all.error);
-  };
-}
 
-
-// ====================== Render fungsi yg sudah ada ======================
+// ====================== Render fungsi ======================
 function renderFlipbookGallery(containerId, images, warningId) {
   const container = document.getElementById(containerId);
   const warning = document.getElementById(warningId);
@@ -542,12 +470,9 @@ function renderFlipbookGallery(containerId, images, warningId) {
 }
 
 function openFullscreen(src) {
-  const overlay = document.getElementById("fullscreenOverlay");
-  const img = document.getElementById("fullscreenImage");
-  img.src = src;
-  overlay.style.display = "flex";
+  document.getElementById("fullscreenOverlay").style.display = "flex";
+  document.getElementById("fullscreenImage").src = src;
 }
-
 function closeFullscreen() {
   document.getElementById("fullscreenOverlay").style.display = "none";
   document.getElementById("fullscreenImage").src = "";
@@ -586,7 +511,7 @@ function renderPromo(promoList) {
 
     const price = document.createElement("div");
     price.className = "promo-price";
-    price.textContent = ` ${parseInt(promo.harga).toLocaleString("id-ID")}`;
+    price.textContent = `Rp ${parseInt(promo.harga).toLocaleString("id-ID")}`;
     promoCard.appendChild(price);
 
     const countdown = document.createElement("div");
@@ -609,7 +534,6 @@ function startCountdown(tanggalAkhir, elementId) {
     const deadline = new Date(tanggalAkhir).getTime();
     const now = new Date().getTime();
     const distance = deadline - now;
-
     const el = document.getElementById(elementId);
     if (!el) return;
 
@@ -617,33 +541,30 @@ function startCountdown(tanggalAkhir, elementId) {
       el.textContent = "Promotion has ended";
       return;
     }
+    const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+    const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((distance % (1000 * 60)) / 1000);
 
-    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-    el.textContent = `Ends in : ${days}.d ${hours}.h ${minutes}.m ${seconds}.s`;
+    el.textContent = `Ends in : ${d}d ${h}h ${m}m ${s}s`;
   }
-
   updateCountdown();
   setInterval(updateCountdown, 1000);
 }
 
 // ====================== Refresh otomatis jika DB berubah ======================
 async function watchDBChanges(restoId) {
-  let lastData = null;
+  let lastDataStr = "";
 
   async function checkUpdates() {
     const data = await loadDataFromDB(restoId);
     if (!data) return;
 
-    const dataStr = JSON.stringify(data);
-    if (dataStr !== lastData) {
-      lastData = dataStr;
-      console.log("🔄 Data changed, refreshing view...");
+    const current = JSON.stringify(data);
+    if (current !== lastDataStr) {
+      lastDataStr = current;
+      console.log("🔄 Data updated, refreshing view...");
 
-      // render ulang data
       renderPromo(data.menuPromo);
       renderFlipbookGallery("flipbookRuanganGallery", data.flipbookRuanganImages, "ruanganWarning");
       renderFlipbookGallery("flipbookMenuGallery", data.flipbookMenuImages, "menuWarning");
@@ -651,27 +572,24 @@ async function watchDBChanges(restoId) {
   }
 
   await checkUpdates();
-  setInterval(checkUpdates, 3000);
+  setInterval(checkUpdates, 5000); // cek tiap 5 detik aja, biar gak spam
 }
 
 // ====================== Window onload ======================
 window.onload = async () => {
   const restoId = getDataFromURL();
-
   if (!restoId) {
-    alert("❌ Resto ID tidak ditemukan di URL. Gunakan ?resto=xxxx");
+    alert("❌ Resto ID tidak ditemukan di URL. Gunakan ?resto=0877xxxx");
     return;
   }
 
   try {
     const data = await loadDataFromDB(restoId);
-
     if (!data) {
-      console.warn("⚠️ Tidak ada data ditemukan di IndexedDB untuk restoId:", restoId);
+      console.warn("⚠️ Tidak ada data ditemukan untuk:", restoId);
       return;
     }
 
-    // render UI...
     console.log("✅ Data berhasil di-load:", data);
 
     const logoElem = document.getElementById("logoResto");
@@ -690,17 +608,16 @@ window.onload = async () => {
     renderFlipbookGallery("flipbookRuanganGallery", data.flipbookRuanganImages, "ruanganWarning");
     renderFlipbookGallery("flipbookMenuGallery", data.flipbookMenuImages, "menuWarning");
 
-    // mulai pantau perubahan DB
     watchDBChanges(restoId);
 
   } catch (err) {
-    console.error(err);
-    alert("❌ Gagal load data menu.");
+    console.error("❌ Gagal load data menu:", err);
   }
 };
 </script>
 </body>
 </html>
+
 
 
 
