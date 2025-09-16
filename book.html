@@ -798,9 +798,9 @@ function renderPromo() {
     return;
   }
 
-  promos.forEach((p, idx) => {
+  promos.forEach(p => {
     const card = document.createElement('div');
-    card.className = 'menu-card promo-card';
+    card.className = 'promo-card';   // ⚡ jangan campur sama menu-card
 
     const item = {
       nama: p.namaPromo || p.namaMenu || 'Promo Item',
@@ -809,6 +809,7 @@ function renderPromo() {
       image: p.image || ''
     };
 
+    // klik card → tambah pesanan
     card.addEventListener('click', () => {
       if (p.tanggalAkhir) {
         const end = new Date(p.tanggalAkhir).getTime();
@@ -817,16 +818,17 @@ function renderPromo() {
       tambahPesanan(item, card);
     });
 
+    // badge PROMO
     const badge = document.createElement('span');
     badge.className = 'promo-badge';
     badge.textContent = 'PROMO';
     card.appendChild(badge);
 
+    // gambar
     if (p.image) {
       const img = document.createElement('img');
-      img.className = 'menu-thumb';
       img.src = p.image;
-      img.alt = p.namaPromo || item.nama;
+      img.alt = item.nama;
       card.appendChild(img);
     } else {
       const ph = document.createElement('div');
@@ -834,23 +836,27 @@ function renderPromo() {
       card.appendChild(ph);
     }
 
+    // nama promo
     const title = document.createElement('div');
-    title.className = 'menu-title';
+    title.className = 'promo-name';
     title.textContent = p.namaPromo || p.namaMenu || 'Promo';
     card.appendChild(title);
 
+    // deskripsi promo
     const desc = document.createElement('div');
-    desc.className = 'menu-desc';
+    desc.className = 'promo-menu-desc';
     desc.textContent = p.deskripsi || '';
     card.appendChild(desc);
 
+    // harga
     const price = document.createElement('div');
-    price.className = 'menu-price';
+    price.className = 'promo-price';
     const hargaNum = Number(p.harga) || 0;
     price.dataset.price = hargaNum;
     price.textContent = formatWithActive(hargaNum);
     card.appendChild(price);
 
+    // countdown kalau ada tanggal akhir
     if (p.tanggalAkhir) {
       const c = document.createElement('div');
       c.className = 'promo-count';
@@ -858,6 +864,7 @@ function renderPromo() {
       card.appendChild(c);
     }
 
+    // counter jumlah order
     const counter = document.createElement('span');
     counter.className = 'order-count';
     counter.textContent = '0';
@@ -1060,6 +1067,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
