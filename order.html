@@ -53,9 +53,9 @@
 }
 
 .header img {
-  width: 36px;       /* default fix */
-  height: 36px;
-  max-width: 48px;   /* kalau di device gede */
+  width: 50px;       /* default fix */
+  height: 50px;
+  max-width: 75px;   /* kalau di device gede */
   object-fit: cover;
   border-radius: 6px;
 }
@@ -71,7 +71,7 @@
 
 /* Nama Resto */
 .resto-info h1 {
-  font-size: 1.1rem;
+  font-size: 20px;
   margin: 0;
   color: #1f2a44;
   font-weight: 600;
@@ -81,7 +81,7 @@
 .resto-info p {
   margin: 0;
   color: #6b7a99;
-  font-size: 0.85rem;
+  font-size: 16px;
   line-height: 1.2;
 }
 
@@ -89,7 +89,7 @@
 #restoPhone {
   color: #1f2a44;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 16px;
 }
 
 
@@ -436,7 +436,7 @@ body.dark .qty-controls span {
   <p id="teleponRestoranDisplay"></p>
   <div class="header-right">
     <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
-  </div>
+  
   <select id="localeSelect" class="locale-select" title="Change locale / currency">
     <option value="auto">Auto (browser)</option>
     <option value="en-US|USD">US — USD</option>
@@ -447,6 +447,7 @@ body.dark .qty-controls span {
     <option value="zh-CN|CNY">China — CNY</option>
     <option value="fr-FR|EUR">France — EUR</option>
   </select>
+  </div>
 </header>
 
 <div class="tagline"><em>"Your Favorite Food, Just One Click Away"</em></div>
@@ -951,6 +952,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
