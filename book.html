@@ -237,50 +237,42 @@
   /* =====================
    PROMO GRID & CARD
    ===================== */
-/* Grid lebih lebar */
 .promo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* lebih lebar */
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); /* dari 220px → 260px */
+  gap: 20px;
   margin-top: 20px;
 }
 
-/* Card */
 .promo-card {
   position: relative;
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: var(--shadow);
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 10px;
-  transition: transform 0.2s ease;
+  gap: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 350px; /* tambahkan tinggi minimum */
 }
 
 .promo-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.15);
 }
 
 .promo-card img {
   width: 100%;
-  height: 180px;        /* lebih tinggi biar square */
+  height: 200px;       /* lebih tinggi biar balance */
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #e9eefc;
 }
-
-/* Responsive tweak */
-@media (max-width: 480px) {
-  .promo-grid {
-    grid-template-columns: repeat(2, 1fr); /* 2 kolom fix di layar kecil */
-  }
-}
-
 
 /* badge */
 .promo-badge {
@@ -1068,5 +1060,6 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
