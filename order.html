@@ -38,36 +38,55 @@
     margin:0;padding:0;padding-bottom:60px;
   }
 
-/* HEADER - tweak */
-header {
-  background: var(--brand-3);
-  color: #fff;
-  padding: 16px 20px; /* naikkan sedikit tinggi header */
-  box-shadow: var(--shadow);
-  
+/* Header Container */
+.resto-header {
   display: flex;
-  flex-direction: column; /* biar isi nyusun vertikal */
-  align-items: center;    /* rata tengah horizontal */
-  justify-content: center;/* rata tengah vertical */
-  text-align: center;     /* teks di tengah */
-  position: relative;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 15px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
 }
 
-#restoLogo {
-  width: 70px;  
-  height: 70px;
-  object-fit: contain;
+/* Logo */
+.resto-header img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
   border-radius: 8px;
-  flex-shrink: 0;
-  margin-bottom: 8px; /* kasih jarak dikit sama teks */
-  display: block;
 }
 
-.resto-info h1 {
-  font-size: 1.3rem;
-  white-space: nowrap;
-  margin: 4px 0; /* biar nggak nempel */
+/* Info */
+.resto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* jarak antar baris rapat */
 }
+
+/* Nama Resto */
+.resto-info h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  color: #1f2a44;
+  font-weight: 600;
+}
+
+/* Alamat & Telp */
+.resto-info p {
+  margin: 0;
+  color: #6b7a99;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+/* No telp kasih warna beda biar jelas */
+#restoPhone {
+  color: #1f2a44;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+
 /* default (light mode) */
 .locale-select {
   position: absolute;
@@ -926,3 +945,4 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
