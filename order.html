@@ -547,13 +547,11 @@ body.dark .qty-controls span {
 
   /* ================ LOCALE / CURRENCY LOGIC ================ */
   const LOCALE_KEY = 'menuva_localeChoice';
-
   function parseLocaleCurrency(value) {
     if (!value || value === 'auto') return { mode: 'auto' };
     const parts = String(value).split('|');
     return { mode: 'manual', locale: parts[0] || '', currency: parts[1] || '' };
   }
-
   function detectBrowserLocaleCurrency() {
     const locale = navigator.language || 'en-US';
     const fallback = {
@@ -564,7 +562,6 @@ body.dark .qty-controls span {
     if (fallback[locale]) currency = fallback[locale];
     return { locale, currency };
   }
-
   function getActiveLocaleCurrency() {
     const saved = localStorage.getItem(LOCALE_KEY) || document.getElementById('localeSelect').value || 'auto';
     const parsed = parseLocaleCurrency(saved);
@@ -575,24 +572,25 @@ body.dark .qty-controls span {
       return { locale: parsed.locale || browser.locale, currency: parsed.currency || browser.currency };
     }
   }
-
   function saveLocaleChoice(value) {
     localStorage.setItem(LOCALE_KEY, value);
   }
-
   function formatHarga(amount) {
     const ac = getActiveLocaleCurrency();
     const locale = ac.locale || undefined;
     const currency = ac.currency || 'IDR';
     const zeroFrac = ['IDR','JPY','KRW'].includes((currency||'').toUpperCase());
-    const opts = { style: 'currency', currency, minimumFractionDigits: zeroFrac ? 0 : 2, maximumFractionDigits: zeroFrac ? 0 : 2 };
+    const opts = {
+      style: 'currency', currency,
+      minimumFractionDigits: zeroFrac ? 0 : 2,
+      maximumFractionDigits: zeroFrac ? 0 : 2
+    };
     try {
       return new Intl.NumberFormat(locale, opts).format(Number(amount || 0));
     } catch(e) {
       return (currency ? currency+' ' : '') + (Number(amount)||0).toLocaleString();
     }
   }
-
   function initLocaleSelect() {
     const sel = document.getElementById('localeSelect');
     const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
@@ -602,7 +600,6 @@ body.dark .qty-controls span {
       updateSemuaHarga();
     });
   }
-
   function updateSemuaHarga() {
     tampilkanPromo();
     tampilkanMenu();
@@ -613,7 +610,7 @@ body.dark .qty-controls span {
   let db;
   const DB_NAME = "MenuvaDB";
   const STORE_NAME = "menuvaData";
-  const DB_VERSION = 2; // harus sama dengan admin.html
+  const DB_VERSION = 2; // harus sama persis dengan admin.html
   let data = {};
   const pesanan = {};
 
@@ -634,7 +631,7 @@ body.dark .qty-controls span {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onsuccess = (e) => { db = e.target.result; resolve(); };
       req.onerror = () => reject(req.error);
-      // order.html cuma baca → tidak pakai onupgradeneeded
+      // order.html hanya baca → tidak ada onupgradeneeded
     });
   }
 
@@ -646,7 +643,6 @@ body.dark .qty-controls span {
         const getReq = store.get(1);
         getReq.onsuccess = () => {
           data = getReq.result || {};
-          console.log("✅ Data berhasil di-load:", data);
           resolve(data);
         };
         getReq.onerror = () => reject(getReq.error);
@@ -671,7 +667,7 @@ body.dark .qty-controls span {
     const nama = data.namaRestoran || '';
     const alamat = data.restoAddress || '';
     const telp = data.restoPhone || '';
-    if (logo) document.getElementById('restoLogo').src = logo;
+    document.getElementById('restoLogo').src = logo || 'default-logo.png';
     document.getElementById('namaRestoranDisplay').textContent = nama;
     document.getElementById('alamatRestoranDisplay').textContent = alamat;
     document.getElementById('teleponRestoranDisplay').textContent = telp;
@@ -706,7 +702,6 @@ body.dark .qty-controls span {
 
     const menuList = document.getElementById('menu-list');
     menuList.innerHTML = '';
-
     if (!Array.isArray(data.menu) || data.menu.length === 0) {
       menuList.innerHTML = `<div class="fallback">No menu available</div>`;
       return;
@@ -751,13 +746,11 @@ body.dark .qty-controls span {
       return;
     }
     promoContainer.innerHTML = '';
-
     data.menuPromo.forEach((promo, index) => {
       const promoKey = `promo-${index}`;
       if (pesanan[promoKey] === undefined) pesanan[promoKey] = 0;
       const hargaNum = Number(promo.harga) || 0;
       const hargaFormatted = formatHarga(hargaNum);
-
       const div = document.createElement('div');
       div.className = 'promo-item';
       div.innerHTML = `
@@ -775,7 +768,6 @@ body.dark .qty-controls span {
       `;
       promoContainer.appendChild(div);
     });
-
     promoContainer.querySelectorAll('button[data-key]').forEach(btn => {
       btn.addEventListener('click', () => {
         const key = btn.dataset.key;
@@ -787,15 +779,12 @@ body.dark .qty-controls span {
 
   function ubahJumlahPromo(index, delta) {
     pesanan[index] = Math.max(0, (pesanan[index] || 0) + delta);
-    const span = document.getElementById(`qty-${index}`);
-    if (span) span.innerText = pesanan[index];
+    document.getElementById(`qty-${index}`).innerText = pesanan[index];
     updateRingkasan();
   }
-
   function ubahJumlah(index, delta) {
     pesanan[index] = Math.max(0, (pesanan[index] || 0) + delta);
-    const span = document.getElementById(`qty-${index}`);
-    if (span) span.innerText = pesanan[index];
+    document.getElementById(`qty-${index}`).innerText = pesanan[index];
     updateRingkasan();
   }
 
@@ -874,7 +863,6 @@ body.dark .qty-controls span {
       alert('⚠️ Tidak ada nomor admin yang tersedia.');
       return;
     }
-
     nomorAdminList.forEach(nomor => {
       const cleaned = String(nomor).replace(/[^0-9]/g,'');
       const waLink = `https://wa.me/${cleaned}?text=${encodeURIComponent(pesan)}`;
@@ -882,6 +870,7 @@ body.dark .qty-controls span {
     });
   }
 
+  /* ============== Helper ============== */
   function refreshAllPriceDisplays() {
     document.querySelectorAll('.menu-price').forEach(el => {
       const p = Number(el.dataset.price) || 0;
@@ -890,7 +879,9 @@ body.dark .qty-controls span {
     updateRingkasan();
   }
 </script>
+
 </body>
 </html>
+
 
 
