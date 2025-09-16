@@ -50,6 +50,7 @@ header {
   align-items: center;    /* rata tengah horizontal */
   justify-content: center;/* rata tengah vertical */
   text-align: center;     /* teks di tengah */
+  position: relative;
 }
 
 #restoLogo {
@@ -59,6 +60,7 @@ header {
   border-radius: 8px;
   flex-shrink: 0;
   margin-bottom: 8px; /* kasih jarak dikit sama teks */
+  display: block;
 }
 
 .resto-info h1 {
@@ -321,49 +323,6 @@ body.dark .qty-controls span {
 }
 
 /* ===== PROMO GRID ===== */
-#promoList {
-  display: grid;
-  gap: 16px;
-  padding: 16px;
-  margin: 0 auto;
-  max-width: 1200px;   /* kunci: batasi lebar maksimal */
-  grid-template-columns: 1fr; /* default HP kecil */
-}
-
-/* HP */
-@media (max-width: 599px) {
-  #promoContainer {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* Tablet */
-@media (min-width: 600px) and (max-width: 1023px) {
-  #promoContainer {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* Desktop normal */
-@media (min-width: 1024px) and (max-width: 1439px) {
-  #promoContainer {
-    grid-template-columns: repeat(5, 1fr);
-  }
-}
-
-/* Desktop lebar */
-@media (min-width: 1440px) {
-  #promoContainer {
-    grid-template-columns: repeat(6, 1fr);
-  }
-}
-
-
-.promo-item {
-  max-width: 220px;   /* batasi lebar maksimal kartu */
-  margin: 0 auto;     /* biar center di dalam grid */
-}
-/* ===== PROMO GRID ===== */
 #promoContainer {
   display: grid;
   gap: 8px; /* super rapat */
@@ -372,7 +331,6 @@ body.dark .qty-controls span {
   margin: 0 auto;
   padding: 4px;
 }
-
 
 /* ===== PROMO CARD ===== */
 .promo-item {
@@ -447,435 +405,524 @@ body.dark .qty-controls span {
 </head>
 <body>
 <header>
-  <img id="restoLogo" alt="Restaurant Logo" />
+  <img id="restoLogo" alt="Restaurant Logo" style="display:none" />
   <h1 id="namaRestoranDisplay"></h1>
   <p id="alamatRestoranDisplay"></p>
   <p id="teleponRestoranDisplay"></p>
+  <div class="header-right">
+    <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
+  </div>
+  <select id="localeSelect" class="locale-select" title="Change locale / currency">
+    <option value="auto">Auto (browser)</option>
+    <option value="en-US|USD">US — USD</option>
+    <option value="id-ID|IDR">INA — IDR</option>
+    <option value="en-GB|GBP">UK — GBP</option>
+    <option value="de-DE|EUR">Germany — EUR</option>
+    <option value="ja-JP|JPY">Japan — JPY</option>
+    <option value="zh-CN|CNY">China — CNY</option>
+    <option value="fr-FR|EUR">France — EUR</option>
+  </select>
 </header>
-   <div class="header-right">
-        <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
-        <br>
-      </div>
-   <select id="localeSelect" class="locale-select" title="Change locale / currency">
-          <option value="auto">Auto (browser)</option>
-          <option value="en-US|USD">US — USD</option>
-          <option value="id-ID|IDR">INA — IDR</option>
-          <option value="en-GB|GBP">UK — GBP</option>
-          <option value="de-DE|EUR">Germany — EUR</option>
-          <option value="ja-JP|JPY">Japan — JPY</option>
-          <option value="zh-CN|CNY">China — CNY</option>
-          <option value="fr-FR|EUR">France — EUR</option>
-        </select>
-  <br>
-  <br>
-  <div class="tagline"><em>"Your Favorite Food, Just One Click Away"</em></div>
-  <br>
-  <div class="main-container">
-    <h2 class="section-title">🔥 Special Promo</h2>
-    <div id="promoContainer"></div>
-  </div>
-  <br>  
-  <div class="main-container">
-    <div id="promoContainer"></div>
 
-    <h2 class="section-title">🍽️ Regular Menu</h2>
+<div class="tagline"><em>"Your Favorite Food, Just One Click Away"</em></div>
 
-   <div class="filter-container">
-  <div class="filter-tabs" id="kategoriTabs">
-    <!-- auto generate -->
-   </div>
-   </div>
+<div class="main-container">
+  <h2 class="section-title">🔥 Special Promo</h2>
+  <div id="promoContainer"></div>
+</div>
 
+<div class="main-container">
+  <h2 class="section-title">🍽️ Regular Menu</h2>
 
-    <div id="menu-list" class="menu-grid"></div>
-
-    <div class="order-summary">
-      <h2>🧾 Order Summary</h2>
-      <p>Total Item: <span id="total-item">0</span></p>
-      <p>Total Price: <span id="total-harga">0</span></p>
-
-      <label>Orderer Name</label>
-      <input id="nama" type="text" placeholder="Example: John">
-
-      <label>Delivery Address</label>
-      <textarea id="alamat" placeholder="Example: Road. Memories No. 123"></textarea>
-
-      <label>Delivery Time</label>
-      <input type="datetime-local" id="waktuAntar">
-
-      <label>Additional Notes</label>
-      <textarea id="catatan" placeholder="Example: No chili, please hurry up!"></textarea>
-
-      <label>Rooms (opsional)</label>
-      <input type="text" id="ruangan" placeholder="Example:Smooking Room,Privat Room .Etc">
-    </div>
+  <div class="filter-container">
+    <div class="filter-tabs" id="kategoriTabs"></div>
   </div>
 
-  <div class="bottom-buttons">
-    <button onclick="kirimPesanan()" class="btn-wa">📤 Send Order List</button>
-    <button onclick="window.location.href='menu.html'" class="btn-back">⬅️ Back To Menu</button>
+  <div id="menu-list" class="menu-grid"></div>
+
+  <div class="order-summary">
+    <h2>🧾 Order Summary</h2>
+    <p>Total Item: <span id="total-item">0</span></p>
+    <p>Total Price: <span id="total-harga">0</span></p>
+
+    <label>Orderer Name</label>
+    <input id="nama" type="text" placeholder="Example: John">
+
+    <label>Delivery Address</label>
+    <textarea id="alamat" placeholder="Example: Road. Memories No. 123"></textarea>
+
+    <label>Delivery Time</label>
+    <input type="datetime-local" id="waktuAntar">
+
+    <label>Additional Notes</label>
+    <textarea id="catatan" placeholder="Example: No chili, please hurry up!"></textarea>
+
+    <label>Rooms (opsional)</label>
+    <input type="text" id="ruangan" placeholder="Example:Smooking Room,Privat Room .Etc">
   </div>
+</div>
+
+<div class="bottom-buttons">
+  <button onclick="kirimPesanan()" class="btn-wa">📤 Send Order List</button>
+  <button onclick="window.location.href='menu.html'" class="btn-back">⬅️ Back To Menu</button>
+</div>
 
 <script>
-  /* ================= THEME (restore + toggle) ================= */
-  const THEME_KEY = 'menuva_theme';
-  function applyTheme() {
-    const saved = localStorage.getItem(THEME_KEY);
-    const btn = document.getElementById('darkToggle');
-    if (saved === 'dark') {
-      document.body.classList.add('dark');
-      btn.textContent = '☀️';
-    } else {
-      document.body.classList.remove('dark');
-      btn.textContent = '🌙';
-    }
+/* ================= THEME (restore + toggle) ================= */
+const THEME_KEY = 'menuva_theme';
+function applyTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const btn = document.getElementById('darkToggle');
+  if (saved === 'dark') {
+    document.body.classList.add('dark');
+    if (btn) btn.textContent = '☀️';
+  } else {
+    document.body.classList.remove('dark');
+    if (btn) btn.textContent = '🌙';
   }
-  function toggleDark() {
-    document.body.classList.toggle('dark');
-    const isDark = document.body.classList.contains('dark');
-    localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
-    document.getElementById('darkToggle').textContent = isDark ? '☀️' : '🌙';
-  }
-  document.getElementById('darkToggle').addEventListener('click', toggleDark);
+}
+function toggleDark() {
+  document.body.classList.toggle('dark');
+  const isDark = document.body.classList.contains('dark');
+  localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+  const btn = document.getElementById('darkToggle');
+  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+}
+document.getElementById('darkToggle')?.addEventListener('click', toggleDark);
 
-  /* ================ LOCALE / CURRENCY LOGIC ================ */
-  const LOCALE_KEY = 'menuva_localeChoice';
-  function parseLocaleCurrency(value) {
-    if (!value || value === 'auto') return { mode: 'auto' };
-    const parts = String(value).split('|');
-    return { mode: 'manual', locale: parts[0] || '', currency: parts[1] || '' };
+/* ================ LOCALE / CURRENCY LOGIC ================ */
+const LOCALE_KEY = 'menuva_localeChoice';
+function parseLocaleCurrency(value) {
+  if (!value || value === 'auto') return { mode: 'auto' };
+  const parts = String(value).split('|');
+  return { mode: 'manual', locale: parts[0] || '', currency: parts[1] || '' };
+}
+function detectBrowserLocaleCurrency() {
+  const locale = navigator.language || 'en-US';
+  const fallback = {
+    'id': 'IDR', 'en': 'USD', 'en-GB': 'GBP', 'de': 'EUR',
+    'fr': 'EUR', 'ja': 'JPY', 'zh': 'CNY'
+  };
+  let currency = fallback[locale.split('-')[0]] || 'USD';
+  if (fallback[locale]) currency = fallback[locale];
+  return { locale, currency };
+}
+function getActiveLocaleCurrency() {
+  const sel = document.getElementById('localeSelect');
+  const saved = localStorage.getItem(LOCALE_KEY) || (sel ? sel.value : 'auto');
+  const parsed = parseLocaleCurrency(saved);
+  if (parsed.mode === 'auto') {
+    return detectBrowserLocaleCurrency();
+  } else {
+    const browser = detectBrowserLocaleCurrency();
+    return { locale: parsed.locale || browser.locale, currency: parsed.currency || browser.currency };
   }
-  function detectBrowserLocaleCurrency() {
-    const locale = navigator.language || 'en-US';
-    const fallback = {
-      'id': 'IDR', 'en': 'USD', 'en-GB': 'GBP', 'de': 'EUR',
-      'fr': 'EUR', 'ja': 'JPY', 'zh': 'CNY'
-    };
-    let currency = fallback[locale.split('-')[0]] || 'USD';
-    if (fallback[locale]) currency = fallback[locale];
-    return { locale, currency };
+}
+function saveLocaleChoice(value) {
+  localStorage.setItem(LOCALE_KEY, value);
+}
+function formatHarga(amount) {
+  const ac = getActiveLocaleCurrency();
+  const locale = ac.locale || undefined;
+  const currency = ac.currency || 'IDR';
+  const zeroFrac = ['IDR','JPY','KRW'].includes((currency||'').toUpperCase());
+  const opts = {
+    style: 'currency', currency,
+    minimumFractionDigits: zeroFrac ? 0 : 2,
+    maximumFractionDigits: zeroFrac ? 0 : 2
+  };
+  try {
+    return new Intl.NumberFormat(locale, opts).format(Number(amount || 0));
+  } catch(e) {
+    return (currency ? currency+' ' : '') + (Number(amount)||0).toLocaleString();
   }
-  function getActiveLocaleCurrency() {
-    const saved = localStorage.getItem(LOCALE_KEY) || document.getElementById('localeSelect').value || 'auto';
-    const parsed = parseLocaleCurrency(saved);
-    if (parsed.mode === 'auto') {
-      return detectBrowserLocaleCurrency();
-    } else {
-      const browser = detectBrowserLocaleCurrency();
-      return { locale: parsed.locale || browser.locale, currency: parsed.currency || browser.currency };
-    }
-  }
-  function saveLocaleChoice(value) {
-    localStorage.setItem(LOCALE_KEY, value);
-  }
-  function formatHarga(amount) {
-    const ac = getActiveLocaleCurrency();
-    const locale = ac.locale || undefined;
-    const currency = ac.currency || 'IDR';
-    const zeroFrac = ['IDR','JPY','KRW'].includes((currency||'').toUpperCase());
-    const opts = {
-      style: 'currency', currency,
-      minimumFractionDigits: zeroFrac ? 0 : 2,
-      maximumFractionDigits: zeroFrac ? 0 : 2
-    };
-    try {
-      return new Intl.NumberFormat(locale, opts).format(Number(amount || 0));
-    } catch(e) {
-      return (currency ? currency+' ' : '') + (Number(amount)||0).toLocaleString();
-    }
-  }
-  function initLocaleSelect() {
-    const sel = document.getElementById('localeSelect');
-    const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
-    sel.value = saved;
-    sel.addEventListener('change', () => {
-      saveLocaleChoice(sel.value);
-      updateSemuaHarga();
-    });
-  }
-  function updateSemuaHarga() {
-    tampilkanPromo();
-    tampilkanMenu();
-    updateRingkasan();
-  }
+}
+function initLocaleSelect() {
+  const sel = document.getElementById('localeSelect');
+  if (!sel) return;
+  const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
+  sel.value = saved;
+  sel.addEventListener('change', () => {
+    saveLocaleChoice(sel.value);
+    updateSemuaHarga();
+  });
+}
+function updateSemuaHarga() {
+  tampilkanPromo();
+  tampilkanMenu();
+  updateRingkasan();
+}
 
-  /* ================== IndexedDB & data load ================== */
-  let db;
-  const DB_NAME = "MenuvaDB";
-  const STORE_NAME = "menuvaData";
-  const DB_VERSION = 2; // harus sama persis dengan admin.html
-  let data = {};
-  const pesanan = {};
+/* ================== IndexedDB & data load ================== */
+let db;
+const DB_NAME = "MenuvaDB";
+const STORE_NAME = "menuvaData";
+const DB_VERSION = 2; // harus sama persis dengan admin.html
+let data = {};
+const pesanan = {};
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    applyTheme();
-    initLocaleSelect();
+// Helper: read ?resto= param
+function getRestoParam() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('resto') || null;
+  } catch (e) { return null; }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  applyTheme();
+  initLocaleSelect();
+  try {
     await initDB();
     await loadDataFromDB();
-    tampilkanHeader();
-    tampilkanFilterKategori();
-    tampilkanPromo();
-    tampilkanMenu();
-    updateRingkasan();
-  });
-
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onsuccess = (e) => { db = e.target.result; resolve(); };
-      req.onerror = () => reject(req.error);
-      // order.html hanya baca → tidak ada onupgradeneeded
-    });
+  } catch (err) {
+    console.warn("DB init/load warning:", err);
   }
+  // Render (safe: functions will guard DOM)
+  tampilkanHeader();
+  tampilkanFilterKategori();
+  tampilkanPromo();
+  tampilkanMenu();
+  updateRingkasan();
+});
 
-  function loadDataFromDB() {
-    return new Promise((resolve, reject) => {
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = (e) => {
+      db = e.target.result;
+      resolve(db);
+    };
+    // important: do NOT create objectStore here — admin.html should manage schema
+    req.onupgradeneeded = (e) => {
+      // If DB doesn't exist, create a store so getAll won't throw in older browsers.
+      // BUT keep minimal: create only if absent to avoid overriding admin logic.
+      db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
+        console.log("initDB: created object store (order page fallback)");
+      }
+    };
+  });
+}
+
+function loadDataFromDB() {
+  return new Promise((resolve, reject) => {
+    if (!db) return resolve({});
+    // if store doesn't exist, return empty
+    if (!db.objectStoreNames.contains(STORE_NAME)) {
+      console.warn("store not found:", STORE_NAME);
+      return resolve({});
+    }
+
+    const restoParam = getRestoParam();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+
+    if (restoParam) {
       try {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const getReq = store.get(1);
-        getReq.onsuccess = () => {
-          data = getReq.result || {};
+        const req = store.get(restoParam);
+        req.onsuccess = () => {
+          data = req.result || {};
+          console.log("Loaded data by resto param:", restoParam, data);
           resolve(data);
         };
-        getReq.onerror = () => reject(getReq.error);
-      } catch (err) { reject(err); }
-    });
-  }
-
-  /* =================== SAFETY: escape HTML =================== */
-  function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-      .replace(/&/g,'&amp;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;');
-  }
-
-  /* =================== HEADER / FILTER =================== */
-  function tampilkanHeader() {
-    const logo = data.logo || '';
-    const nama = data.namaRestoran || '';
-    const alamat = data.restoAddress || '';
-    const telp = data.restoPhone || '';
-    document.getElementById('restoLogo').src = logo || 'default-logo.png';
-    document.getElementById('namaRestoranDisplay').textContent = nama;
-    document.getElementById('alamatRestoranDisplay').textContent = alamat;
-    document.getElementById('teleponRestoranDisplay').textContent = telp;
-  }
-
-  function tampilkanFilterKategori() {
-    const tabContainer = document.getElementById('kategoriTabs');
-    tabContainer.innerHTML = '';
-    if (!Array.isArray(data.menu) || data.menu.length === 0) return;
-
-    const allBtn = document.createElement('button');
-    allBtn.textContent = 'All';
-    allBtn.classList.add('active');
-    allBtn.onclick = () => tampilkanMenu('Semua', allBtn);
-    tabContainer.appendChild(allBtn);
-
-    const kategoriUnik = [...new Set(data.menu.map(m => m.kategori).filter(Boolean))];
-    kategoriUnik.forEach(k => {
-      const btn = document.createElement('button');
-      btn.textContent = k.charAt(0).toUpperCase() + k.slice(1);
-      btn.onclick = () => tampilkanMenu(k, btn);
-      tabContainer.appendChild(btn);
-    });
-  }
-
-  function tampilkanMenu(kategori = null, btn = null) {
-    const kategoriDipilih = kategori || 'Semua';
-    if (btn) {
-      document.querySelectorAll('#kategoriTabs button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    }
-
-    const menuList = document.getElementById('menu-list');
-    menuList.innerHTML = '';
-    if (!Array.isArray(data.menu) || data.menu.length === 0) {
-      menuList.innerHTML = `<div class="fallback">No menu available</div>`;
+        req.onerror = () => {
+          console.warn("get by key error:", req.error);
+          resolve({});
+        };
+      } catch (err) {
+        console.warn("get by key exception:", err);
+        resolve({});
+      }
       return;
     }
 
-    data.menu.forEach((item, index) => {
-      if (kategoriDipilih !== 'Semua' && item.kategori !== kategoriDipilih) return;
-      if (pesanan[index] === undefined) pesanan[index] = 0;
-      const hargaNum = Number(item.harga) || 0;
-      const hargaFormatted = formatHarga(hargaNum);
+    // fallback: getAll and pick first record with restoId
+    try {
+      const allReq = store.getAll();
+      allReq.onsuccess = () => {
+        const all = allReq.result || [];
+        if (all.length === 0) {
+          data = {};
+          return resolve({});
+        }
+        const firstWithKey = all.find(r => r && (r.restoId || r.restoPhone));
+        data = firstWithKey || all[0];
+        console.log("Loaded first available data:", data);
+        resolve(data);
+      };
+      allReq.onerror = () => {
+        console.warn("getAll error:", allReq.error);
+        resolve({});
+      };
+    } catch (err) {
+      console.error("loadDataFromDB exception:", err);
+      resolve({});
+    }
+  });
+}
 
-      const itemEl = document.createElement('div');
-      itemEl.className = 'menu-item';
-      itemEl.innerHTML = `
-        <div class="menu-name">${escapeHtml(item.nama || '')}</div>
-        <div class="menu-price" data-price="${hargaNum}" id="price-${index}">${hargaFormatted}</div>
-        <div class="qty-controls">
-          <button data-idx="${index}" data-delta="-1">-</button>
-          <span id="qty-${index}">${pesanan[index]}</span>
-          <button data-idx="${index}" data-delta="1">+</button>
-        </div>
-      `;
-      menuList.appendChild(itemEl);
-    });
+/* =================== SAFETY: escape HTML =================== */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
 
-    menuList.querySelectorAll('button[data-idx]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = btn.dataset.idx;
-        const delta = Number(btn.dataset.delta || 0);
-        ubahJumlah(idx, delta);
-      });
-    });
+/* =================== HEADER / FILTER =================== */
+function tampilkanHeader() {
+  const logo = (data && data.logo) ? String(data.logo).trim() : '';
+  const nama = data?.namaRestoran || '';
+  const alamat = data?.restoAddress || '';
+  const telp = data?.restoPhone || '';
 
-    updateRingkasan();
+  const logoEl = document.getElementById('restoLogo');
+  if (logoEl) {
+    if (logo) {
+      logoEl.src = logo;
+      logoEl.style.display = 'block';
+      // in case image fails to load, hide it to avoid broken icon
+      logoEl.onerror = () => { logoEl.style.display = 'none'; };
+    } else {
+      // hide if no logo provided by admin
+      logoEl.style.display = 'none';
+    }
   }
 
-  /* =================== PROMO =================== */
-  function tampilkanPromo() {
-    const promoContainer = document.getElementById('promoContainer');
-    if (!Array.isArray(data.menuPromo) || data.menuPromo.length === 0) {
-      promoContainer.innerHTML = '';
-      return;
-    }
+  const namaEl = document.getElementById('namaRestoranDisplay');
+  if (namaEl) namaEl.textContent = nama;
+
+  const alamatEl = document.getElementById('alamatRestoranDisplay');
+  if (alamatEl) alamatEl.textContent = alamat;
+
+  const telpEl = document.getElementById('teleponRestoranDisplay');
+  if (telpEl) telpEl.textContent = telp;
+}
+
+function tampilkanFilterKategori() {
+  const tabContainer = document.getElementById('kategoriTabs');
+  if (!tabContainer) return;
+  tabContainer.innerHTML = '';
+  if (!Array.isArray(data.menu) || data.menu.length === 0) return;
+
+  const allBtn = document.createElement('button');
+  allBtn.textContent = 'All';
+  allBtn.classList.add('active');
+  allBtn.onclick = () => tampilkanMenu('Semua', allBtn);
+  tabContainer.appendChild(allBtn);
+
+  const kategoriUnik = [...new Set(data.menu.map(m => m.kategori).filter(Boolean))];
+  kategoriUnik.forEach(k => {
+    const btn = document.createElement('button');
+    btn.textContent = k.charAt(0).toUpperCase() + k.slice(1);
+    btn.onclick = () => tampilkanMenu(k, btn);
+    tabContainer.appendChild(btn);
+  });
+}
+
+function tampilkanMenu(kategori = null, btn = null) {
+  const kategoriDipilih = kategori || 'Semua';
+  if (btn) {
+    document.querySelectorAll('#kategoriTabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  const menuList = document.getElementById('menu-list');
+  if (!menuList) return;
+  menuList.innerHTML = '';
+
+  if (!Array.isArray(data.menu) || data.menu.length === 0) {
+    menuList.innerHTML = `<div class="fallback">No menu available</div>`;
+    return;
+  }
+
+  data.menu.forEach((item, index) => {
+    if (kategoriDipilih !== 'Semua' && item.kategori !== kategoriDipilih) return;
+    if (pesanan[index] === undefined) pesanan[index] = 0;
+    const hargaNum = Number(item.harga) || 0;
+    const hargaFormatted = formatHarga(hargaNum);
+
+    const itemEl = document.createElement('div');
+    itemEl.className = 'menu-item';
+    itemEl.innerHTML = `
+      <div class="menu-name">${escapeHtml(item.nama || '')}</div>
+      <div class="menu-price" data-price="${hargaNum}" id="price-${index}">${hargaFormatted}</div>
+      <div class="qty-controls">
+        <button data-idx="${index}" data-delta="-1">-</button>
+        <span id="qty-${index}">${pesanan[index]}</span>
+        <button data-idx="${index}" data-delta="1">+</button>
+      </div>
+    `;
+    menuList.appendChild(itemEl);
+  });
+
+  menuList.querySelectorAll('button[data-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.dataset.idx;
+      const delta = Number(btn.dataset.delta || 0);
+      ubahJumlah(idx, delta);
+    });
+  });
+
+  updateRingkasan();
+}
+
+/* =================== PROMO =================== */
+function tampilkanPromo() {
+  const promoContainer = document.getElementById('promoContainer');
+  if (!promoContainer) return;
+  if (!Array.isArray(data.menuPromo) || data.menuPromo.length === 0) {
     promoContainer.innerHTML = '';
-    data.menuPromo.forEach((promo, index) => {
-      const promoKey = `promo-${index}`;
-      if (pesanan[promoKey] === undefined) pesanan[promoKey] = 0;
-      const hargaNum = Number(promo.harga) || 0;
-      const hargaFormatted = formatHarga(hargaNum);
-      const div = document.createElement('div');
-      div.className = 'promo-item';
-      div.innerHTML = `
-        <div class="promo-badge">Promo</div>
-        ${promo.image ? `<img src="${escapeHtml(promo.image)}" alt="Promo image">` : ''}
-        <div><b>${escapeHtml(promo.namaPromo || '')}</b></div>
-        <div>${escapeHtml(promo.namaMenu || '')}</div>
-        <div>${escapeHtml(promo.deskripsi || '')}</div>
-        <div>${hargaFormatted} ${promo.tanggalAkhir ? `| Until ${escapeHtml(promo.tanggalAkhir)}` : ''}</div>
-        <div class="qty-controls">
-          <button data-key="${promoKey}" data-delta="-1">-</button>
-          <span id="qty-${promoKey}">${pesanan[promoKey]}</span>
-          <button data-key="${promoKey}" data-delta="1">+</button>
-        </div>
-      `;
-      promoContainer.appendChild(div);
+    return;
+  }
+  promoContainer.innerHTML = '';
+
+  data.menuPromo.forEach((promo, index) => {
+    const promoKey = `promo-${index}`;
+    if (pesanan[promoKey] === undefined) pesanan[promoKey] = 0;
+    const hargaNum = Number(promo.harga) || 0;
+    const hargaFormatted = formatHarga(hargaNum);
+
+    const div = document.createElement('div');
+    div.className = 'promo-item';
+    div.innerHTML = `
+      <div class="promo-badge">Promo</div>
+      ${promo.image ? `<img src="${escapeHtml(promo.image)}" alt="Promo image">` : ''}
+      <div><b>${escapeHtml(promo.namaPromo || '')}</b></div>
+      <div>${escapeHtml(promo.namaMenu || '')}</div>
+      <div>${escapeHtml(promo.deskripsi || '')}</div>
+      <div>${hargaFormatted} ${promo.tanggalAkhir ? `| Until ${escapeHtml(promo.tanggalAkhir)}` : ''}</div>
+      <div class="qty-controls">
+        <button data-key="${promoKey}" data-delta="-1">-</button>
+        <span id="qty-${promoKey}">${pesanan[promoKey]}</span>
+        <button data-key="${promoKey}" data-delta="1">+</button>
+      </div>
+    `;
+    promoContainer.appendChild(div);
+  });
+
+  promoContainer.querySelectorAll('button[data-key]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const delta = Number(btn.dataset.delta || 0);
+      ubahJumlahPromo(key, delta);
     });
-    promoContainer.querySelectorAll('button[data-key]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const key = btn.dataset.key;
-        const delta = Number(btn.dataset.delta || 0);
-        ubahJumlahPromo(key, delta);
-      });
-    });
-  }
+  });
+}
 
-  function ubahJumlahPromo(index, delta) {
-    pesanan[index] = Math.max(0, (pesanan[index] || 0) + delta);
-    document.getElementById(`qty-${index}`).innerText = pesanan[index];
-    updateRingkasan();
-  }
-  function ubahJumlah(index, delta) {
-    pesanan[index] = Math.max(0, (pesanan[index] || 0) + delta);
-    document.getElementById(`qty-${index}`).innerText = pesanan[index];
-    updateRingkasan();
-  }
+function ubahJumlahPromo(index, delta) {
+  pesanan[index] = Math.max(0, (pesanan[index] || 0) + delta);
+  const el = document.getElementById(`qty-${index}`);
+  if (el) el.innerText = pesanan[index];
+  updateRingkasan();
+}
 
-  /* =================== RINGKASAN =================== */
-  function updateRingkasan() {
-    let totalQty = 0;
-    let totalHargaValue = 0;
-    Object.entries(pesanan).forEach(([key, jumlah]) => {
-      if (!jumlah || jumlah <= 0) return;
-      if (String(key).startsWith('promo-')) {
-        const idx = parseInt(String(key).split('-')[1], 10);
-        const item = (data.menuPromo || [])[idx];
-        const harga = Number(item && item.harga) || 0;
-        totalQty += jumlah;
-        totalHargaValue += jumlah * harga;
-      } else {
-        const idx = Number(key);
-        const item = (data.menu || [])[idx];
-        const harga = Number(item && item.harga) || 0;
-        totalQty += jumlah;
-        totalHargaValue += jumlah * harga;
-      }
-    });
-    document.getElementById('total-item').textContent = totalQty;
-    document.getElementById('total-harga').textContent = formatHarga(totalHargaValue);
-  }
+function ubahJumlah(index, delta) {
+  pesanan[index] = Math.max(0, (pesanan[index] || 0) + delta);
+  const el = document.getElementById(`qty-${index}`);
+  if (el) el.innerText = pesanan[index];
+  updateRingkasan();
+}
 
-  /* =================== KIRIM PESAN (WhatsApp) =================== */
-  function kirimPesanan() {
-    const namaCust = document.getElementById('nama').value.trim();
-    const alamatCust = document.getElementById('alamat').value.trim();
-    const waktuAntar = document.getElementById('waktuAntar').value;
-    const catatan = document.getElementById('catatan').value.trim();
-    const ruangan = document.getElementById('ruangan').value.trim();
-
-    if (!data || (!Array.isArray(data.menu) && !Array.isArray(data.menuPromo))) {
-      alert('❌ Restaurant data not found.');
-      return;
+/* =================== RINGKASAN =================== */
+function updateRingkasan() {
+  let totalQty = 0;
+  let totalHargaValue = 0;
+  Object.entries(pesanan).forEach(([key, jumlah]) => {
+    if (!jumlah || jumlah <= 0) return;
+    if (String(key).startsWith('promo-')) {
+      const idx = parseInt(String(key).split('-')[1], 10);
+      const item = (data.menuPromo || [])[idx];
+      const harga = Number(item && item.harga) || 0;
+      totalQty += jumlah;
+      totalHargaValue += jumlah * harga;
+    } else {
+      const idx = Number(key);
+      const item = (data.menu || [])[idx];
+      const harga = Number(item && item.harga) || 0;
+      totalQty += jumlah;
+      totalHargaValue += jumlah * harga;
     }
+  });
+  const totalItemEl = document.getElementById('total-item');
+  const totalHargaEl = document.getElementById('total-harga');
+  if (totalItemEl) totalItemEl.textContent = totalQty;
+  if (totalHargaEl) totalHargaEl.textContent = formatHarga(totalHargaValue);
+}
 
-    const lines = [];
-    let totalHargaAll = 0;
-    Object.entries(pesanan).forEach(([key, jumlah]) => {
-      if (!jumlah || jumlah <= 0) return;
-      if (String(key).startsWith('promo-')) {
-        const idx = parseInt(String(key).split('-')[1], 10);
-        const item = (data.menuPromo || [])[idx];
-        const harga = Number(item && item.harga) || 0;
-        totalHargaAll += harga * jumlah;
-        lines.push(`${item.namaPromo || item.namaMenu || 'Promo'} x${jumlah} (${formatHarga(harga * jumlah)})`);
-      } else {
-        const idx = Number(key);
-        const item = (data.menu || [])[idx];
-        const harga = Number(item && item.harga) || 0;
-        totalHargaAll += harga * jumlah;
-        lines.push(`${item.nama || ''} x${jumlah} (${formatHarga(harga * jumlah)})`);
-      }
-    });
+/* =================== KIRIM PESAN (WhatsApp) =================== */
+function kirimPesanan() {
+  const namaCust = document.getElementById('nama')?.value.trim() || '';
+  const alamatCust = document.getElementById('alamat')?.value.trim() || '';
+  const waktuAntar = document.getElementById('waktuAntar')?.value;
+  const catatan = document.getElementById('catatan')?.value.trim() || '';
+  const ruangan = document.getElementById('ruangan')?.value.trim() || '';
 
-    if (lines.length === 0) { alert('No items selected.'); return; }
+  if (!data || (!Array.isArray(data.menu) && !Array.isArray(data.menuPromo))) {
+    alert('❌ Restaurant data not found.');
+    return;
+  }
 
-    const now = new Date();
-    const waktuOrder = now.toLocaleString(getActiveLocaleCurrency().locale);
-
-    let pesan = `🧾 New Order from ${namaCust || 'Customer'}\n\n`;
-    pesan += `📅 Order Date: ${waktuOrder}\n`;
-    if (waktuAntar) pesan += `🕒 Delivery Time: ${new Date(waktuAntar).toLocaleString(getActiveLocaleCurrency().locale)}\n`;
-    if (ruangan) pesan += `🏨 Room: ${ruangan}\n`;
-    pesan += `\n📍 Address:\n${alamatCust}\n\n`;
-    pesan += `🛒 List order:\n${lines.join('\n')}\n\n`;
-    pesan += `💰 Total: ${formatHarga(totalHargaAll)}\n`;
-    if (catatan) pesan += `\n📌 Notes:\n${catatan}`;
-
-    const nomorAdminList = data.nomorWaAdmin || [];
-    if (!Array.isArray(nomorAdminList) || nomorAdminList.length === 0) {
-      alert('⚠️ Tidak ada nomor admin yang tersedia.');
-      return;
+  const lines = [];
+  let totalHargaAll = 0;
+  Object.entries(pesanan).forEach(([key, jumlah]) => {
+    if (!jumlah || jumlah <= 0) return;
+    if (String(key).startsWith('promo-')) {
+      const idx = parseInt(String(key).split('-')[1], 10);
+      const item = (data.menuPromo || [])[idx];
+      const harga = Number(item && item.harga) || 0;
+      totalHargaAll += harga * jumlah;
+      lines.push(`${item.namaPromo || item.namaMenu || 'Promo'} x${jumlah} (${formatHarga(harga * jumlah)})`);
+    } else {
+      const idx = Number(key);
+      const item = (data.menu || [])[idx];
+      const harga = Number(item && item.harga) || 0;
+      totalHargaAll += harga * jumlah;
+      lines.push(`${item.nama || ''} x${jumlah} (${formatHarga(harga * jumlah)})`);
     }
-    nomorAdminList.forEach(nomor => {
-      const cleaned = String(nomor).replace(/[^0-9]/g,'');
-      const waLink = `https://wa.me/${cleaned}?text=${encodeURIComponent(pesan)}`;
-      window.open(waLink, '_blank');
-    });
-  }
+  });
 
-  /* ============== Helper ============== */
-  function refreshAllPriceDisplays() {
-    document.querySelectorAll('.menu-price').forEach(el => {
-      const p = Number(el.dataset.price) || 0;
-      el.textContent = formatHarga(p);
-    });
-    updateRingkasan();
+  if (lines.length === 0) { alert('No items selected.'); return; }
+
+  const now = new Date();
+  const waktuOrder = now.toLocaleString(getActiveLocaleCurrency().locale);
+
+  let pesan = `🧾 New Order from ${namaCust || 'Customer'}\n\n`;
+  pesan += `📅 Order Date: ${waktuOrder}\n`;
+  if (waktuAntar) pesan += `🕒 Delivery Time: ${new Date(waktuAntar).toLocaleString(getActiveLocaleCurrency().locale)}\n`;
+  if (ruangan) pesan += `🏨 Room: ${ruangan}\n`;
+  pesan += `\n📍 Address:\n${alamatCust}\n\n`;
+  pesan += `🛒 List order:\n${lines.join('\n')}\n\n`;
+  pesan += `💰 Total: ${formatHarga(totalHargaAll)}\n`;
+  if (catatan) pesan += `\n📌 Notes:\n${catatan}`;
+
+  const nomorAdminList = data.nomorWaAdmin || [];
+  if (!Array.isArray(nomorAdminList) || nomorAdminList.length === 0) {
+    alert('⚠️ Tidak ada nomor admin yang tersedia.');
+    return;
   }
+  nomorAdminList.forEach(nomor => {
+    const cleaned = String(nomor).replace(/[^0-9]/g,'');
+    const waLink = `https://wa.me/${cleaned}?text=${encodeURIComponent(pesan)}`;
+    window.open(waLink, '_blank');
+  });
+}
+
+/* ============== Helper ============== */
+function refreshAllPriceDisplays() {
+  document.querySelectorAll('.menu-price').forEach(el => {
+    const p = Number(el.dataset.price) || 0;
+    el.textContent = formatHarga(p);
+  });
+  updateRingkasan();
+}
 </script>
 
 </body>
 </html>
-
-
-
-
