@@ -48,13 +48,14 @@
   border-bottom: 1px solid #ddd;
 }
 
-/* Logo */
 .resto-header img {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 8px;
+  width: 12vw;      /* max 12% lebar layar */
+  max-width: 50px;  /* tapi jangan lebih dari 50px */
+  min-width: 35px;  /* jangan lebih kecil dari 35px */
+  height: auto;
+  border-radius: 6px;
 }
+
 
 /* Info */
 .resto-info {
@@ -945,4 +946,5 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
