@@ -49,12 +49,13 @@
 }
 
 .resto-header img {
-  width: 12vw;      /* max 12% lebar layar */
-  max-width: 50px;  /* tapi jangan lebih dari 50px */
-  min-width: 35px;  /* jangan lebih kecil dari 35px */
-  height: auto;
+  width: 36px;       /* default fix */
+  height: 36px;
+  max-width: 48px;   /* kalau di device gede */
+  object-fit: cover;
   border-radius: 6px;
 }
+
 
 
 /* Info */
@@ -946,5 +947,6 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
