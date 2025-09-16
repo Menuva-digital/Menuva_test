@@ -167,12 +167,11 @@
 /* HP Portrait → 3 card */
 @media screen and (max-width: 600px) and (orientation: portrait) {
   .grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr); /* dari 3 → 2 */
   }
-  .menu-thumb { height: 100px; }
-  .menu-title { font-size: 14px; }
-  .menu-desc { font-size: 12px; }
+  .menu-thumb { height: 140px; } /* biar lebih proporsional */
 }
+
 
 /* HP Landscape → 6 card */
 @media screen and (max-width: 900px) and (orientation: landscape) {
@@ -1077,6 +1076,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
