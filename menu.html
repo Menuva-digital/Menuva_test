@@ -250,14 +250,24 @@ function getRestoId() {
   let restoId = params.get("resto");
 
   if (restoId) {
-    // simpan ke localStorage
+    // simpan & kunci ke localStorage
     localStorage.setItem("restoId", restoId);
+    console.log("🔑 Resto ID from URL:", restoId);
   } else {
-    // fallback ambil dari localStorage
     restoId = localStorage.getItem("restoId");
+    if (restoId) {
+      console.log("📦 Resto ID from localStorage:", restoId);
+    }
   }
+
+  if (!restoId) {
+    alert("❌ Resto ID tidak ditemukan. Gunakan link dari admin (contoh: menu.html?resto=0877xxxx)");
+    return null;
+  }
+
   return restoId;
 }
+
 
 /* =======================
    DB FUNCTIONS
@@ -459,6 +469,7 @@ window.onload = async ()=>{
 
 </body>
 </html>
+
 
 
 
