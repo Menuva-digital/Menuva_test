@@ -242,13 +242,26 @@
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 
-// Ambil restoId dari URL
-function getDataFromURL() {
+/* =======================
+   RESTO ID HANDLER
+======================= */
+function getRestoId() {
   const params = new URLSearchParams(window.location.search);
-  return params.get("resto");
+  let restoId = params.get("resto");
+
+  if (restoId) {
+    // simpan ke localStorage
+    localStorage.setItem("restoId", restoId);
+  } else {
+    // fallback ambil dari localStorage
+    restoId = localStorage.getItem("restoId");
+  }
+  return restoId;
 }
 
-// Load data dari IndexedDB
+/* =======================
+   DB FUNCTIONS
+======================= */
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME);
@@ -265,7 +278,9 @@ function loadDataFromDB(restoId) {
   });
 }
 
-// Render Flipbook
+/* =======================
+   FLIPBOOK GALLERY
+======================= */
 let currentFullscreenIndex = 0;
 let currentImages = [];
 function renderFlipbookGallery(containerId, images, warningId) {
@@ -274,7 +289,10 @@ function renderFlipbookGallery(containerId, images, warningId) {
   container.innerHTML = "";
   warning.textContent = "";
 
-  if (!images || images.length === 0) { warning.textContent = "No pictures."; return; }
+  if (!images || images.length === 0) {
+    warning.textContent = "No pictures.";
+    return;
+  }
 
   images.forEach((src,i) => {
     const img = document.createElement("img");
@@ -306,13 +324,15 @@ function showNext(){
   document.getElementById("fullscreenImage").src = currentImages[currentFullscreenIndex];
 }
 
-// Render Promo
+/* =======================
+   PROMO RENDER
+======================= */
 function renderPromo(promoList) {
   const promoContainer = document.getElementById("promoContainer");
-  promoContainer.innerHTML = ""; // reset container
+  promoContainer.innerHTML = "";
 
   const promoWarning = document.getElementById("promoWarning");
-  promoWarning.textContent = ""; // reset warning
+  promoWarning.textContent = "";
 
   if (!promoList || promoList.length === 0) {
     promoWarning.textContent = "❌ No promo data available.";
@@ -320,11 +340,9 @@ function renderPromo(promoList) {
   }
 
   promoList.forEach((promo, index) => {
-    // ===== Card utama =====
     const promoCard = document.createElement("div");
     promoCard.className = "promo-item";
 
-    // ===== Badge =====
     if (promo.kategori) {
       const badge = document.createElement("div");
       badge.className = "promo-badge";
@@ -332,23 +350,19 @@ function renderPromo(promoList) {
       promoCard.appendChild(badge);
     }
 
-    // ===== Gambar =====
     const img = document.createElement("img");
     img.src = promo.image || "";
     img.alt = promo.namaPromo || "Promo Image";
     promoCard.appendChild(img);
 
-    // ===== Nama Promo =====
     const title = document.createElement("h3");
     title.textContent = promo.namaPromo || "No Name";
     promoCard.appendChild(title);
 
-    // ===== Deskripsi =====
     const desc = document.createElement("p");
     desc.textContent = promo.deskripsi || "-";
     promoCard.appendChild(desc);
 
-    // ===== Harga =====
     const price = document.createElement("div");
     price.className = "promo-price";
     price.textContent = promo.harga
@@ -356,7 +370,6 @@ function renderPromo(promoList) {
       : "-";
     promoCard.appendChild(price);
 
-    // ===== Countdown =====
     const countdown = document.createElement("div");
     countdown.className = "countdown";
     countdown.id = `countdown-${index}`;
@@ -390,7 +403,9 @@ function startCountdown(tanggalAkhir,elementId){
   setInterval(update,1000);
 }
 
-// Watch DB Changes
+/* =======================
+   WATCH DB CHANGES
+======================= */
 async function watchDBChanges(restoId){
   let lastDataStr="";
   async function checkUpdates(){
@@ -409,11 +424,13 @@ async function watchDBChanges(restoId){
   setInterval(checkUpdates,5000);
 }
 
-// Onload
+/* =======================
+   ONLOAD
+======================= */
 window.onload = async ()=>{
-  const restoId = getDataFromURL();
+  const restoId = getRestoId();
   if(!restoId){
-    alert("❌ Resto ID tidak ditemukan di URL. Gunakan ?resto=0877xxxx");
+    alert("❌ Resto ID tidak ditemukan. Gunakan ?resto=0877xxxx");
     return;
   }
   try{
@@ -439,8 +456,10 @@ window.onload = async ()=>{
   } catch(err){ console.error("❌ Gagal load data menu:",err); }
 };
 </script>
+
 </body>
 </html>
+
 
 
 
