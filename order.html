@@ -39,16 +39,20 @@
   }
 
 /* Header Container */
-.resto-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 15px;
-  background: #f9f9f9;
-  border-bottom: 1px solid #ddd;
+ header {
+  width: 100%; 
+  background: linear-gradient(90deg, var(--brand-2), var(--brand-3));
+  color: #fff;
+  padding: 16px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0; 
+  z-index: 50;
+  box-shadow: var(--shadow);
 }
 
-.resto-header img {
+.header img {
   width: 36px;       /* default fix */
   height: 36px;
   max-width: 48px;   /* kalau di device gede */
@@ -425,7 +429,7 @@ body.dark .qty-controls span {
 </style>
 </head>
 <body>
-<header class="resto-header">
+<header class="header">
   <img id="restoLogo" alt="Restaurant Logo" style="display:none" />
   <h1 id="namaRestoranDisplay"></h1>
   <p id="alamatRestoranDisplay"></p>
@@ -947,6 +951,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
