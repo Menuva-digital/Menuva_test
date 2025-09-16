@@ -1004,6 +1004,37 @@ window.addEventListener('DOMContentLoaded', async () => {
 /* Expose sendOrder globally if used by onclick attr */
 window.sendOrder = sendOrder;
 </script>
+<script>
+function switchTab(tabName) {
+  // Sembunyikan semua tab content
+  const contents = document.querySelectorAll(".tab-content");
+  contents.forEach(c => c.style.display = "none");
+
+  // Hapus class active dari semua tab
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(t => t.classList.remove("active"));
+
+  // Tampilkan tab yang dipilih
+  const target = document.getElementById(tabName);
+  if (target) {
+    target.style.display = "block";
+  }
+
+  // Tambahkan class active ke tombol tab yang dipilih
+  const activeTab = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
+  if (activeTab) {
+    activeTab.classList.add("active");
+  }
+}
+
+// Biar default buka tab pertama
+document.addEventListener("DOMContentLoaded", () => {
+  const firstTab = document.querySelector(".tab");
+  if (firstTab) firstTab.click();
+});
+</script>
+
 </body>
 </html>
+
 
