@@ -532,507 +532,478 @@
       </div>
     </div>
   </footer>
+<script>
+/* ======================================================
+   book.html — full JS (sinkron dengan admin.html yang
+   menyimpan data keyed by restoId = phone number)
+   ====================================================== */
 
-  <script>
-    // ===================== STATE =====================
-    let menuData = [];
-    let menuPromo = [];
-    let restoData = {};
-
-    // Cart items: { key, nama, harga (number), qty (number) }
-    let cart = [];
-
-    // Currency/locale state (hybrid)
-    // stored keys: 'menuva_localeChoice' -> 'auto' or 'en-US|USD' etc
-    const LOCALE_KEY = 'menuva_localeChoice';
-
-    // ===================== CURRENCY / LOCALE HELPERS =====================
-    // Basic mapping fallback from language prefixes to default currency
-    const localeToCurrencyFallback = {
-      'id': 'IDR',
-      'en-US': 'USD',
-      'en': 'USD',
-      'en-GB': 'GBP',
-      'de': 'EUR',
-      'fr': 'EUR',
-      'ja': 'JPY',
-      'zh': 'CNY'
-    };
-
-    function parseLocaleCurrency(value) {
-      // value may be 'auto' or 'en-US|USD'
-      if (!value || value === 'auto') return { mode: 'auto' };
-      const parts = String(value).split('|');
-      return { mode: 'manual', locale: parts[0] || '', currency: parts[1] || '' };
-    }
-
-    function detectBrowserLocaleCurrency() {
-      const locale = navigator.language || 'en-US';
-      // try to pick currency by locale mapping
-      let currency = localeToCurrencyFallback[locale.split('-')[0]] || localeToCurrencyFallback[locale] || 'IDR';
-      // if full locale maps to currency explicitly
-      if (localeToCurrencyFallback[locale]) currency = localeToCurrencyFallback[locale];
-      return { locale, currency };
-    }
-
-    function getActiveLocaleCurrency() {
-      const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
-      const parsed = parseLocaleCurrency(saved);
-      if (parsed.mode === 'auto') {
-        return detectBrowserLocaleCurrency();
-      } else {
-        return { locale: parsed.locale || detectBrowserLocaleCurrency().locale, currency: parsed.currency || detectBrowserLocaleCurrency().currency };
-      }
-    }
-
-    function saveLocaleChoice(value) {
-      localStorage.setItem(LOCALE_KEY, value);
-    }
-
-    // Format price using Intl.NumberFormat
-    // amount expected in *units* (e.g. 150000 for IDR 150.000)
-    function formatPrice(amount, currency, locale) {
-      if (!isFinite(Number(amount))) amount = 0;
-      amount = Number(amount);
-      // For some currencies like IDR, standard is 0 fraction digits.
-      const zeroFractionCurrencies = ['IDR', 'JPY', 'KRW'];
-      const opts = {
-        style: 'currency',
-        currency: currency || 'IDR',
-        maximumFractionDigits: zeroFractionCurrencies.includes((currency || '').toUpperCase()) ? 0 : 2,
-        minimumFractionDigits: zeroFractionCurrencies.includes((currency || '').toUpperCase()) ? 0 : 2
-      };
-      try {
-        return new Intl.NumberFormat(locale || undefined, opts).format(amount);
-      } catch (e) {
-        // fallback
-        return (currency ? currency + ' ' : '') + amount.toLocaleString();
-      }
-    }
-
-    // Convenience wrapper to read active settings then format
-    function formatWithActive(amount) {
-      const ac = getActiveLocaleCurrency();
-      return formatPrice(amount, ac.currency, ac.locale);
-    }
-
-    // ===================== UTILS =====================
-    function switchTab(id) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const tabEl = Array.from(document.querySelectorAll('.tab')).find(t => t.getAttribute('onclick') === `switchTab('${id}')`);
-      if (tabEl) tabEl.classList.add('active');
-      const content = document.getElementById(id);
-      if (content) content.classList.add('active');
-    }
-
-    // ===================== DARK MODE =====================
-    function applyTheme() {
-      const saved = localStorage.getItem('menuva_theme');
-      if (saved === 'dark') document.body.classList.add('dark');
-      document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
-    }
-    function toggleDark() {
-      document.body.classList.toggle('dark');
-      localStorage.setItem('menuva_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-      document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
-    }
-
-    // ===================== CART =====================
-    function addToCart(name, price) {
-      // Normalize price to number
-      const harga = typeof price === 'string' ? parseFloat(String(price).replace(/[^0-9.]/g, '')) : Number(price);
-      const key = name; // simple key by name; change if you have id
-      const idx = cart.findIndex(i => i.key === key);
-      if (idx >= 0) cart[idx].qty += 1; else cart.push({ key, nama: name, harga: harga || 0, qty: 1 });
-      renderCart();
-    }
-    function updateQty(index, delta) {
-      if (!cart[index]) return;
-      cart[index].qty += delta;
-      if (cart[index].qty <= 0) cart.splice(index, 1);
-      renderCart();
-    }
-    function removeFromCart(index) {
-      cart.splice(index, 1);
-      renderCart();
-    }
-    function renderCart() {
-      const rows = document.getElementById('cartRows');
-      const empty = document.getElementById('cartEmpty');
-      rows.innerHTML = '';
-      if (cart.length === 0) {
-        empty.style.display = 'block';
-        document.getElementById('cartTotal').textContent = formatWithActive(0);
-        return;
-      }
-      empty.style.display = 'none';
-      let total = 0;
-      cart.forEach((c, i) => {
-        const subtotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
-        total += subtotal;
-        const row = document.createElement('div');
-        row.className = 'cart-row';
-        row.innerHTML = `
-          <div><strong>${escapeHtml(c.nama)}</strong><div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div></div>
-          <div class="qty-wrap">
-            <button onclick="updateQty(${i}, -1)">-</button>
-            <input type="text" value="${c.qty}" readonly />
-            <button onclick="updateQty(${i}, 1)">+</button>
-          </div>
-          <div class="price-right">${formatWithActive(subtotal)}</div>
-          <button class="remove-btn" title="Remove" onclick="removeFromCart(${i})">✕</button>
-        `;
-        rows.appendChild(row);
-      });
-      document.getElementById('cartTotal').textContent = formatWithActive(total);
-    }
-
-    // ===================== RENDER MENU =====================
-    function renderMenu() {
-      const map = { food: 'foodGrid', snack: 'snackGrid', drink: 'drinkGrid', special: 'specialGrid' };
-      Object.keys(map).forEach(k => {
-        const grid = document.getElementById(map[k]);
-        grid.innerHTML = '';
-        const items = (menuData || []).filter(m => m.kategori === k);
-        if (!items || items.length === 0) {
-          grid.innerHTML = '<div class="cart-empty">No item yet</div>';
-          return;
-        }
-        items.forEach(m => {
-          const card = document.createElement('div');
-          card.className = 'menu-card';
-          // ✅ panggil tambahPesanan biar counter muncul
-          card.onclick = () => tambahPesanan(m, card);
-          // Ensure harga numeric
-          const hargaNum = Number(m.harga) || 0;
-          card.innerHTML = `
-            ${m.image ? `<img class="menu-thumb" src="${m.image}" alt="${escapeHtml(m.nama)}">` : `<div class="menu-thumb"></div>`}
-            <div class="menu-title">${escapeHtml(m.nama)}</div>
-            <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
-            <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
-            <span class="order-count">0</span>
-          `;
-          grid.appendChild(card);
-        });
-      });
-    }
-
-    function tambahPesanan(item, cardEl) {
-      // update cart
-      const existing = cart.find(c => c.nama === item.nama);
-      const hargaNum = Number(item.harga) || 0;
-      if (existing) {
-        existing.qty += 1;
-      } else {
-        // store only necessary fields to avoid leaking DB structure
-        cart.push({ key: item.nama, nama: item.nama, harga: hargaNum, qty: 1 });
-      }
-
-      // update tampilan counter di card
-      const counter = cardEl.querySelector(".order-count");
-      if (counter) {
-        const cartItem = cart.find(c => c.nama === item.nama);
-        counter.textContent = cartItem.qty;
-        counter.style.display = "inline-block"; // kalau awalnya hidden
-      }
-
-      renderCart(); // supaya preview cart ikut update
-    }
-
-    // ===================== RENDER PROMO + COUNTDOWN =====================
-    let promoCountdownTimer = null;
-
-    function renderPromo() {
-      const grid = document.getElementById('promoGrid');
-      grid.innerHTML = '';
-      const now = Date.now();
-      const promos = (menuPromo || []).filter(p => {
-        if (!p.tanggalAkhir) return true;
-        const end = new Date(p.tanggalAkhir).getTime();
-        return isFinite(end) ? end > now : true;
-      });
-
-      if (!promos || promos.length === 0) {
-        grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
-        stopPromoCountdown();
-        return;
-      }
-
-      promos.forEach(p => {
-        // create card
-        const card = document.createElement('div');
-        card.className = 'menu-card promo-card';
-
-        // prepare canonical item object (so tambahPesanan sees same fields as normal menu)
-        const item = {
-          nama: p.namaMenu || p.namaPromo || 'Promo Item',
-          harga: Number(p.harga) || 0,
-          deskripsi: p.deskripsi || '',
-          image: p.image || ''
-        };
-
-        // click -> add to cart via tambahPesanan
-        card.addEventListener('click', (ev) => {
-          // prevent double clicks if expired (optional)
-          if (p.tanggalAkhir) {
-            const end = new Date(p.tanggalAkhir).getTime();
-            if (isFinite(end) && Date.now() > end) return;
-          }
-          tambahPesanan(item, card);
-        });
-
-        // PROMO badge
-        const badge = document.createElement('span');
-        badge.className = 'promo-badge';
-        badge.textContent = 'PROMO';
-        card.appendChild(badge);
-
-        // image or placeholder
-        if (p.image) {
-          const img = document.createElement('img');
-          img.className = 'menu-thumb';
-          img.src = p.image;
-          img.alt = p.namaPromo || item.nama;
-          card.appendChild(img);
-        } else {
-          const ph = document.createElement('div');
-          ph.className = 'menu-thumb';
-          card.appendChild(ph);
-        }
-
-        // title
-        const title = document.createElement('div');
-        title.className = 'menu-title';
-        title.textContent = p.namaPromo || p.namaMenu || '';
-        card.appendChild(title);
-
-        // desc
-        const desc = document.createElement('div');
-        desc.className = 'menu-desc';
-        desc.textContent = p.deskripsi || '';
-        card.appendChild(desc);
-
-        // price
-        const price = document.createElement('div');
-        price.className = 'menu-price';
-        const hargaNum = Number(p.harga) || 0;
-        price.dataset.price = hargaNum;
-        price.textContent = formatWithActive(hargaNum);
-        card.appendChild(price);
-
-        // countdown element (if any)
-        if (p.tanggalAkhir) {
-          const c = document.createElement('div');
-          c.className = 'promo-count';
-          c.dataset.end = p.tanggalAkhir;
-          card.appendChild(c);
-        }
-
-        // order count (hidden by default)
-        const counter = document.createElement('span');
-        counter.className = 'order-count';
-        counter.textContent = '0';
-        counter.style.display = 'none';
-        card.appendChild(counter);
-
-        // append to grid
-        grid.appendChild(card);
-      });
-
-      startPromoCountdown();
-    }
-
-    function startPromoCountdown() {
-      stopPromoCountdown();
-      const tick = () => {
-        const nodes = document.querySelectorAll('.promo-count[data-end]');
-        const now = Date.now();
-        nodes.forEach(el => {
-          const end = new Date(el.dataset.end).getTime();
-          if (!isFinite(end)) { el.textContent = ''; return; }
-          const diff = end - now;
-          if (diff <= 0) { el.textContent = 'Expired'; return; }
-          const d = Math.floor(diff / 86400000);
-          const h = Math.floor((diff % 86400000) / 3600000);
-          const m = Math.floor((diff % 3600000) / 60000);
-          const s = Math.floor((diff % 60000) / 1000);
-          el.textContent = `Ends in ${d}d ${h}h ${m}m ${s}s`;
-        });
-      };
-      tick();
-      promoCountdownTimer = setInterval(tick, 1000);
-    }
-
-    function stopPromoCountdown() {
-      if (promoCountdownTimer) {
-        clearInterval(promoCountdownTimer);
-        promoCountdownTimer = null;
-      }
-    }
-
-    // ===================== SEND ORDER (WhatsApp) =====================
-    function sendOrder() {
-      if (!restoData.nomorWaAdmin || restoData.nomorWaAdmin.length === 0) {
-        alert('WhatsApp admin not set');
-        return;
-      }
-      const name = document.getElementById('custName').value.trim();
-      const table = document.getElementById('custTable').value.trim();
-      if (!name || !table) { alert('Please fill customer name and table number!'); return; }
-      if (cart.length === 0) { alert('Cart is empty!'); return; }
-
-      const adminNo = String(restoData.nomorWaAdmin[0]).replace(/[^0-9]/g, '');
-      const date = document.getElementById('custDate').value;
-      const time = document.getElementById('custTime').value;
-      const note = document.getElementById('custNote').value.trim();
-
-      let msg = `🍽️ New Dine-in Order - ${restoData.namaRestoran || ''}
-
-`;
-      msg += `Name: ${name}
-`;
-      msg += `Table: ${table}
-`;
-      msg += `Date: ${date}
-`;
-      msg += `Time: ${time}
-
-`;
-      msg += `📝 Order:
-`;
-      let total = 0;
-      cart.forEach((c, i) => {
-        const line = `${i + 1}. ${c.nama}  x${c.qty}  -  ${formatWithActive(c.harga * c.qty)}`;
-        total += c.harga * c.qty;
-        msg += line + "\n";
-      });
-      msg += `
-Total: ${formatWithActive(total)}`;
-      if (note) msg += `
-
-Notes: ${note}`;
-
-      const url = `https://wa.me/${adminNo}?text=${encodeURIComponent(msg)}`;
-      window.open(url, '_blank');
-    }
-
-    // ===================== IndexedDB (load) =====================
-    const DB_NAME = 'MenuvaDB';
+/* ------------------ CONFIG / STATE ------------------- */
+const DB_NAME = 'MenuvaDB';
 const STORE_NAME = 'menuvaData';
-const DB_VERSION = 2; // sama dengan admin.html
-let db;
 
+let db = null;
+let menuData = [];
+let menuPromo = [];
+let restoData = {};
+let cart = [];
+
+/* ------------------ LOCALE / CURRENCY ---------------- */
+const LOCALE_KEY = 'menuva_localeChoice';
+const localeToCurrencyFallback = {
+  'id': 'IDR','en-US': 'USD','en': 'USD','en-GB': 'GBP','de': 'EUR','fr': 'EUR','ja': 'JPY','zh': 'CNY'
+};
+
+function parseLocaleCurrency(value) {
+  if (!value || value === 'auto') return { mode: 'auto' };
+  const parts = String(value).split('|');
+  return { mode: 'manual', locale: parts[0] || '', currency: parts[1] || '' };
+}
+function detectBrowserLocaleCurrency() {
+  const locale = navigator.language || 'en-US';
+  let currency = localeToCurrencyFallback[locale.split('-')[0]] || localeToCurrencyFallback[locale] || 'IDR';
+  if (localeToCurrencyFallback[locale]) currency = localeToCurrencyFallback[locale];
+  return { locale, currency };
+}
+function getActiveLocaleCurrency() {
+  const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
+  const parsed = parseLocaleCurrency(saved);
+  if (parsed.mode === 'auto') return detectBrowserLocaleCurrency();
+  return {
+    locale: parsed.locale || detectBrowserLocaleCurrency().locale,
+    currency: parsed.currency || detectBrowserLocaleCurrency().currency
+  };
+}
+function saveLocaleChoice(value) { localStorage.setItem(LOCALE_KEY, value); }
+
+function formatPrice(amount, currency, locale) {
+  if (!isFinite(Number(amount))) amount = 0;
+  amount = Number(amount);
+  const zeroFractionCurrencies = ['IDR', 'JPY', 'KRW'];
+  const opts = {
+    style: 'currency',
+    currency: currency || 'IDR',
+    maximumFractionDigits: zeroFractionCurrencies.includes((currency || '').toUpperCase()) ? 0 : 2,
+    minimumFractionDigits: zeroFractionCurrencies.includes((currency || '').toUpperCase()) ? 0 : 2
+  };
+  try { return new Intl.NumberFormat(locale || undefined, opts).format(amount); }
+  catch (e) { return (currency ? currency + ' ' : '') + amount.toLocaleString(); }
+}
+function formatWithActive(amount) {
+  const ac = getActiveLocaleCurrency();
+  return formatPrice(amount, ac.currency, ac.locale);
+}
+
+/* ------------------ HELPERS / UTIL ------------------- */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function getQueryRestoId() {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('resto') || null;
+}
+
+/* ------------------ IndexedDB: init & robust load ----- */
+/*
+  initDB(): open DB and set 'db' variable.
+  loadDataFromDB(restoId): tries:
+    1) get by key == restoId (preferred)
+    2) if not found, try scanning all records for property restoId === restoId
+    3) if still not found and store has exactly 1 record, return it (single-tenant fallback)
+    4) else return null
+*/
 function initDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = (e) => { 
-      db = e.target.result; 
-      resolve(); 
+    if (db) return resolve(db);
+    const req = indexedDB.open(DB_NAME);
+    req.onerror = () => {
+      console.error('IndexedDB open error:', req.error);
+      reject(req.error);
     };
-    // ❌ book.html cuma reader, jangan bikin object store baru
+    req.onsuccess = (e) => {
+      db = e.target.result;
+      resolve(db);
+    };
+    // NOTE: do not create object stores here — admin is authoritative.
   });
 }
 
-function loadDataFromDB() {
+function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(1); // id selalu 1 untuk data resto
-      req.onsuccess = () => resolve(req.result || {});
-      req.onerror = () => reject(req.error);
-    } catch (e) {
-      reject("❌ failed load data: " + e.message);
-    }
-  });
-}
-
-    // ===================== UTIL: escape HTML to avoid injection in dynamic html ====
-    function escapeHtml(str) {
-      if (str === null || str === undefined) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+    if (!db) return reject(new Error('DB not initialized'));
+    if (!db.objectStoreNames.contains(STORE_NAME)) {
+      console.warn('Store not found:', STORE_NAME);
+      return resolve(null);
     }
 
-    // ===================== LOCALE SELECT UI HANDLING =====================
-    function initLocaleSelect() {
-      const sel = document.getElementById('localeSelect');
-      // set select based on saved
-      const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
-      sel.value = saved;
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
 
-      sel.addEventListener('change', () => {
-        const val = sel.value;
-        saveLocaleChoice(val);
-        // re-render prices across the app
-        refreshAllPriceDisplays();
-      });
-
-      // If auto chosen, show derived locale/currency in placeholder? We'll keep simple.
-    }
-
-    function refreshAllPriceDisplays() {
-      // Reformat menu prices
-      document.querySelectorAll('.menu-price').forEach(el => {
-        const p = Number(el.dataset.price) || 0;
-        el.textContent = formatWithActive(p);
-      });
-      // Reformat promo prices (same selector)
-      document.querySelectorAll('.menu-price').forEach(el => {
-        const p = Number(el.dataset.price) || 0;
-        el.textContent = formatWithActive(p);
-      });
-      // Re-render cart to update totals & line items
-      renderCart();
-    }
-
-    // ===================== INIT =====================
-    window.addEventListener('DOMContentLoaded', async () => {
-      applyTheme();
-      initLocaleSelect();
-
-      await initDB();
-      const data = await loadDataFromDB();
-      restoData = data || {};
-      menuData = data.menu || [];
-      menuPromo = data.menuPromo || [];
-
-      // Header
-      document.getElementById('restoLogo').src = data.logo || '';
-      document.getElementById('restoName').innerText = data.namaRestoran || 'Nama Restoran';
-      document.getElementById('alamatRestoranDisplay').innerText = data.restoAddress || '';
-      document.getElementById('teleponRestoranDisplay').innerText = data.restoPhone || '';
-
-      // Date & Time (auto)
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-      document.getElementById('custDate').value = dateStr;
-      document.getElementById('custTime').value = timeStr;
-
-      // Render content
-      renderMenu();
-      renderPromo();
-      renderCart();
-
-      // Ensure prices reflect locale choice on start (in case auto-detect)
-      refreshAllPriceDisplays();
+    // helper get by key (promise)
+    const getByKey = (k) => new Promise((res) => {
+      try {
+        const r = store.get(k);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      } catch (err) { res(null); }
     });
 
-    // Optional: expose some functions for debugging
-    window._menuva = {
-      getActiveLocaleCurrency,
-      formatWithActive,
-      refreshAllPriceDisplays,
-      addToCart
+    (async () => {
+      try {
+        // 1) try direct key lookup if restoId provided
+        if (restoId) {
+          const byKey = await getByKey(restoId);
+          if (byKey) { console.log('✅ Found by key restoId:', restoId); return resolve(byKey); }
+          console.log('• not found by key restoId:', restoId);
+        }
+
+        // 2) try scanning all records and match property restoId
+        const allReq = store.getAll();
+        allReq.onsuccess = () => {
+          const all = allReq.result || [];
+          if (restoId) {
+            const found = all.find(r => r && (r.restoId === restoId || r.restoPhone === restoId));
+            if (found) { console.log('✅ Found by scanning property restoId'); return resolve(found); }
+          }
+          // 3) fallback: if only one record in DB, return it
+          if (all.length === 1) {
+            console.log('ℹ️ Only 1 record in store — using it as fallback');
+            return resolve(all[0]);
+          }
+          // nothing
+          console.warn('❌ No matching data found in store');
+          return resolve(null);
+        };
+        allReq.onerror = () => {
+          console.warn('getAll() error:', allReq.error);
+          resolve(null);
+        };
+      } catch (err) {
+        console.error('loadDataFromDB internal error:', err);
+        resolve(null);
+      }
+    })();
+  });
+}
+
+/* ------------------ CART FUNCTIONS ------------------- */
+function renderCart() {
+  const rows = document.getElementById('cartRows');
+  const empty = document.getElementById('cartEmpty');
+  if (!rows || !empty) return;
+  rows.innerHTML = '';
+  if (!cart || cart.length === 0) {
+    empty.style.display = 'block';
+    document.getElementById('cartTotal').textContent = formatWithActive(0);
+    return;
+  }
+  empty.style.display = 'none';
+  let total = 0;
+  cart.forEach((c, i) => {
+    const subtotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
+    total += subtotal;
+    const row = document.createElement('div');
+    row.className = 'cart-row';
+    row.innerHTML = `
+      <div><strong>${escapeHtml(c.nama)}</strong><div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div></div>
+      <div class="qty-wrap">
+        <button onclick="updateQty(${i}, -1)">-</button>
+        <input type="text" value="${c.qty}" readonly />
+        <button onclick="updateQty(${i}, 1)">+</button>
+      </div>
+      <div class="price-right">${formatWithActive(subtotal)}</div>
+      <button class="remove-btn" title="Remove" onclick="removeFromCart(${i})">✕</button>
+    `;
+    rows.appendChild(row);
+  });
+  document.getElementById('cartTotal').textContent = formatWithActive(total);
+}
+function addToCart(name, price) {
+  const harga = typeof price === 'string' ? parseFloat(String(price).replace(/[^0-9.]/g, '')) : Number(price);
+  const key = name;
+  const idx = cart.findIndex(i => i.key === key);
+  if (idx >= 0) cart[idx].qty += 1; else cart.push({ key, nama: name, harga: harga || 0, qty: 1 });
+  renderCart();
+}
+function updateQty(index, delta) {
+  if (!cart[index]) return;
+  cart[index].qty += delta;
+  if (cart[index].qty <= 0) cart.splice(index, 1);
+  renderCart();
+}
+function removeFromCart(index) {
+  cart.splice(index, 1);
+  renderCart();
+}
+
+/* ------------------ RENDER MENU ---------------------- */
+function renderMenu() {
+  const map = { food: 'foodGrid', snack: 'snackGrid', drink: 'drinkGrid', special: 'specialGrid' };
+  Object.keys(map).forEach(k => {
+    const grid = document.getElementById(map[k]);
+    if (!grid) return;
+    grid.innerHTML = '';
+    const items = (menuData || []).filter(m => m.kategori === k);
+    if (!items || items.length === 0) {
+      grid.innerHTML = '<div class="cart-empty">No item yet</div>';
+      return;
+    }
+    items.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'menu-card';
+      card.onclick = () => tambahPesanan(m, card);
+      const hargaNum = Number(m.harga) || 0;
+      card.innerHTML = `
+        ${m.image ? `<img class="menu-thumb" src="${m.image}" alt="${escapeHtml(m.nama)}">` : `<div class="menu-thumb"></div>`}
+        <div class="menu-title">${escapeHtml(m.nama)}</div>
+        <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
+        <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
+        <span class="order-count">0</span>
+      `;
+      grid.appendChild(card);
+    });
+  });
+}
+function tambahPesanan(item, cardEl) {
+  const existing = cart.find(c => c.nama === item.nama);
+  const hargaNum = Number(item.harga) || 0;
+  if (existing) existing.qty += 1;
+  else cart.push({ key: item.nama, nama: item.nama, harga: hargaNum, qty: 1 });
+  const counter = cardEl.querySelector('.order-count');
+  if (counter) {
+    const cartItem = cart.find(c => c.nama === item.nama);
+    counter.textContent = cartItem.qty;
+    counter.style.display = 'inline-block';
+  }
+  renderCart();
+}
+
+/* ------------------ PROMO (render + countdown) -------- */
+let promoCountdownTimer = null;
+
+function renderPromo() {
+  const grid = document.getElementById('promoGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const now = Date.now();
+  const promos = (menuPromo || []).filter(p => {
+    if (!p.tanggalAkhir) return true;
+    const end = new Date(p.tanggalAkhir).getTime();
+    return isFinite(end) ? end > now : true;
+  });
+
+  if (!promos || promos.length === 0) {
+    grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
+    stopPromoCountdown();
+    return;
+  }
+
+  promos.forEach((p, idx) => {
+    const card = document.createElement('div');
+    card.className = 'menu-card promo-card';
+
+    const item = {
+      nama: p.namaPromo || p.namaMenu || 'Promo Item',
+      harga: Number(p.harga) || 0,
+      deskripsi: p.deskripsi || '',
+      image: p.image || ''
     };
-  </script>
+
+    card.addEventListener('click', () => {
+      if (p.tanggalAkhir) {
+        const end = new Date(p.tanggalAkhir).getTime();
+        if (isFinite(end) && Date.now() > end) return;
+      }
+      tambahPesanan(item, card);
+    });
+
+    const badge = document.createElement('span');
+    badge.className = 'promo-badge';
+    badge.textContent = 'PROMO';
+    card.appendChild(badge);
+
+    if (p.image) {
+      const img = document.createElement('img');
+      img.className = 'menu-thumb';
+      img.src = p.image;
+      img.alt = p.namaPromo || item.nama;
+      card.appendChild(img);
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'menu-thumb';
+      card.appendChild(ph);
+    }
+
+    const title = document.createElement('div');
+    title.className = 'menu-title';
+    title.textContent = p.namaPromo || p.namaMenu || 'Promo';
+    card.appendChild(title);
+
+    const desc = document.createElement('div');
+    desc.className = 'menu-desc';
+    desc.textContent = p.deskripsi || '';
+    card.appendChild(desc);
+
+    const price = document.createElement('div');
+    price.className = 'menu-price';
+    const hargaNum = Number(p.harga) || 0;
+    price.dataset.price = hargaNum;
+    price.textContent = formatWithActive(hargaNum);
+    card.appendChild(price);
+
+    if (p.tanggalAkhir) {
+      const c = document.createElement('div');
+      c.className = 'promo-count';
+      c.dataset.end = p.tanggalAkhir;
+      card.appendChild(c);
+    }
+
+    const counter = document.createElement('span');
+    counter.className = 'order-count';
+    counter.textContent = '0';
+    counter.style.display = 'none';
+    card.appendChild(counter);
+
+    grid.appendChild(card);
+  });
+
+  startPromoCountdown();
+}
+
+function startPromoCountdown() {
+  stopPromoCountdown();
+  const tick = () => {
+    const nodes = document.querySelectorAll('.promo-count[data-end]');
+    const now = Date.now();
+    nodes.forEach(el => {
+      const end = new Date(el.dataset.end).getTime();
+      if (!isFinite(end)) { el.textContent = ''; return; }
+      const diff = end - now;
+      if (diff <= 0) { el.textContent = 'Expired'; return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      el.textContent = `Ends in ${d}d ${h}h ${m}m ${s}s`;
+    });
+  };
+  tick();
+  promoCountdownTimer = setInterval(tick, 1000);
+}
+function stopPromoCountdown() {
+  if (promoCountdownTimer) { clearInterval(promoCountdownTimer); promoCountdownTimer = null; }
+}
+
+/* ------------------ SEND ORDER (WhatsApp) ------------- */
+function sendOrder() {
+  if (!restoData.nomorWaAdmin || restoData.nomorWaAdmin.length === 0) {
+    alert('WhatsApp admin not set');
+    return;
+  }
+  const name = document.getElementById('custName').value.trim();
+  const table = document.getElementById('custTable').value.trim();
+  if (!name || !table) { alert('Please fill customer name and table number!'); return; }
+  if (cart.length === 0) { alert('Cart is empty!'); return; }
+
+  const adminNo = String(restoData.nomorWaAdmin[0]).replace(/[^0-9]/g, '');
+  const date = document.getElementById('custDate').value;
+  const time = document.getElementById('custTime').value;
+  const note = document.getElementById('custNote').value.trim();
+
+  let msg = `🍽️ New Dine-in Order - ${restoData.namaRestoran || ''}\n\n`;
+  msg += `Name: ${name}\n`;
+  msg += `Table: ${table}\n`;
+  msg += `Date: ${date}\n`;
+  msg += `Time: ${time}\n\n`;
+  msg += `📝 Order:\n`;
+  let total = 0;
+  cart.forEach((c, i) => {
+    const subtotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
+    total += subtotal;
+    msg += `${i + 1}. ${c.nama}  x${c.qty}  -  ${formatWithActive(subtotal)}\n`;
+  });
+  msg += `\nTotal: ${formatWithActive(total)}`;
+  if (note) msg += `\n\nNotes: ${note}`;
+
+  const url = `https://wa.me/${adminNo}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+/* ------------------ LOCALE UI ------------------------- */
+function initLocaleSelect() {
+  const sel = document.getElementById('localeSelect');
+  if (!sel) return;
+  const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
+  sel.value = saved;
+  sel.addEventListener('change', () => {
+    saveLocaleChoice(sel.value);
+    refreshAllPriceDisplays();
+  });
+}
+
+/* refresh price elements */
+function refreshAllPriceDisplays() {
+  document.querySelectorAll('.menu-price').forEach(el => {
+    const p = Number(el.dataset.price) || 0;
+    el.textContent = formatWithActive(p);
+  });
+  renderCart();
+}
+
+/* ------------------ INIT (on DOM ready) ---------------- */
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    applyTheme?.(); // optional from your other code
+  } catch (e) {}
+
+  initLocaleSelect();
+
+  // init DB and load data (use restoId from URL if provided)
+  await initDB();
+  const restoId = getQueryRestoId();
+  const data = await loadDataFromDB(restoId);
+  restoData = data || {};
+  menuData = (data && Array.isArray(data.menu)) ? data.menu : [];
+  menuPromo = (data && Array.isArray(data.menuPromo)) ? data.menuPromo : [];
+
+  // header info (IDs in markup: restoLogo, restoName, alamatRestoranDisplay, teleponRestoranDisplay)
+  const logoEl = document.getElementById('restoLogo');
+  if (logoEl) { logoEl.src = data?.logo || ''; logoEl.style.display = data?.logo ? 'block' : 'none'; }
+  const nameEl = document.getElementById('restoName');
+  if (nameEl) nameEl.innerText = data?.namaRestoran || 'Nama Restoran';
+  const alamatEl = document.getElementById('alamatRestoranDisplay');
+  if (alamatEl) alamatEl.innerText = data?.restoAddress || '';
+  const telEl = document.getElementById('teleponRestoranDisplay');
+  if (telEl) telEl.innerText = data?.restoPhone || '';
+
+  // set default date/time fields if present
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const dateInput = document.getElementById('custDate');
+  const timeInput = document.getElementById('custTime');
+  if (dateInput) dateInput.value = dateStr;
+  if (timeInput) timeInput.value = timeStr;
+
+  // render everything
+  renderMenu();
+  renderPromo();
+  renderCart();
+  refreshAllPriceDisplays();
+
+  // expose for debug
+  window._menuva = {
+    getActiveLocaleCurrency, formatWithActive, refreshAllPriceDisplays, addToCart, loadDataFromDB
+  };
+
+  console.log('book.html: initialized. restoId param=', restoId, 'loaded:', !!data);
+});
+
+/* Expose sendOrder globally if used by onclick attr */
+window.sendOrder = sendOrder;
+</script>
 </body>
 </html>
+
