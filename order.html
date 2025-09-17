@@ -358,6 +358,24 @@ body.dark .qty-controls span {
   .qty-controls button { width: 26px; height: 26px; font-size: 15px; }
   .qty-controls span { min-width: 30px; font-size: 14px; }
 }
+   .promo-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  justify-content: center;
+  padding: 10px;
+}
+
+/* Portrait smartphone */
+@media screen and (max-width: 600px) and (orientation: portrait) {
+  .promo-grid {
+    grid-template-columns: repeat(2, 1fr); /* fix 2 kolom aja */
+  }
+
+  .promo-card img {
+    height: 160px; /* biar lebih square */
+  }
+}
 
 .promo-card {
   position: relative;
@@ -835,7 +853,7 @@ function tampilkanMenu(kategori = null, btn = null) {
 
 /* =================== PROMO =================== */
 function tampilkanPromo() {
-  const promoContainer = document.getElementById('promoContainer');
+  const promoContainer = document.getElementById('promo-grid');
   if (!promoContainer) return;
   if (!Array.isArray(data.menuPromo) || data.menuPromo.length === 0) {
     promoContainer.innerHTML = '';
@@ -987,6 +1005,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
