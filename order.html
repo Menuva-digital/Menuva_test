@@ -359,82 +359,79 @@ body.dark .qty-controls span {
   .qty-controls span { min-width: 30px; font-size: 14px; }
 }
 
-/* ===== PROMO GRID ===== */
-#promoContainer {
-  display: grid;
-  gap: 8px; /* super rapat */
-  justify-content: center;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 4px;
-}
-
-/* ===== PROMO CARD ===== */
-.promo-item {
-  width: 100%;          
-  max-width: none;      /* biar fleksibel ngisi kolom grid */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-  padding: 12px;
-  box-sizing: border-box;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.promo-item img {
-  width: 100%;
-  aspect-ratio: 4/3;
-  object-fit: cover;
-  border-radius: 10px;
-  margin-bottom: 8px;
-}
-/* ===== PROMO CARD ===== */
-.promo-item {
-  width: 100%;          
-  max-width: none;      /* biar fleksibel ngisi kolom grid */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-  padding: 12px;
-  box-sizing: border-box;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.promo-item img {
-  width: 100%;
-  aspect-ratio: 4/3;
-  object-fit: cover;
-  border-radius: 10px;
-  margin-bottom: 8px;
-}
-
-.promo-badge {
+.promo-card {
   position: relative;
-  top: -5px;
-  left: -60px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 350px; /* tambahkan tinggi minimum */
+}
+
+.promo-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.15);
+}
+
+.promo-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+
+/* badge */
+.promo-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
   background: #ffcc00;
   color: #222;
   font-weight: 800;
   font-size: 13px;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
-  text-transform: uppercase;
-  box-shadow: 0 2px 6px rgba(0,0,0,.25);
-  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
 }
 
+/* text */
+.promo-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand);
+}
+
+.promo-menu-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.promo-menu-desc {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.promo-price {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand-2);
+}
+
+.promo-count {
+  font-size: 13px;
+  color: #e33;
+  font-weight: 700;
+  margin-top: 4px;
+}
 /* ORDER SUMMARY */
 .order-summary{margin-top:18px;border:1px solid var(--border);padding:16px;border-radius:10px;background:var(--surface)}
 .order-summary input,.order-summary textarea{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);margin-top:6px}
@@ -853,19 +850,20 @@ function tampilkanPromo() {
     const hargaFormatted = formatHarga(hargaNum);
 
     const div = document.createElement('div');
-    div.className = 'promo-item';
+    div.className = 'promo-card';
     div.innerHTML = `
       <div class="promo-badge">Promo</div>
       ${promo.image ? `<img src="${escapeHtml(promo.image)}" alt="Promo image">` : ''}
-      <div><b>${escapeHtml(promo.namaPromo || '')}</b></div>
-      <div>${escapeHtml(promo.namaMenu || '')}</div>
-      <div>${escapeHtml(promo.deskripsi || '')}</div>
-      <div>${hargaFormatted} ${promo.tanggalAkhir ? `| Until ${escapeHtml(promo.tanggalAkhir)}` : ''}</div>
+      <div class="promo-name">${escapeHtml(promo.namaPromo || '')}</div>
+      <div class="promo-menu-title">${escapeHtml(promo.namaMenu || '')}</div>
+      <div class="promo-menu-desc">${escapeHtml(promo.deskripsi || '')}</div>
+      <div class="promo-price">${hargaFormatted} ${promo.tanggalAkhir ? `| Until ${escapeHtml(promo.tanggalAkhir)}` : ''}</div>
       <div class="qty-controls">
         <button data-key="${promoKey}" data-delta="-1">-</button>
         <span id="qty-${promoKey}">${pesanan[promoKey]}</span>
         <button data-key="${promoKey}" data-delta="1">+</button>
       </div>
+      <div class="promo-count">Qty: ${pesanan[promoKey]}</div>
     `;
     promoContainer.appendChild(div);
   });
@@ -989,6 +987,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
