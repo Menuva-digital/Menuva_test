@@ -348,7 +348,7 @@ header .dark-toggle {
   <div class="header-inner">
     <div class="center-info">
       <img id="restoLogo" alt="Logo" />
-      <h1 id="restoName">Resto Name</h1>
+      <h1 id="namaRestoranDisplay">Resto Name</h1> <!-- 🔄 ganti ke namaRestoranDisplay -->
       <div class="contact-info">
         <div id="alamatRestoranDisplay"></div>
         <div id="teleponRestoranDisplay"></div>
@@ -356,21 +356,22 @@ header .dark-toggle {
     </div>
   </div>
   <div class="header-right">
-  <div class="header-controls">
-    <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
-    <select id="localeSelect" class="locale-select" title="Change locale / currency">
-      <option value="auto">Auto (browser)</option>
-      <option value="en-US|USD">US — USD</option>
-      <option value="id-ID|IDR">INA — IDR</option>
-      <option value="en-GB|GBP">UK — GBP</option>
-      <option value="de-DE|EUR">Germany — EUR</option>
-      <option value="ja-JP|JPY">Japan — JPY</option>
-      <option value="zh-CN|CNY">China — CNY</option>
-      <option value="fr-FR|EUR">France — EUR</option>
-    </select>
+    <div class="header-controls">
+      <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
+      <select id="localeSelect" class="locale-select" title="Change locale / currency">
+        <option value="auto">Auto (browser)</option>
+        <option value="en-US|USD">US — USD</option>
+        <option value="id-ID|IDR">INA — IDR</option>
+        <option value="en-GB|GBP">UK — GBP</option>
+        <option value="de-DE|EUR">Germany — EUR</option>
+        <option value="ja-JP|JPY">Japan — JPY</option>
+        <option value="zh-CN|CNY">China — CNY</option>
+        <option value="fr-FR|EUR">France — EUR</option>
+      </select>
+    </div>
   </div>
-</div>
 </header>
+
 <div id="loadingIndicator" style="text-align:center; padding:20px; font-size:0.9rem; color:#666;">
   ⏳ Loading data...
 </div>
@@ -629,4 +630,5 @@ header .dark-toggle {
 </script>
 </body>
 </html>
+
 
