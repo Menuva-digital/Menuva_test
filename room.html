@@ -1,299 +1,501 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Room Catalog</title>
-  <style>
-    :root {
-      --bg-color: #f9f9f9;
-      --text-color: #222;
-      --card-bg: #fff;
-      --header-bg: #003366;
-      --header-text: #fff;
-      --accent: #00ccff;
-    }
-    body.dark {
-      --bg-color: #121212;
-      --text-color: #f5f5f5;
-      --card-bg: #1e1e1e;
-      --header-bg: #000;
-      --header-text: #ddd;
-      --accent: #00ccff;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Reserve Room</title>
+<style>
+/* ===================== RESET & THEME ===================== */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1e3c72;
+  --surface:#ffffff;
+  --text:#1c2d4f;
+  --muted:#5c6f91;
+  --border:#c3d4f7;
+  --primary:#1f70ff;
+  --success:#25d366;
+  --card-light:#ffffff;
+  --card-dark:#1c2333;
+  --chip:#dce7ff;
+  --shadow:0 6px 24px rgba(0,0,0,.08);
+}
+body.dark{
+  --bg:#0e1116;
+  --surface:#141922;
+  --text:#e6ebff;
+  --muted:#aab6db;
+  --border:#263148;
+  --primary:#4da3ff;
+  --chip:#0f1a2a;
+  --shadow:0 8px 28px rgba(0,0,0,.5);
+}
+body{
+  font-family:system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  transition:background .25s,color .25s;
+  padding-bottom:70px; /* space for fixed bar */
+}
 
-    body {
-      font-family: "Segoe UI", sans-serif;
-      margin: 0;
-      background: var(--bg-color);
-      color: var(--text-color);
-    }
+/* header */
+header{position:relative;text-align:center;padding:16px 20px;}
+header .header-inner{display:flex;justify-content:center;align-items:center;position:relative;gap:12px;}
+.header-right{position:absolute;right:16px;top:12px;display:flex;align-items:center;gap:8px;}
+header img#restoLogo{width:70px;height:70px;object-fit:contain;border-radius:8px;}
+header h1{font-size:1.2rem;margin:0;color:var(--text);}
+header .contact-info{font-size:0.8rem;color:var(--text);line-height:1.3;}
+.dark-toggle{font-size:1.2rem;cursor:pointer;background:none;border:none;color:var(--text)}
 
-    header {
-      background: var(--header-bg);
-      color: var(--header-text);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px 20px;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
+/* main container */
+.main-container{
+  width:95%;max-width:900px;margin:20px auto;background:var(--card-light);border-radius:10px;padding:16px;box-shadow:var(--shadow);transition:background .25s;
+}
+body.dark .main-container{background:var(--card-dark);}
 
-    .header-left h1 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
+/* tabs */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.tabs button{width:100%;padding:10px 16px;border-radius:999px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;font-weight:500}
+.tabs button.active{background:#007bff;color:#fff;border-color:#007bff}
 
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+/* grid & cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.hidden{display:none}
+.room-card{background:var(--card-light);border-radius:10px;padding:10px;text-align:center;border:1px solid #ddd;transition:background .3s,color .3s}
+body.dark .room-card{background:var(--card-dark);border-color:#444}
+.room-card img{width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px}
+.room-card h3{font-size:0.95rem;margin:4px 0}
+.room-card p{margin:2px 0;font-size:0.8rem}
+.room-card button{margin-top:6px;padding:6px 10px;background:var(--success);color:#fff;border:none;border-radius:6px;cursor:pointer}
 
-    .dark-toggle {
-      cursor: pointer;
-      border: none;
-      background: transparent;
-      font-size: 20px;
-      color: var(--header-text);
-    }
+/* cart & form */
+.reservasi-container{margin-top:20px}
+#cartPreview{background:var(--chip);padding:10px;border-radius:8px;margin-bottom:8px;font-size:0.85rem}
+.cart-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 12px;margin:6px 0;flex-wrap:wrap}
+.qty-controls{display:flex;align-items:center;gap:6px;margin-left:auto}
+.qty-controls button{padding:6px 10px;border-radius:20px;border:none;cursor:pointer}
+.remove-btn{background:linear-gradient(145deg,#e74c3c,#c0392b);border-radius:50%;width:28px;height:28px;border:none;color:#fff;display:flex;align-items:center;justify-content:center}
 
-    .locale-select {
-      padding: 5px;
-      border-radius: 6px;
-      border: none;
-      font-size: 14px;
-    }
+/* form inputs */
+.form-input{display:flex;flex-direction:column;margin-bottom:10px}
+.form-input label{font-size:0.85rem;margin-bottom:4px}
+.form-input input,.form-input textarea{padding:6px 8px;border-radius:6px;border:1px solid #ccc;font-size:0.85rem;width:100%}
+.form-input textarea{min-height:60px;resize:vertical}
 
-    main {
-      padding: 20px;
-      margin-bottom: 80px; /* biar nggak ketutup fixbar */
-    }
+/* loading */
+#loadingIndicator{display:none;text-align:center;padding:20px;font-size:0.9rem;color:#666}
+#loadingIndicator.active{display:block;animation:fadeIn .3s ease-in-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    #roomList {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-    }
+/* fixed bar */
+.fixed-bar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;gap:10px;padding:10px;background:linear-gradient(135deg,#1e3c72,#2a5298);z-index:2000}
+.fixed-bar button{flex:1;padding:12px 0;font-size:0.95rem;border-radius:8px;border:none;cursor:pointer;color:#fff}
+.btn-wa{background:var(--success)}
+.btn-back{background:#d8cd33;color:#000}
 
-    .room-card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      transition: transform 0.2s;
-    }
-    .room-card:hover {
-      transform: translateY(-5px);
-    }
-
-    .room-card img {
-      width: 100%;
-      height: 160px;
-      object-fit: cover;
-    }
-
-    .room-content {
-      padding: 15px;
-    }
-
-    .room-title {
-      font-size: 1.2rem;
-      margin: 0 0 5px;
-    }
-
-    .room-desc {
-      font-size: 0.9rem;
-      margin: 0 0 10px;
-    }
-
-    .room-price {
-      font-weight: bold;
-      color: var(--accent);
-      font-size: 1rem;
-    }
-
-    .fixbar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--header-bg);
-      color: var(--header-text);
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      padding: 10px;
-      box-shadow: 0 -2px 6px rgba(0,0,0,0.2);
-      z-index: 1000;
-    }
-
-    .fixbar button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      background: var(--accent);
-      color: #fff;
-      font-weight: bold;
-    }
-
-    footer {
-      background: var(--header-bg);
-      color: var(--header-text);
-      text-align: center;
-      padding: 15px;
-      margin-top: 30px;
-    }
-  </style>
+/* small screens */
+@media (max-width:500px){
+  header .header-inner{flex-direction:column;align-items:flex-start;gap:6px}
+  header h1{font-size:1rem}
+  .room-card img{height:80px}
+}
+</style>
 </head>
 <body>
-  <header>
-    <div class="header-left">
-      <h1>Room Catalog</h1>
+<header>
+  <div class="header-inner">
+    <div class="center-info">
+      <img id="restoLogo" alt="Logo" />
+      <h1 id="restoName">Resto Name</h1>
+      <div class="contact-info">
+        <div id="alamatRestoranDisplay"></div>
+        <div id="teleponRestoranDisplay"></div>
+      </div>
     </div>
+    <!-- right controls placed inside header as original -->
     <div class="header-right">
-      <button id="darkToggle" class="dark-toggle">🌙</button>
-      <select id="localeSelect" class="locale-select">
-        <option value="auto">Auto</option>
-        <option value="id-ID|IDR">IDR</option>
-        <option value="en-US|USD">USD</option>
-        <option value="en-GB|GBP">GBP</option>
-        <option value="ja-JP|JPY">JPY</option>
+      <button id="darkToggle" class="dark-toggle" title="Toggle theme">🌙</button>
+      <select id="localeSelect" class="locale-select" title="Change locale / currency">
+        <option value="auto">Auto (browser)</option>
+        <option value="id-ID|IDR">INA — IDR</option>
+        <option value="en-US|USD">US — USD</option>
+        <option value="en-GB|GBP">UK — GBP</option>
+        <option value="ja-JP|JPY">JP — JPY</option>
+        <option value="fr-FR|EUR">FR — EUR</option>
       </select>
     </div>
-  </header>
+  </div>
+</header>
 
-  <main>
-    <div id="roomList"></div>
-  </main>
+<div id="loadingIndicator">⏳ Loading data...</div>
 
-  <div class="fixbar">
-    <button id="cartBtn">🛒 Cart</button>
-    <button id="reserveBtn">📩 Reservasi</button>
+<div class="main-container" id="app">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="active" data-target="rooms">Rooms</button>
+    <button data-target="meetings">Meeting Rooms</button>
+    <button data-target="packages">Packages</button>
   </div>
 
-  <footer>
-    <p>&copy; 2025 My Resto - All Rights Reserved</p>
-  </footer>
+  <!-- Grid -->
+  <section id="rooms" class="grid"></section>
+  <section id="meetings" class="grid hidden"></section>
+  <section id="packages" class="grid hidden"></section>
+  <p id="empty" class="hidden" style="text-align:center;color:#666;margin-top:8px">Data Empty.</p>
 
-  <script>
-    // === IndexedDB setup ===
-    const DB_NAME = "RoomDB";
-    const STORE_NAME = "rooms";
-    let db;
+  <!-- Cart + Form -->
+  <div class="reservasi-container">
+    <div id="cartPreview"><p><i>No choice</i></p></div>
+    <p id="cartTotal">Total: 0</p>
+    <br>
+    <div class="form-input"><label>Orderer Name</label><input type="text" id="custName"></div>
+    <div class="form-input"><label>Address</label><input type="text" id="custAddress"></div>
+    <div class="form-input"><label>Telephone Number</label><input type="text" id="custPhone"></div>
+    <div class="form-input"><label>Date Used</label><input type="date" id="custDate"></div>
+    <div class="form-input"><label>Notes</label><textarea id="custNote"></textarea></div>
+  </div>
+</div>
 
-    function openDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1);
-        request.onupgradeneeded = (e) => {
-          db = e.target.result;
-          if (!db.objectStoreNames.contains(STORE_NAME)) {
-            db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
-          }
-        };
-        request.onsuccess = (e) => {
-          db = e.target.result;
-          resolve();
-        };
-        request.onerror = (e) => reject(e);
-      });
-    }
+<!-- Bottom fixed bar -->
+<div class="fixed-bar" role="navigation" aria-label="bottom actions">
+  <button class="btn-wa" id="btnSend">📤 Send Request</button>
+  <button class="btn-back" id="btnBack">🔙 Back To Menu</button>
+</div>
 
-    function loadRooms() {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readonly");
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
+<script>
+/* ========= CONFIG ========= */
+const DB_NAME = "MenuvaDB";        // match admin.html
+const STORE_NAME = "menuvaData";
+const DB_VERSION = 2;
 
-    function renderRooms(data) {
-      const roomList = document.getElementById("roomList");
-      roomList.innerHTML = "";
-      data.forEach(room => {
-        const div = document.createElement("div");
-        div.className = "room-card";
-        div.innerHTML = `
-          <img src="${room.image || 'https://via.placeholder.com/400x200'}" alt="${room.name}">
-          <div class="room-content">
-            <h3 class="room-title">${room.name}</h3>
-            <p class="room-desc">${room.description}</p>
-            <p class="room-price">${formatPrice(room.price)}</p>
-          </div>
-        `;
-        roomList.appendChild(div);
-      });
-    }
+/* ========= STATE ========= */
+let db = null;
+let restoData = {}; // object loaded from DB
+let cart = [];
+let currentLocale = navigator.language || "id-ID";
+let currentCurrency = "IDR";
 
-    // === Currency formatting ===
-    let currentLocale = navigator.language || "id-ID";
-    let currentCurrency = "IDR";
+/* ========= HELPERS ========= */
+function getEl(id){ return document.getElementById(id); }
+function escapeHtml(str){
+  if (str === null || str === undefined) return "";
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,"&#39;").replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatCurrency(num){
+  const n = Number(num) || 0;
+  try {
+    return new Intl.NumberFormat(currentLocale, { style: "currency", currency: currentCurrency, maximumFractionDigits: 0 }).format(n);
+  } catch (e) {
+    return n.toLocaleString();
+  }
+}
 
-    function formatPrice(value) {
-      return new Intl.NumberFormat(currentLocale, { style: "currency", currency: currentCurrency }).format(value);
-    }
-
-    document.getElementById("localeSelect").addEventListener("change", (e) => {
-      const val = e.target.value;
-      if (val === "auto") {
-        currentLocale = navigator.language || "id-ID";
-        currentCurrency = "IDR";
-      } else {
-        const [loc, cur] = val.split("|");
-        currentLocale = loc;
-        currentCurrency = cur;
+/* ========= INDEXEDDB ========= */
+function initDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onupgradeneeded = e => {
+      db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
       }
-      loadRooms().then(renderRooms);
-    });
+    };
+  });
+}
 
-    // === Dark mode toggle ===
-    const darkToggle = document.getElementById("darkToggle");
-    if (localStorage.getItem("theme") === "dark") {
-      document.body.classList.add("dark");
-      darkToggle.textContent = "☀️";
+/**
+ * Load data from store:
+ * - if URL has ?resto=ID -> try store.get(ID)
+ * - else -> getAll() and return first record (admin saved single record)
+ */
+function loadDataFromDB(){
+  return new Promise((resolve)=>{
+    if(!db){ return resolve({}); }
+    try {
+      const urlParams = new URLSearchParams(location.search);
+      const wanted = urlParams.get('resto') || null;
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+
+      if (wanted) {
+        const r = store.get(wanted);
+        r.onsuccess = () => resolve(r.result || {});
+        r.onerror = () => resolve({});
+        return;
+      }
+
+      const allReq = store.getAll();
+      allReq.onsuccess = () => {
+        const all = allReq.result || [];
+        if (all.length === 0) return resolve({});
+        // prefer record with restoId, else first
+        const found = all.find(x => x && (x.restoId || x.restoPhone)) || all[0];
+        resolve(found || {});
+      };
+      allReq.onerror = () => resolve({});
+    } catch (err) {
+      console.error("loadDataFromDB error", err);
+      resolve({});
+    }
+  });
+}
+
+/* ========= THEME ========= */
+function applyTheme(){
+  const saved = localStorage.getItem('menuva_theme');
+  if (saved === 'dark') document.body.classList.add('dark');
+  else document.body.classList.remove('dark');
+  const btn = getEl('darkToggle');
+  if (btn) btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+}
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  localStorage.setItem('menuva_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+  const btn = getEl('darkToggle');
+  if (btn) btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+}
+
+/* ========= UI: ROOM CARD CREATION (safer) ========= */
+function createRoomCard(room){
+  // Build DOM elements instead of inline JSON stringify to avoid issues
+  const card = document.createElement('div');
+  card.className = 'room-card';
+
+  const img = document.createElement('img');
+  img.alt = room.nama || room.name || '';
+  img.src = (room.image && room.image.length) ? room.image : 'https://via.placeholder.com/400x200?text=No+Image';
+  card.appendChild(img);
+
+  const h3 = document.createElement('h3');
+  h3.textContent = room.nama || room.name || 'Unnamed';
+  card.appendChild(h3);
+
+  const pPrice = document.createElement('p');
+  pPrice.innerHTML = `<b>Price:</b> ${formatCurrency(room.harga || room.price || 0)}`;
+  card.appendChild(pPrice);
+
+  const pCap = document.createElement('p');
+  pCap.innerHTML = `<b>Capacity:</b> ${room.kapasitas || room.capacity || 0} person`;
+  card.appendChild(pCap);
+
+  const pLuas = document.createElement('p');
+  pLuas.innerHTML = `<b>Room size:</b> ${room.luas || room.size || 0} m²`;
+  card.appendChild(pLuas);
+
+  const pDesc = document.createElement('p');
+  pDesc.textContent = room.deskripsi || room.description || '';
+  card.appendChild(pDesc);
+
+  const btn = document.createElement('button');
+  btn.textContent = 'Add To Cart';
+  btn.addEventListener('click', () => tambahKeCart({
+    nama: room.nama || room.name || 'Unnamed',
+    harga: Number(room.harga || room.price || 0),
+    kapasitas: room.kapasitas || room.capacity || 0,
+    luas: room.luas || room.size || 0,
+    deskripsi: room.deskripsi || room.description || '',
+    kategori: room.kategori || room.category || ''
+  }));
+  card.appendChild(btn);
+
+  return card;
+}
+
+/* ========= DISPLAY ========= */
+function tampilkanData(){
+  const emptyEl = getEl('empty');
+  if(!restoData || !restoData.namaRestoran){
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    // still fill header with defaults
+    getEl('restoLogo').style.display = 'none';
+    getEl('restoName').innerText = 'Resto Name';
+    getEl('alamatRestoranDisplay').innerText = '';
+    getEl('teleponRestoranDisplay').innerText = '';
+    return;
+  }
+
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  // header
+  const logoEl = getEl('restoLogo');
+  if (restoData.logo) { logoEl.src = restoData.logo; logoEl.style.display = ''; logoEl.onerror = () => { logoEl.style.display = 'none'; }; }
+  else logoEl.style.display = 'none';
+  getEl('restoName').innerText = restoData.namaRestoran || '';
+  getEl('alamatRestoranDisplay').innerText = restoData.restoAddress || '';
+  getEl('teleponRestoranDisplay').innerText = restoData.restoPhone || '';
+
+  // set default currency if admin provided something (optional)
+  if (restoData.currency) {
+    currentCurrency = restoData.currency;
+  }
+
+  // grids
+  const gridRooms = getEl('rooms');
+  const gridMeet = getEl('meetings');
+  const gridPack = getEl('packages');
+  [gridRooms, gridMeet, gridPack].forEach(g => { if (g) g.innerHTML = ''; });
+
+  let total = 0;
+  const rooms = Array.isArray(restoData.rooms) ? restoData.rooms : (restoData.menu || []);
+  rooms.forEach(r => {
+    total++;
+    const card = createRoomCard(r);
+    if ((r.kategori || r.category) === 'meeting') gridMeet.appendChild(card);
+    else if ((r.kategori || r.category) === 'package') gridPack.appendChild(card);
+    else gridRooms.appendChild(card);
+  });
+  if (getEl('empty')) getEl('empty').classList.toggle('hidden', total > 0);
+}
+
+/* ========= CART ========= */
+function updateCartUI(){
+  const preview = getEl('cartPreview');
+  const totalEl = getEl('cartTotal');
+  if (!preview || !totalEl) return;
+  if (cart.length === 0) {
+    preview.innerHTML = '<p><i>There are no selected items.</i></p>';
+    totalEl.innerText = 'Total: 0';
+    return;
+  }
+  preview.innerHTML = '';
+  let total = 0;
+  cart.forEach((item, idx) => {
+    const subtotal = (Number(item.harga) || 0) * (Number(item.qty) || 0);
+    total += subtotal;
+
+    const div = document.createElement('div');
+    div.className = 'cart-item';
+    const span = document.createElement('span');
+    span.innerHTML = `${escapeHtml(item.nama)} - ${formatCurrency(item.harga)} x ${item.qty} = <b>${formatCurrency(subtotal)}</b>`;
+    div.appendChild(span);
+
+    if (item.kategori === 'package') {
+      const ctrl = document.createElement('div');
+      ctrl.className = 'qty-controls';
+      const dec = document.createElement('button'); dec.textContent = '-'; dec.onclick = () => ubahQty(idx, -1);
+      const qtySpan = document.createElement('span'); qtySpan.textContent = item.qty;
+      const inc = document.createElement('button'); inc.textContent = '+'; inc.onclick = () => ubahQty(idx, 1);
+      ctrl.appendChild(dec); ctrl.appendChild(qtySpan); ctrl.appendChild(inc);
+      div.appendChild(ctrl);
     }
 
-    darkToggle.addEventListener("click", () => {
-      document.body.classList.toggle("dark");
-      if (document.body.classList.contains("dark")) {
-        localStorage.setItem("theme", "dark");
-        darkToggle.textContent = "☀️";
-      } else {
-        localStorage.setItem("theme", "light");
-        darkToggle.textContent = "🌙";
-      }
-    });
+    const rem = document.createElement('button');
+    rem.className = 'remove-btn';
+    rem.textContent = 'X';
+    rem.onclick = () => hapusDariCart(idx);
+    div.appendChild(rem);
 
-    // === Fixbar button actions ===
-    document.getElementById("cartBtn").addEventListener("click", () => {
-      alert("Cart masih kosong bro 😅");
-    });
+    preview.appendChild(div);
+  });
+  totalEl.innerText = 'Total: ' + formatCurrency(total);
+}
 
-    document.getElementById("reserveBtn").addEventListener("click", () => {
-      window.open("https://wa.me/6281234567890?text=Halo%20saya%20ingin%20reservasi%20kamar", "_blank");
-    });
+function tambahKeCart(room){
+  if(!room || !room.nama) return;
+  const idx = cart.findIndex(r => r.nama === room.nama);
+  if (idx >= 0) cart[idx].qty = (cart[idx].qty || 0) + 1;
+  else cart.push({...room, qty: 1});
+  updateCartUI();
+}
+function hapusDariCart(i){ cart.splice(i,1); updateCartUI(); }
+function ubahQty(i,d){ cart[i].qty += d; if (cart[i].qty < 1) cart[i].qty = 1; updateCartUI(); }
 
-    // === Init ===
-    openDB()
-      .then(() => loadRooms())
-      .then(data => {
-        if (data.length === 0) {
-          // Dummy data kalau admin belum isi
-          renderRooms([
-            { name: "Deluxe Room", description: "Nyaman dan luas untuk keluarga", price: 750000, image: "" },
-            { name: "Standard Room", description: "Hemat dan simpel", price: 350000, image: "" },
-            { name: "Suite Room", description: "Mewah dengan pemandangan indah", price: 1500000, image: "" }
-          ]);
-        } else {
-          renderRooms(data);
-        }
-      });
-  </script>
+/* ========= LOCALE SELECT ========= */
+function setupLocaleSelect(){
+  const sel = getEl('localeSelect');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    const val = sel.value;
+    if (val === 'auto') {
+      currentLocale = navigator.language || 'id-ID';
+      // keep currency default as IDR when auto
+      currentCurrency = 'IDR';
+    } else {
+      const [loc, cur] = val.split('|');
+      currentLocale = loc || currentLocale;
+      currentCurrency = cur || currentCurrency;
+    }
+    // re-render UI that shows currency
+    tampilkanData();
+    updateCartUI();
+  });
+}
+
+/* ========= TABS ========= */
+function setupTabs(){
+  document.querySelectorAll('.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.grid').forEach(sec=>sec.classList.add('hidden'));
+      const target = btn.dataset.target;
+      const el = getEl(target);
+      if(el) el.classList.remove('hidden');
+    });
+  });
+}
+
+/* ========= WA & Buttons ========= */
+function setupWA(){
+  const sendBtn = getEl('btnSend');
+  if(!sendBtn) return;
+  sendBtn.addEventListener('click', ()=>{
+    const adminNos = restoData.nomorWaAdmin || restoData.nomor_admin || restoData.nomor || [];
+    if (!adminNos || (Array.isArray(adminNos) && adminNos.length === 0)) {
+      alert("Admin's WhatsApp number has not been set.");
+      return;
+    }
+    if (cart.length === 0) { alert("Cart is still empty."); return; }
+    const adminNoRaw = Array.isArray(adminNos) ? adminNos[0] : adminNos;
+    const adminNo = String(adminNoRaw).replace(/[^0-9]/g,'');
+    let pesan = `Hello ${restoData.namaRestoran || 'Admin'}, I want a reservation:\n\n`;
+    cart.forEach((it,i) => {
+      pesan += `${i+1}. ${it.nama} - ${formatCurrency(it.harga)} x ${it.qty} = ${formatCurrency((it.harga||0)*it.qty)}\n`;
+    });
+    const total = cart.reduce((a,b)=>a + ((Number(b.harga)||0) * (b.qty||0)),0);
+    pesan += `\nTotal: ${formatCurrency(total)}\n\n`;
+    pesan += `Name: ${getEl('custName')?.value || ''}\nAddress: ${getEl('custAddress')?.value || ''}\nPhone: ${getEl('custPhone')?.value || ''}\nDate: ${getEl('custDate')?.value || ''}\nNotes: ${getEl('custNote')?.value || ''}\n`;
+    window.open(`https://wa.me/${adminNo}?text=${encodeURIComponent(pesan)}`, '_blank');
+  });
+
+  const back = getEl('btnBack');
+  if (back) back.addEventListener('click', () => history.back());
+}
+
+/* ========= INIT ========= */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // apply theme button wiring
+  applyTheme();
+  const darkBtn = getEl('darkToggle');
+  if (darkBtn) darkBtn.addEventListener('click', toggleDark);
+
+  // locale select wiring
+  setupLocaleSelect();
+
+  // tabs
+  setupTabs();
+
+  // show loader
+  const ld = getEl('loadingIndicator');
+  if (ld) ld.classList.add('active');
+
+  try {
+    await initDB();
+    restoData = await loadDataFromDB();
+  } catch (err) {
+    console.error('DB init/load error', err);
+    restoData = {};
+  }
+
+  tampilkanData();
+  updateCartUI();
+  setupWA();
+
+  // hide loader
+  if (ld) ld.classList.remove('active');
+});
+</script>
 </body>
 </html>
