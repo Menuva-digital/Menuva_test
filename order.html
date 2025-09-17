@@ -38,83 +38,87 @@
     margin:0;padding:0;padding-bottom:60px;
   }
 /* Header Container */
-header {
-  width: 100%; 
+.header {
+  width: 100%;
   background: linear-gradient(90deg, var(--brand-2), var(--brand-3));
   color: #fff;
-  padding: 16px 20px;   /* tipis tapi tetap lega */
+  padding: 8px 12px;
   position: sticky;
   top: 0;
   left: 0;
-  right: 0; 
+  right: 0;
   z-index: 50;
   box-shadow: var(--shadow);
+  
   display: flex;
-  align-items: center;
-  gap: 12px;           /* jarak logo dengan teks */
+  justify-content: space-between;
+  align-items: flex-start; /* biar kanan & kiri sejajar atas */
+}
+
+/* Kiri: Logo + Info */
+.header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 /* Logo */
-header img {
-  width: 80px;         /* sedikit lebih gede biar seimbang */
-  height: 80px;
+.header-left img {
+  width: 44px;
+  height: 44px;
   object-fit: cover;
   border-radius: 6px;
 }
 
-/* Info */
+/* Info Resto */
 .resto-info {
   display: flex;
   flex-direction: column;
-  gap: 10px; /* rapetin jarak antar baris */
+  gap: 2px;
 }
 
-/* Nama Resto */
 .resto-info h1 {
-  font-size: 17px;     /* agak kecil biar gak ngalahin logo */
+  font-size: 17px;
   margin: 0;
   color: #1f2a44;
   font-weight: 600;
-  line-height: 1.1;    /* lebih rapat */
 }
 
-/* Alamat & Telp */
 .resto-info p {
   margin: 0;
+  font-size: 13px;
+  line-height: 1.2;
   color: #6b7a99;
-  font-size: 13px;     /* lebih kecil dari nama resto */
-  line-height: 1.1;    /* rapet */
 }
 
-/* No telp */
-#restoPhone {
+#teleponRestoranDisplay {
   color: #1f2a44;
   font-weight: 500;
-  font-size: 13px;
 }
 
-/* default (light mode) */
+/* Kanan: Toggle + Dropdown */
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.dark-toggle {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
 .locale-select {
-  position: absolute;
-  right: 30px; 
-  top: 30%;
-  transform: translateY(-50%); 
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
   border: 0;
-  background: rgba(0,0,0,.05);  /* abu transparan biar nyatu */
-  color: #000;  /* teks hitam */
-  font-weight: 700;
-  min-width: 140px;
-  max-width: 160px;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-/* dark mode */
-.dark .locale-select {
-  background: rgba(255,255,255,.12); /* abu terang transparan */
-  color: #fff;  /* teks putih */
+  background: rgba(255,255,255,.2);
+  color: #000;
+  font-weight: 600;
+  min-width: 130px;
 }
 
 /* responsive portrait tweak */
@@ -430,23 +434,27 @@ body.dark .qty-controls span {
 </head>
 <body>
 <header class="header">
-  <img id="restoLogo" alt="Restaurant Logo" style="display:none" />
-  <h1 id="namaRestoranDisplay"></h1>
-  <p id="alamatRestoranDisplay"></p>
-  <p id="teleponRestoranDisplay"></p>
+  <div class="header-left">
+    <img id="restoLogo" alt="Restaurant Logo" style="display:none" />
+    <div class="resto-info">
+      <h1 id="namaRestoranDisplay"></h1>
+      <p id="alamatRestoranDisplay"></p>
+      <p id="teleponRestoranDisplay"></p>
+    </div>
+  </div>
+
   <div class="header-right">
     <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
-  
-  <select id="localeSelect" class="locale-select" title="Change locale / currency">
-    <option value="auto">Auto (browser)</option>
-    <option value="en-US|USD">US — USD</option>
-    <option value="id-ID|IDR">INA — IDR</option>
-    <option value="en-GB|GBP">UK — GBP</option>
-    <option value="de-DE|EUR">Germany — EUR</option>
-    <option value="ja-JP|JPY">Japan — JPY</option>
-    <option value="zh-CN|CNY">China — CNY</option>
-    <option value="fr-FR|EUR">France — EUR</option>
-  </select>
+    <select id="localeSelect" class="locale-select" title="Change locale / currency">
+      <option value="auto">Auto (browser)</option>
+      <option value="en-US|USD">US — USD</option>
+      <option value="id-ID|IDR">INA — IDR</option>
+      <option value="en-GB|GBP">UK — GBP</option>
+      <option value="de-DE|EUR">Germany — EUR</option>
+      <option value="ja-JP|JPY">Japan — JPY</option>
+      <option value="zh-CN|CNY">China — CNY</option>
+      <option value="fr-FR|EUR">France — EUR</option>
+    </select>
   </div>
 </header>
 
@@ -952,6 +960,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
