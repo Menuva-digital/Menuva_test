@@ -363,8 +363,8 @@ body.dark .qty-controls span {
 
 /* ===== PROMO CARD ===== */
 .promo-item {
-  width: 100%;             /* biar fleksibel ikut kolom grid */
-  max-width: 220px;        /* batasi lebar card */
+  width: 100%;          
+  max-width: none;      /* biar fleksibel ngisi kolom grid */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -379,9 +379,29 @@ body.dark .qty-controls span {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.promo-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+.promo-item img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+/* ===== PROMO CARD ===== */
+.promo-item {
+  width: 100%;          
+  max-width: none;      /* biar fleksibel ngisi kolom grid */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  padding: 12px;
+  box-sizing: border-box;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .promo-item img {
@@ -391,6 +411,7 @@ body.dark .qty-controls span {
   border-radius: 10px;
   margin-bottom: 8px;
 }
+
 .promo-badge {
   position: relative;
   top: -5px;
@@ -960,6 +981,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
