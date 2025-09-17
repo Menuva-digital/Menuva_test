@@ -358,7 +358,7 @@ body.dark .qty-controls span {
   .qty-controls button { width: 26px; height: 26px; font-size: 15px; }
   .qty-controls span { min-width: 30px; font-size: 14px; }
 }
-   .promo-grid {
+ .promo-grid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -369,11 +369,11 @@ body.dark .qty-controls span {
 /* Portrait smartphone */
 @media screen and (max-width: 600px) and (orientation: portrait) {
   .promo-grid {
-    grid-template-columns: repeat(2, 1fr); /* fix 2 kolom aja */
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .promo-card img {
-    height: 160px; /* biar lebih square */
+    height: 160px;
   }
 }
 
@@ -391,7 +391,7 @@ body.dark .qty-controls span {
   text-align: center;
   gap: 8px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-height: 350px; /* tambahkan tinggi minimum */
+  min-height: 350px;
 }
 
 .promo-card:hover {
@@ -405,7 +405,6 @@ body.dark .qty-controls span {
   object-fit: cover;
   border-radius: 8px;
 }
-
 
 /* badge */
 .promo-badge {
@@ -450,6 +449,7 @@ body.dark .qty-controls span {
   font-weight: 700;
   margin-top: 4px;
 }
+
 /* ORDER SUMMARY */
 .order-summary{margin-top:18px;border:1px solid var(--border);padding:16px;border-radius:10px;background:var(--surface)}
 .order-summary input,.order-summary textarea{width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);margin-top:6px}
@@ -506,8 +506,9 @@ body.dark .qty-controls span {
 
 <div class="main-container">
   <h2 class="section-title">🔥 Special Promo</h2>
-  <div id="promoContainer"></div>
+  <div id="promoContainer" class="promo-grid"></div>
 </div>
+
 
 <div class="main-container">
   <h2 class="section-title">🍽️ Regular Menu</h2>
@@ -853,8 +854,9 @@ function tampilkanMenu(kategori = null, btn = null) {
 
 /* =================== PROMO =================== */
 function tampilkanPromo() {
-  const promoContainer = document.getElementById('promo-grid');
+  const promoContainer = document.getElementById('promoContainer');
   if (!promoContainer) return;
+
   if (!Array.isArray(data.menuPromo) || data.menuPromo.length === 0) {
     promoContainer.innerHTML = '';
     return;
@@ -901,6 +903,7 @@ function ubahJumlahPromo(index, delta) {
   if (el) el.innerText = pesanan[index];
   updateRingkasan();
 }
+
 
 function ubahJumlah(index, delta) {
   pesanan[index] = Math.max(0, (pesanan[index] || 0) + delta);
@@ -1005,6 +1008,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
