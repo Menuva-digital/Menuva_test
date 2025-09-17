@@ -128,17 +128,30 @@ header .dark-toggle {
 }
 
   /* ===================== MAIN CONTAINER ===================== */
+ /* main container umum */
+.main-container {
+  width: 100%;
+  max-width: 1200px;   /* sebelumnya mungkin 800px, kita lebarkan */
+  margin: 0 auto;      /* biar center di desktop */
+  padding: 1rem;       /* kasih ruang kiri kanan */
+  box-sizing: border-box;
+}
+
+/* kalau layar gede banget, biar agak lega */
+@media (min-width: 1400px) {
   .main-container {
-    width: 95%;
-    max-width: 900px;
-    margin: 20px auto;
-    background: var(--card-light);
-    border-radius: 10px;
-    padding: 16px;
-    box-shadow: var(--shadow);
-    transition: background .3s, color .3s;
+    max-width: 1400px;
   }
-  body.dark .main-container { background: var(--card-dark); }
+}
+
+/* hp portrait / landscape tetap full */
+@media (max-width: 768px) {
+  .main-container {
+    max-width: 100%;
+    padding: 0.5rem;
+  }
+}
+
   
 .tabs {
   display: grid;
@@ -683,5 +696,6 @@ header .dark-toggle {
 
 </body>
 </html>
+
 
 
