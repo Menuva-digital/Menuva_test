@@ -357,13 +357,12 @@ header .dark-toggle {
 </div>
 </div>
 </div>
-
 <script>
   let db;
   const DB_NAME = "MenuvaDB";
   const STORE_NAME = "menuvaData";
   const DB_VERSION = 2;
-  let restoData = {}; // akan diisi dari DB
+  let restoData = {};
 
   function initDB() {
     return new Promise((resolve, reject) => {
@@ -377,46 +376,51 @@ header .dark-toggle {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
-      const req = store.get(1);
-      req.onsuccess = () => resolve(req.result || {});
+      const req = store.getAll();   // ✅ ambil semua data, bukan get(1)
+      req.onsuccess = () => {
+        resolve(req.result && req.result.length ? req.result[0] : {});
+      };
       req.onerror = () => reject(req.error);
     });
   }
 
   let cart = [];
 
-  // Dark Mode
+  // ================= DARK MODE =================
   function applyTheme() {
     const saved = localStorage.getItem('menuva_theme');
     if (saved === 'dark') document.body.classList.add('dark');
-    document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    document.querySelector('.dark-toggle').textContent = 
+      document.body.classList.contains('dark') ? '☀️' : '🌙';
   }
   function toggleDark() {
     document.body.classList.toggle('dark');
-    localStorage.setItem('menuva_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-    document.querySelector('.dark-toggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    localStorage.setItem('menuva_theme', 
+      document.body.classList.contains('dark') ? 'dark' : 'light');
+    document.querySelector('.dark-toggle').textContent = 
+      document.body.classList.contains('dark') ? '☀️' : '🌙';
   }
 
-  // Build Card
+  // ================= CARD =================
   function buatCard(room) {
     return `
       <div class="room-card">
-        <img src="${room.image}" alt="${room.nama}">
-        <h3>${room.nama}</h3>
-        <p><b>Price:</b> ${room.harga.toLocaleString()}</p>
-        <p><b>Capacity:</b> ${room.kapasitas} person</p>
-        <p><b>Room size:</b> ${room.luas} m²</p>
-        <p>${room.deskripsi}</p>
+        <img src="${room.image || ''}" alt="${room.nama || ''}">
+        <h3>${room.nama || ''}</h3>
+        <p><b>Price:</b> ${(room.harga||0).toLocaleString()}</p>
+        <p><b>Capacity:</b> ${room.kapasitas || 0} person</p>
+        <p><b>Room size:</b> ${room.luas || 0} m²</p>
+        <p>${room.deskripsi || ''}</p>
         <button onclick='tambahKeCart(${JSON.stringify(room)})'>Add To Cart</button>
       </div>
     `;
   }
 
-  // Cart
+  // ================= CART =================
   function updateCart() {
     const preview = document.getElementById("cartPreview");
     const totalEl = document.getElementById("cartTotal");
-    if(cart.length===0){
+    if (cart.length===0){
       preview.innerHTML = "<p><i>There are no selected items.</i></p>";
       totalEl.innerText = "Total: 0";
       return;
@@ -428,22 +432,20 @@ header .dark-toggle {
       total += subtotal;
       const div = document.createElement("div");
       div.className = "cart-item";
-     div.innerHTML = `
-  <span>${item.nama} - ${item.harga.toLocaleString()} x ${item.qty} = <b>${subtotal.toLocaleString()}</b></span>
-  ${item.kategori==="package" ? `
-    <div class="qty-controls">
-      <button onclick="ubahQty(${idx},-1)">-</button>
-      <span>${item.qty}</span>
-      <button onclick="ubahQty(${idx},1)">+</button>
-    </div>` : ""}
-  <button class="remove-btn" onclick="hapusDariCart(${idx})">X</button>
-`;
-
+      div.innerHTML = `
+        <span>${item.nama} - ${item.harga.toLocaleString()} x ${item.qty} = <b>${subtotal.toLocaleString()}</b></span>
+        ${item.kategori==="package" ? `
+          <div class="qty-controls">
+            <button onclick="ubahQty(${idx},-1)">-</button>
+            <span>${item.qty}</span>
+            <button onclick="ubahQty(${idx},1)">+</button>
+          </div>` : ""}
+        <button class="remove-btn" onclick="hapusDariCart(${idx})">X</button>
+      `;
       preview.appendChild(div);
     });
-    totalEl.innerText = "Total:  "+total.toLocaleString();
+    totalEl.innerText = "Total: "+total.toLocaleString();
   }
-
   function tambahKeCart(room){
     const idx = cart.findIndex(r=>r.nama===room.nama);
     if(idx>=0) cart[idx].qty++;
@@ -453,21 +455,24 @@ header .dark-toggle {
   function hapusDariCart(i){ cart.splice(i,1); updateCart(); }
   function ubahQty(i,d){ cart[i].qty+=d; if(cart[i].qty<1) cart[i].qty=1; updateCart(); }
 
-  // Display Data
+  // ================= DISPLAY =================
   function tampilkanData(){
     if(!restoData || !restoData.namaRestoran){
       document.getElementById("empty").classList.remove("hidden");
       return;
     }
 
-    // Header
+    // ✅ sinkron dengan HTML lu
     document.getElementById("restoLogo").src = restoData.logo || "";
-    document.getElementById("restoName").innerText = restoData.namaRestoran || "Resto Name";
+    document.getElementById("namaRestoranDisplay").innerText = restoData.namaRestoran || "Resto Name";
     document.getElementById("alamatRestoranDisplay").innerText = restoData.restoAddress || "";
     document.getElementById("teleponRestoranDisplay").innerText = restoData.restoPhone || "";
 
-    // Grid
-    const grids = {rooms:document.getElementById("rooms"), meetings:document.getElementById("meetings"), packages:document.getElementById("packages")};
+    const grids = {
+      rooms:document.getElementById("rooms"),
+      meetings:document.getElementById("meetings"),
+      packages:document.getElementById("packages")
+    };
     Object.values(grids).forEach(g=>g.innerHTML="");
 
     let total=0;
@@ -480,7 +485,7 @@ header .dark-toggle {
     document.getElementById("empty").classList.toggle("hidden", total>0);
   }
 
-  // Tabs
+  // ================= TABS =================
   function setupTabs(){
     document.querySelectorAll(".tabs button").forEach(btn=>{
       btn.addEventListener("click", ()=>{
@@ -492,13 +497,16 @@ header .dark-toggle {
     });
   }
 
-  // WA send
+  // ================= WHATSAPP =================
   function setupWA(){
     document.getElementById("btnSend").addEventListener("click", ()=>{
-      if(!restoData.nomorWaAdmin || restoData.nomorWaAdmin.length===0){ alert("Admin's WhatsApp number has not been set."); return; }
+      if(!restoData.nomorWaAdmin || restoData.nomorWaAdmin.length===0){
+        alert("Admin's WhatsApp number has not been set.");
+        return;
+      }
       if(cart.length===0){ alert("Cart is still empty."); return; }
 
-      const adminNo = restoData.nomorWaAdmin[0].replace(/[^0-9]/g,"");
+      const adminNo = (Array.isArray(restoData.nomorWaAdmin) ? restoData.nomorWaAdmin[0] : restoData.nomorWaAdmin).replace(/[^0-9]/g,"");
       let pesan = `Hello ${restoData.namaRestoran || "Admin"}, I want a reservation:\n\n`;
       cart.forEach((item,i)=>{ pesan += `${i+1}. ${item.nama} - ${item.harga.toLocaleString()} x ${item.qty} = ${(item.harga*item.qty).toLocaleString()}\n`; });
       let total = cart.reduce((a,b)=>a+(b.harga*b.qty),0);
@@ -512,23 +520,22 @@ header .dark-toggle {
     });
   }
 
-  // Init
-document.addEventListener("DOMContentLoaded", async ()=>{
-  applyTheme();
-  document.getElementById("loadingIndicator").classList.add("active");
+  // ================= INIT =================
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    applyTheme();
+    document.getElementById("loadingIndicator").classList.add("active");
 
-  await initDB();
-  restoData = await loadDataFromDB();
+    await initDB();
+    restoData = await loadDataFromDB();
 
-  tampilkanData();
-  setupTabs();
-  setupWA();
+    tampilkanData();
+    setupTabs();
+    setupWA();
 
-  // matikan loader setelah data tampil
-  document.getElementById("loadingIndicator").classList.remove("active");
-});
-
+    document.getElementById("loadingIndicator").classList.remove("active");
+  });
 </script>
 
 </body>
 </html>
+
