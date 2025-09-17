@@ -90,6 +90,26 @@ header .dark-toggle {
   border: none;
   color: var(--text, #fff);
 }
+  
+  .header-right {
+  display: flex;
+  flex-direction: column; /* bikin toggle di atas, dropdown di bawah */
+  align-items: flex-end;  /* posisi kanan */
+  gap: 0.5rem;
+}
+
+.dark-toggle {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.locale-select {
+  padding: 4px 6px;
+  font-size: 0.9rem;
+}
+
 .fixed-bar {
   position: fixed;       /* kalau mau selalu nempel bawah */
   bottom: 0;
@@ -334,18 +354,22 @@ header .dark-toggle {
         <div id="teleponRestoranDisplay"></div>
       </div>
     </div>
-    <button class="dark-toggle" onclick="toggleDark()">🌙</button>
-    <select id="localeSelect" class="locale-select" title="Change locale / currency">
-        <option value="auto">Auto (browser)</option>
-        <option value="en-US|USD">US — USD</option>
-        <option value="id-ID|IDR">INA — IDR</option>
-        <option value="en-GB|GBP">UK — GBP</option>
-        <option value="de-DE|EUR">Germany — EUR</option>
-        <option value="ja-JP|JPY">Japan — JPY</option>
-        <option value="zh-CN|CNY">China — CNY</option>
-        <option value="fr-FR|EUR">France — EUR</option>
-      </select>
   </div>
+  <div class="header-right">
+  <div class="header-controls">
+    <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
+    <select id="localeSelect" class="locale-select" title="Change locale / currency">
+      <option value="auto">Auto (browser)</option>
+      <option value="en-US|USD">US — USD</option>
+      <option value="id-ID|IDR">INA — IDR</option>
+      <option value="en-GB|GBP">UK — GBP</option>
+      <option value="de-DE|EUR">Germany — EUR</option>
+      <option value="ja-JP|JPY">Japan — JPY</option>
+      <option value="zh-CN|CNY">China — CNY</option>
+      <option value="fr-FR|EUR">France — EUR</option>
+    </select>
+  </div>
+</div>
 </header>
 <div id="loadingIndicator" style="text-align:center; padding:20px; font-size:0.9rem; color:#666;">
   ⏳ Loading data...
@@ -384,307 +408,225 @@ header .dark-toggle {
 </div>
 </div>
 <script>
-(() => {
+  let db;
   const DB_NAME = "MenuvaDB";
   const STORE_NAME = "menuvaData";
   const DB_VERSION = 2;
-  let db = null;
-  let restoData = {};
+  let restoData = {}; 
   let cart = [];
 
-  // default locale
-  let currentLocale = navigator.language || "id-ID";
-  let currentCurrency = "IDR";
-
-  // ---------- helpers ----------
-  function getEl(id) {
-    const el = document.getElementById(id);
-    if (!el) console.debug(`[room] getEl: #${id} not found`);
-    return el;
-  }
-  function safeText(id, text) {
-    const el = getEl(id);
-    if (el) el.textContent = text;
-  }
-  function safeHTML(id, html) {
-    const el = getEl(id);
-    if (el) el.innerHTML = html;
-  }
-  function formatCurrency(num) {
-    try {
-      return new Intl.NumberFormat(currentLocale, {
-        style: "currency",
-        currency: currentCurrency,
-        minimumFractionDigits: 0
-      }).format(num || 0);
-    } catch {
-      return (num || 0).toLocaleString();
-    }
-  }
-
-  // ---------- DB ----------
+  // ================== IndexedDB ==================
   function initDB() {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onerror = () => reject(req.error);
-      req.onsuccess = (e) => {
-        db = e.target.result;
-        resolve(db);
-      };
-      req.onupgradeneeded = (e) => {
-        db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
-          console.log("[room] created fallback objectStore", STORE_NAME);
-        }
-      };
+      req.onsuccess = e => { db = e.target.result; resolve(); };
     });
   }
 
-  async function loadDataFromDB() {
-    if (!db) return {};
-    if (!db.objectStoreNames.contains(STORE_NAME)) return {};
-    return new Promise((resolve) => {
-      try {
-        const tx = db.transaction(STORE_NAME, "readonly");
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.getAll();
-        req.onsuccess = () => {
-          const all = req.result || [];
-          if (all.length === 0) return resolve({});
-          const found = all.find(r => r && (r.restoId || r.restoPhone)) || all[0];
-          resolve(found || {});
-        };
-        req.onerror = () => resolve({});
-      } catch {
-        resolve({});
-      }
+  function loadDataFromDB() {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(1);
+      req.onsuccess = () => resolve(req.result || {});
+      req.onerror = () => reject(req.error);
     });
   }
 
-  // ---------- theme ----------
-  function applyTheme() {
-    const saved = localStorage.getItem('menuva_theme');
-    const btn = getEl('darkToggle') || document.querySelector('.dark-toggle');
-    if (saved === 'dark') document.body.classList.add('dark'); 
-    else document.body.classList.remove('dark');
-    if (btn) btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+  // ================== THEME + LOCALE ==================
+  function applyTheme(theme) {
+    if (theme === "dark") {
+      document.body.classList.add("dark");
+      document.getElementById("darkToggle").textContent = "☀️";
+    } else {
+      document.body.classList.remove("dark");
+      document.getElementById("darkToggle").textContent = "🌙";
+    }
   }
+
   function toggleDark() {
-    document.body.classList.toggle('dark');
-    localStorage.setItem('menuva_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-    const btn = getEl('darkToggle') || document.querySelector('.dark-toggle');
-    if (btn) btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    const isDark = document.body.classList.contains("dark");
+    const newTheme = isDark ? "light" : "dark";
+    localStorage.setItem("theme", newTheme);
+    applyTheme(newTheme);
   }
 
-  // ---------- cart helpers ----------
+  function loadTheme() {
+    const saved = localStorage.getItem("theme");
+    if (saved) {
+      applyTheme(saved);
+    } else {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      applyTheme(prefersDark ? "dark" : "light");
+    }
+  }
+
+  function loadLocale() {
+    const savedLocale = localStorage.getItem("locale");
+    if (savedLocale) {
+      document.getElementById("localeSelect").value = savedLocale;
+    }
+  }
+
+  // ================== CARD BUILDER ==================
+  function buatCard(room) {
+    return `
+      <div class="room-card">
+        <img src="${room.image}" alt="${room.nama}">
+        <h3>${room.nama}</h3>
+        <p><b>Price:</b> ${room.harga.toLocaleString()}</p>
+        <p><b>Capacity:</b> ${room.kapasitas} person</p>
+        <p><b>Room size:</b> ${room.luas} m²</p>
+        <p>${room.deskripsi}</p>
+        <button onclick='tambahKeCart(${JSON.stringify(room)})'>Add To Cart</button>
+      </div>
+    `;
+  }
+
+  // ================== CART ==================
   function updateCart() {
-    const preview = getEl("cartPreview");
-    const totalEl = getEl("cartTotal");
-    if (!preview) return;
+    const preview = document.getElementById("cartPreview");
+    const totalEl = document.getElementById("cartTotal");
+    if (!preview || !totalEl) return;
+
     if (cart.length === 0) {
       preview.innerHTML = "<p><i>There are no selected items.</i></p>";
-      if (totalEl) totalEl.innerText = "Total: 0";
+      totalEl.innerText = "Total: 0";
       return;
     }
     preview.innerHTML = "";
     let total = 0;
     cart.forEach((item, idx) => {
-      const subtotal = (Number(item.harga) || 0) * (Number(item.qty) || 0);
+      const subtotal = item.harga * item.qty;
       total += subtotal;
       const div = document.createElement("div");
       div.className = "cart-item";
       div.innerHTML = `
-        <span>${escapeHtml(item.nama)} - ${formatCurrency(item.harga)} x ${item.qty} = <b>${formatCurrency(subtotal)}</b></span>
+        <span>${item.nama} - ${item.harga.toLocaleString()} x ${item.qty} = <b>${subtotal.toLocaleString()}</b></span>
+        ${item.kategori === "package" ? `
+          <div class="qty-controls">
+            <button onclick="ubahQty(${idx},-1)">-</button>
+            <span>${item.qty}</span>
+            <button onclick="ubahQty(${idx},1)">+</button>
+          </div>` : ""}
+        <button class="remove-btn" onclick="hapusDariCart(${idx})">X</button>
       `;
-      if (item.kategori === "package") {
-        const ctrl = document.createElement("div");
-        ctrl.className = "qty-controls";
-        const btnDec = document.createElement("button");
-        btnDec.textContent = "-";
-        btnDec.onclick = () => { ubahQty(idx, -1); };
-        const spanQty = document.createElement("span"); spanQty.textContent = item.qty;
-        const btnInc = document.createElement("button");
-        btnInc.textContent = "+";
-        btnInc.onclick = () => { ubahQty(idx, 1); };
-        ctrl.appendChild(btnDec); ctrl.appendChild(spanQty); ctrl.appendChild(btnInc);
-        div.appendChild(ctrl);
-      }
-      const removeBtn = document.createElement("button");
-      removeBtn.className = "remove-btn";
-      removeBtn.textContent = "X";
-      removeBtn.onclick = () => { hapusDariCart(idx); };
-      div.appendChild(removeBtn);
       preview.appendChild(div);
     });
-    if (totalEl) totalEl.innerText = "Total: " + formatCurrency(total);
+    totalEl.innerText = "Total: " + total.toLocaleString();
   }
 
   function tambahKeCart(room) {
-    if (!room || !room.nama) return;
     const idx = cart.findIndex(r => r.nama === room.nama);
-    if (idx >= 0) cart[idx].qty = (cart[idx].qty || 0) + 1;
+    if (idx >= 0) cart[idx].qty++;
     else cart.push({ ...room, qty: 1 });
     updateCart();
   }
   function hapusDariCart(i) { cart.splice(i, 1); updateCart(); }
   function ubahQty(i, d) { cart[i].qty += d; if (cart[i].qty < 1) cart[i].qty = 1; updateCart(); }
 
-  // ---------- safe escape ----------
-  function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    return String(str)
-      .replace(/&/g,'&amp;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;');
-  }
-
-  // ---------- room card ----------
-  function createRoomCard(room = {}) {
-    const card = document.createElement('div');
-    card.className = 'room-card';
-    const img = document.createElement('img');
-    img.alt = room.nama || '';
-    if (room.image) img.src = room.image; else img.style.display = 'none';
-    card.appendChild(img);
-    const h3 = document.createElement('h3');
-    h3.textContent = room.nama || '';
-    card.appendChild(h3);
-    const pPrice = document.createElement('p');
-    pPrice.innerHTML = `<b>Price:</b> ${formatCurrency(room.harga)}`;
-    card.appendChild(pPrice);
-    const pCap = document.createElement('p');
-    pCap.innerHTML = `<b>Capacity:</b> ${room.kapasitas || 0} person`;
-    card.appendChild(pCap);
-    const pLuas = document.createElement('p');
-    pLuas.innerHTML = `<b>Room size:</b> ${room.luas || 0} m²`;
-    card.appendChild(pLuas);
-    const pDesc = document.createElement('p');
-    pDesc.textContent = room.deskripsi || '';
-    card.appendChild(pDesc);
-    const btn = document.createElement('button');
-    btn.textContent = 'Add To Cart';
-    btn.onclick = () => tambahKeCart(room);
-    card.appendChild(btn);
-    return card;
-  }
-
-  // ---------- display data ----------
+  // ================== DISPLAY ==================
   function tampilkanData() {
     if (!restoData || !restoData.namaRestoran) {
-      const emptyEl = getEl("empty");
-      if (emptyEl) emptyEl.classList.remove("hidden");
+      document.getElementById("empty")?.classList.remove("hidden");
       return;
     }
-    const logoEl = getEl("restoLogo");
-    if (logoEl) {
-      if (restoData.logo) {
-        logoEl.src = restoData.logo;
-        logoEl.style.display = '';
-        logoEl.onerror = () => { logoEl.style.display = 'none'; };
-      } else logoEl.style.display = 'none';
-    }
-    safeText("restoName", restoData.namaRestoran || '');
-    safeText("alamatRestoranDisplay", restoData.restoAddress || '');
-    safeText("teleponRestoranDisplay", restoData.restoPhone || '');
 
-    const gridRooms = getEl("rooms");
-    const gridMeetings = getEl("meetings");
-    const gridPackages = getEl("packages");
-    if (gridRooms) gridRooms.innerHTML = '';
-    if (gridMeetings) gridMeetings.innerHTML = '';
-    if (gridPackages) gridPackages.innerHTML = '';
+    // Header
+    const logoEl = document.getElementById("restoLogo");
+    const namaEl = document.getElementById("namaRestoranDisplay");
+    const alamatEl = document.getElementById("alamatRestoranDisplay");
+    const telpEl = document.getElementById("teleponRestoranDisplay");
+
+    if (logoEl) logoEl.src = restoData.logo || "";
+    if (namaEl) namaEl.innerText = restoData.namaRestoran || "";
+    if (alamatEl) alamatEl.innerText = restoData.restoAddress || "";
+    if (telpEl) telpEl.innerText = restoData.restoPhone || "";
+
+    // Grid
+    const grids = {
+      rooms: document.getElementById("rooms"),
+      meetings: document.getElementById("meetings"),
+      packages: document.getElementById("packages")
+    };
+    Object.values(grids).forEach(g => { if (g) g.innerHTML = ""; });
 
     let total = 0;
-    (Array.isArray(restoData.rooms) ? restoData.rooms : []).forEach(room => {
+    (restoData.rooms || []).forEach(room => {
       total++;
-      const card = createRoomCard(room);
-      if (room.kategori === "hotel") gridRooms.appendChild(card);
-      else if (room.kategori === "meeting") gridMeetings.appendChild(card);
-      else if (room.kategori === "package") gridPackages.appendChild(card);
-      else gridRooms.appendChild(card);
+      if (room.kategori === "hotel") grids.rooms.innerHTML += buatCard(room);
+      else if (room.kategori === "meeting") grids.meetings.innerHTML += buatCard(room);
+      else if (room.kategori === "package") grids.packages.innerHTML += buatCard(room);
     });
-
-    const emptyIndicator = getEl("empty");
-    if (emptyIndicator) emptyIndicator.classList.toggle("hidden", total > 0);
+    document.getElementById("empty")?.classList.toggle("hidden", total > 0);
   }
 
-  // ---------- tabs ----------
+  // ================== TABS ==================
   function setupTabs() {
-    const tabButtons = document.querySelectorAll(".tabs button");
-    tabButtons.forEach(btn => {
+    document.querySelectorAll(".tabs button").forEach(btn => {
       btn.addEventListener("click", () => {
-        tabButtons.forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         document.querySelectorAll(".grid").forEach(sec => sec.classList.add("hidden"));
-        const target = getEl(btn.dataset.target);
-        if (target) target.classList.remove("hidden");
+        document.getElementById(btn.dataset.target).classList.remove("hidden");
       });
     });
   }
 
-  // ---------- locale dropdown ----------
-  function setupLocaleSelect() {
-    const sel = getEl("localeSelect");
-    if (!sel) return;
-    sel.addEventListener("change", () => {
-      const val = sel.value;
-      if (val === "auto") {
-        currentLocale = navigator.language || "id-ID";
-        currentCurrency = "IDR";
-      } else {
-        const [loc, cur] = val.split("|");
-        currentLocale = loc;
-        currentCurrency = cur;
-      }
-      tampilkanData();
-      updateCart();
-    });
-  }
-
-  // ---------- WA ----------
+  // ================== WHATSAPP ==================
   function setupWA() {
-    const btnSend = getEl("btnSend");
-    if (!btnSend) return;
-    btnSend.addEventListener("click", () => {
-      const adminNos = restoData.nomorWaAdmin;
-      if (!adminNos || (Array.isArray(adminNos) && adminNos.length === 0)) {
-        alert("Admin's WhatsApp number has not been set.");
-        return;
+    const btn = document.getElementById("btnSend");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      if (!restoData.nomorWaAdmin || restoData.nomorWaAdmin.length === 0) {
+        alert("Admin's WhatsApp number has not been set."); return;
       }
       if (cart.length === 0) { alert("Cart is still empty."); return; }
-      const adminNo = (Array.isArray(adminNos) ? adminNos[0] : adminNos).replace(/[^0-9]/g, "");
+
+      const adminNo = restoData.nomorWaAdmin[0].replace(/[^0-9]/g, "");
       let pesan = `Hello ${restoData.namaRestoran || "Admin"}, I want a reservation:\n\n`;
       cart.forEach((item, i) => {
-        pesan += `${i+1}. ${item.nama} - ${formatCurrency(item.harga)} x ${item.qty} = ${formatCurrency((item.harga||0)*item.qty)}\n`;
+        pesan += `${i + 1}. ${item.nama} - ${item.harga.toLocaleString()} x ${item.qty} = ${(item.harga * item.qty).toLocaleString()}\n`;
       });
-      const total = cart.reduce((a, b) => a + ((Number(b.harga)||0) * (b.qty||0)), 0);
-      pesan += `\nTotal: ${formatCurrency(total)}\n\n`;
-      pesan += `Name: ${(getEl("custName")?.value)||""}\nAddress: ${(getEl("custAddress")?.value)||""}\nPhone: ${(getEl("custPhone")?.value)||""}\nDate: ${(getEl("custDate")?.value)||""}\nNotes: ${(getEl("custNote")?.value)||""}\n`;
+      let total = cart.reduce((a, b) => a + (b.harga * b.qty), 0);
+      pesan += `\nTotal: ${total.toLocaleString()}\n\n`;
+      pesan += `Name: ${document.getElementById("custName").value}\n`;
+      pesan += `Address: ${document.getElementById("custAddress").value}\n`;
+      pesan += `Phone Number: ${document.getElementById("custPhone").value}\n`;
+      pesan += `Date: ${document.getElementById("custDate").value}\n`;
+      pesan += `Notes: ${document.getElementById("custNote").value}\n`;
       window.open(`https://wa.me/${adminNo}?text=${encodeURIComponent(pesan)}`, "_blank");
     });
   }
 
-  // ---------- init ----------
+  // ================== INIT ==================
   document.addEventListener("DOMContentLoaded", async () => {
-    applyTheme();
-    const ld = getEl("loadingIndicator");
-    if (ld) ld.classList.add("active");
-    try {
-      await initDB();
-      restoData = await loadDataFromDB();
-    } catch (err) { console.error(err); }
+    // Theme + Locale
+    loadTheme();
+    loadLocale();
+
+    document.getElementById("darkToggle")?.addEventListener("click", toggleDark);
+    document.getElementById("localeSelect")?.addEventListener("change", (e) => {
+      localStorage.setItem("locale", e.target.value);
+    });
+
+    // Loader
+    document.getElementById("loadingIndicator")?.classList.add("active");
+
+    // Load DB
+    await initDB();
+    restoData = await loadDataFromDB();
+
+    // Run features
     tampilkanData();
     setupTabs();
-    setupLocaleSelect();  // 🔥 dropdown locale aktif
     setupWA();
-    updateCart();
-    if (ld) ld.classList.remove("active");
-  });
 
-})();
+    // Matikan loader
+    document.getElementById("loadingIndicator")?.classList.remove("active");
+  });
 </script>
 </body>
 </html>
+
