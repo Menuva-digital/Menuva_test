@@ -42,7 +42,7 @@
   width: 100%;
   background: linear-gradient(90deg, var(--brand-2), var(--brand-3));
   color: #fff;
-  padding: 32px 40px;
+  padding: 16px;
   position: sticky;
   top: 0;
   left: 0;
@@ -60,35 +60,41 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Logo */
 .header-left img {
-  width: 70px;
-  height: 70px;
-  object-fit: cover;
-  border-radius: 6px;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255,255,255,.1);
+  flex-shrink: 0;
 }
 
 /* Info Resto */
 .resto-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  overflow: hidden;
 }
 
 .resto-info h1 {
-  font-size: 22px;
+  font-size: 16px;
   margin: 0;
   color:rgb(255, 255, 255);
-  font-weight: 600;
+  font-weight: bold;
+  white-space: normal;   /* ⬅️ biar text bisa turun */
+  word-break: break-word; /* ⬅️ kalau kepanjangan, pecah */
 }
 
 .resto-info p {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.2;
-  color:rgb(255, 255, 255);
+  font-size: 12px;
+  opacity: .9;
+  white-space: normal;   /* ⬅️ jangan pakai nowrap */
+  word-break: break-word;
 }
 
 #teleponRestoranDisplay {
@@ -102,6 +108,8 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
+  flex-shrink: 0;
+  max-width: 120px; /* ⬅️ batasi lebar */
 }
 
 .dark-toggle {
@@ -112,19 +120,19 @@
 }
 
 .locale-select {
-  padding: 4px 8px;
+  padding: 4px 6px;
   border-radius: 6px;
   border: 0;
   background: rgba(255,255,255,.2);
-  color: #000;
+  color: #fff; 
   font-weight: 600;
-  min-width: 130px;
+  min-width: 120px;
 }
 
-/* responsive portrait tweak */
-@media (max-width:480px) and (orientation: portrait) {
-  header {
-    padding: 14px 16px;
+@media (max-width: 480px) {
+  #restoLogo {
+    height: 36px;
+    width: 36px;
   }
 }
 
@@ -981,6 +989,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
