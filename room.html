@@ -1,362 +1,299 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reserve Room</title>
-<style>
-/* ===================== RESET & THEME ===================== */
-* { box-sizing: border-box; margin:0; padding:0; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Room Catalog</title>
+  <style>
+    :root {
+      --bg-color: #f9f9f9;
+      --text-color: #222;
+      --card-bg: #fff;
+      --header-bg: #003366;
+      --header-text: #fff;
+      --accent: #00ccff;
+    }
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f5f5f5;
+      --card-bg: #1e1e1e;
+      --header-bg: #000;
+      --header-text: #ddd;
+      --accent: #00ccff;
+    }
 
-:root {
-  --bg: #1e3c72;
-  --surface: #ffffff;
-  --text: #1c2d4f;
-  --muted: #5c6f91;
-  --border: #c3d4f7;
-  --primary: #1f70ff;
-  --success: #25d366;
-  --card-light: #ffffff;
-  --card-dark: #1c2333;
-  --chip: #dce7ff;
-  --shadow: 0 6px 24px rgba(0,0,0,.08);
-}
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
 
-body.dark {
-  --bg: #0e1116;
-  --surface: #141922;
-  --text: #e6ebff;
-  --muted: #aab6db;
-  --border: #263148;
-  --primary: #4da3ff;
-  --chip: #0f1a2a;
-  --shadow: 0 8px 28px rgba(0,0,0,.5);
-}
+    header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
 
-body {
-  font-family: system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  transition: background .3s, color .3s;
-  padding-bottom: 60px;
-}
+    .header-left h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
 
-/* ===================== HEADER ===================== */
-header {
-  position: relative;
-  text-align: center;
-  padding: 16px 20px;
-}
-header .header-inner {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-header .center-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-header img#restoLogo {
-  width: 70px; height: 70px;
-  object-fit: contain;
-  border-radius: 8px;
-}
-header h1 { font-size: 1.2rem; margin: 0; color: var(--text); }
-header .contact-info { font-size: 0.8rem; line-height: 1.3; color: var(--text); }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-.header-right {
-  position: absolute;
-  top: 12px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-end;
-}
-.dark-toggle {
-  background: none; border: none;
-  font-size: 1.2rem; cursor: pointer;
-  color: var(--text);
-}
-.locale-select {
-  padding: 4px 6px;
-  font-size: 0.9rem;
-}
+    .dark-toggle {
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-size: 20px;
+      color: var(--header-text);
+    }
 
-/* ===================== MAIN CONTAINER ===================== */
-.main-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
-  background-color: rgba(238, 241, 245, 0.384); /* biru lembut, transparan */
-  border-radius: 8px;
-}
-@media (max-width:768px) {
-  .main-container { padding: 0.5rem; }
-}
-@media (min-width:1400px) {
-  .main-container { max-width: 1400px; }
-}
+    .locale-select {
+      padding: 5px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+    }
 
-/* ===================== TABS ===================== */
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.tabs button {
-  padding: 10px;
-  border-radius: 999px;
-  border: 1px solid #ccc;
-  background: #f5f5f5;
-  cursor: pointer;
-  transition: .3s;
-}
-.tabs button.active { background:#007bff; color:#fff; }
+    main {
+      padding: 20px;
+      margin-bottom: 80px; /* biar nggak ketutup fixbar */
+    }
 
-/* ===================== GRID & CARD ===================== */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill,minmax(150px,1fr));
-  gap: 12px;
-}
-.room-card {
-  background: var(--card-light);
-  border-radius: 10px;
-  padding: 10px;
-  text-align: center;
-  font-size: 0.85rem;
-  border: 1px solid #ddd;
-  transition: .3s;
-}
-body.dark .room-card { background: var(--card-dark); border-color:#444; }
-.room-card img { width:100%; height:100px; object-fit:cover; border-radius:6px; margin-bottom:6px; }
-.room-card h3 { margin: 4px 0; font-size:0.95rem; }
-.room-card p { margin: 2px 0; font-size:0.8rem; }
-.room-card button {
-  margin-top:6px; padding:6px 10px;
-  background: var(--success); color:#fff;
-  border:none; border-radius:6px; cursor:pointer;
-}
+    #roomList {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
 
-/* ===================== CART & FORM ===================== */
-#cartPreview { background:var(--chip); padding:10px; border-radius:8px; margin-bottom:8px; font-size:0.85rem; }
-.cart-item {
-  display:flex; justify-content:space-between; align-items:center;
-  background: var(--surface);
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:6px 10px; margin:6px 0;
-}
-.qty-controls { display:flex; gap:6px; }
-.qty-controls button {
-  background:#224abe; color:#fff;
-  border:none; border-radius:20px;
-  padding:4px 10px; cursor:pointer;
-}
-.remove-btn {
-  background:#c0392b; color:#fff;
-  border:none; border-radius:50%;
-  width:24px; height:24px; cursor:pointer;
-}
+    .room-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      transition: transform 0.2s;
+    }
+    .room-card:hover {
+      transform: translateY(-5px);
+    }
 
-/* ===================== FIXED BAR ===================== */
-.fixed-bar {
-  position: fixed;
-  bottom:0; left:0; right:0;
-  display:flex; gap:10px;
-  padding:10px;
-  background:linear-gradient(135deg,#1e3c72,#2a5298);
-}
-.fixed-bar button {
-  flex:1; padding:12px;
-  border:none; border-radius:8px;
-  font-size:0.9rem; cursor:pointer;
-  color:#fff;
-}
-.btn-wa { background: var(--success); }
-.btn-back { background:#d8cd33; color:#000; }
-</style>
+    .room-card img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+    }
+
+    .room-content {
+      padding: 15px;
+    }
+
+    .room-title {
+      font-size: 1.2rem;
+      margin: 0 0 5px;
+    }
+
+    .room-desc {
+      font-size: 0.9rem;
+      margin: 0 0 10px;
+    }
+
+    .room-price {
+      font-weight: bold;
+      color: var(--accent);
+      font-size: 1rem;
+    }
+
+    .fixbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--header-bg);
+      color: var(--header-text);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 10px;
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+
+    .fixbar button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      font-weight: bold;
+    }
+
+    footer {
+      background: var(--header-bg);
+      color: var(--header-text);
+      text-align: center;
+      padding: 15px;
+      margin-top: 30px;
+    }
+  </style>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <div class="center-info">
-      <img id="restoLogo" alt="Logo"/>
-      <h1 id="restoName">Resto Name</h1>
-      <div class="contact-info">
-        <div id="alamatRestoranDisplay"></div>
-        <div id="teleponRestoranDisplay"></div>
-      </div>
+  <header>
+    <div class="header-left">
+      <h1>Room Catalog</h1>
     </div>
+    <div class="header-right">
+      <button id="darkToggle" class="dark-toggle">🌙</button>
+      <select id="localeSelect" class="locale-select">
+        <option value="auto">Auto</option>
+        <option value="id-ID|IDR">IDR</option>
+        <option value="en-US|USD">USD</option>
+        <option value="en-GB|GBP">GBP</option>
+        <option value="ja-JP|JPY">JPY</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div id="roomList"></div>
+  </main>
+
+  <div class="fixbar">
+    <button id="cartBtn">🛒 Cart</button>
+    <button id="reserveBtn">📩 Reservasi</button>
   </div>
-  <div class="header-right">
-    <button id="darkToggle" class="dark-toggle">🌙</button>
-    <select id="localeSelect" class="locale-select">
-      <option value="auto">Auto</option>
-      <option value="id-ID|IDR">IDR</option>
-      <option value="en-US|USD">USD</option>
-      <option value="en-GB|GBP">GBP</option>
-      <option value="ja-JP|JPY">JPY</option>
-    </select>
-  </div>
-</header>
 
-<div id="loadingIndicator" style="text-align:center;padding:20px;color:#888;display:none">⏳ Loading...</div>
+  <footer>
+    <p>&copy; 2025 My Resto - All Rights Reserved</p>
+  </footer>
 
-<div class="main-container">
-  <div class="tabs">
-    <button class="active" data-target="rooms">Rooms</button>
-    <button data-target="meetings">Meeting Rooms</button>
-    <button data-target="packages">Packages</button>
-  </div>
+  <script>
+    // === IndexedDB setup ===
+    const DB_NAME = "RoomDB";
+    const STORE_NAME = "rooms";
+    let db;
 
-  <section id="rooms" class="grid"></section>
-  <section id="meetings" class="grid hidden"></section>
-  <section id="packages" class="grid hidden"></section>
-  <p id="empty" class="hidden" style="text-align:center;margin-top:8px">Data Empty</p>
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+          db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve();
+        };
+        request.onerror = (e) => reject(e);
+      });
+    }
 
-  <div class="reservasi-container">
-    <div id="cartPreview"><p><i>No choice</i></p></div>
-    <p id="cartTotal">Total: 0</p>
-    <div class="form-input"><label>Name</label><input id="custName"/></div>
-    <div class="form-input"><label>Address</label><input id="custAddress"/></div>
-    <div class="form-input"><label>Phone</label><input id="custPhone"/></div>
-    <div class="form-input"><label>Date</label><input type="date" id="custDate"/></div>
-    <div class="form-input"><label>Notes</label><textarea id="custNote"></textarea></div>
-  </div>
-</div>
+    function loadRooms() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
 
-<div class="fixed-bar">
-  <button class="btn-wa" id="btnSend">📤 Send</button>
-  <button class="btn-back" onclick="history.back()">🔙 Back</button>
-</div>
+    function renderRooms(data) {
+      const roomList = document.getElementById("roomList");
+      roomList.innerHTML = "";
+      data.forEach(room => {
+        const div = document.createElement("div");
+        div.className = "room-card";
+        div.innerHTML = `
+          <img src="${room.image || 'https://via.placeholder.com/400x200'}" alt="${room.name}">
+          <div class="room-content">
+            <h3 class="room-title">${room.name}</h3>
+            <p class="room-desc">${room.description}</p>
+            <p class="room-price">${formatPrice(room.price)}</p>
+          </div>
+        `;
+        roomList.appendChild(div);
+      });
+    }
 
-<script>
-(() => {
-  const DB_NAME = "MenuvaDB", STORE_NAME = "menuvaData", DB_VERSION = 2;
-  let db=null, restoData={}, cart=[];
-  let currentLocale=navigator.language||"id-ID", currentCurrency="IDR";
+    // === Currency formatting ===
+    let currentLocale = navigator.language || "id-ID";
+    let currentCurrency = "IDR";
 
-  const el=id=>document.getElementById(id);
-  const formatCurrency=num=>{
-    try {
-      return new Intl.NumberFormat(currentLocale,{style:"currency",currency:currentCurrency,minimumFractionDigits:0}).format(num||0);
-    } catch { return (num||0).toLocaleString(); }
-  };
+    function formatPrice(value) {
+      return new Intl.NumberFormat(currentLocale, { style: "currency", currency: currentCurrency }).format(value);
+    }
 
-  // ---------- THEME ----------
-  function applyTheme(){
-    const saved=localStorage.getItem("menuva_theme");
-    if(saved==="dark") document.body.classList.add("dark"); else document.body.classList.remove("dark");
-    el("darkToggle").textContent=document.body.classList.contains("dark")?"☀️":"🌙";
-  }
-  function toggleDark(){
-    document.body.classList.toggle("dark");
-    localStorage.setItem("menuva_theme",document.body.classList.contains("dark")?"dark":"light");
-    applyTheme();
-  }
-
-  // ---------- DB ----------
-  function initDB(){
-    return new Promise((res,rej)=>{
-      const req=indexedDB.open(DB_NAME,DB_VERSION);
-      req.onerror=()=>rej(req.error);
-      req.onsuccess=e=>{ db=e.target.result; res(db); };
-      req.onupgradeneeded=e=>{
-        db=e.target.result;
-        if(!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME,{keyPath:"restoId"});
-      };
+    document.getElementById("localeSelect").addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val === "auto") {
+        currentLocale = navigator.language || "id-ID";
+        currentCurrency = "IDR";
+      } else {
+        const [loc, cur] = val.split("|");
+        currentLocale = loc;
+        currentCurrency = cur;
+      }
+      loadRooms().then(renderRooms);
     });
-  }
-  function loadDataFromDB(){
-    return new Promise(resolve=>{
-      if(!db||!db.objectStoreNames.contains(STORE_NAME)) return resolve({});
-      const tx=db.transaction(STORE_NAME,"readonly");
-      const store=tx.objectStore(STORE_NAME);
-      const req=store.getAll();
-      req.onsuccess=()=>resolve(req.result[0]||{});
-      req.onerror=()=>resolve({});
-    });
-  }
 
-  // ---------- RENDER ----------
-  function createRoomCard(room){
-    const c=document.createElement("div"); c.className="room-card";
-    if(room.image){ const img=new Image(); img.src=room.image; c.appendChild(img);}
-    const h3=document.createElement("h3"); h3.textContent=room.nama||""; c.appendChild(h3);
-    c.innerHTML+=`<p><b>Price:</b> ${formatCurrency(room.harga||0)}</p>`;
-    c.innerHTML+=`<p><b>Capacity:</b> ${room.kapasitas||0}</p>`;
-    const b=document.createElement("button"); b.textContent="Add To Cart"; b.onclick=()=>tambahKeCart(room); c.appendChild(b);
-    return c;
-  }
-  function tampilkanData(){
-    if(!restoData.namaRestoran){ el("empty").classList.remove("hidden"); return; }
-    if(restoData.logo){ el("restoLogo").src=restoData.logo; }
-    el("restoName").textContent=restoData.namaRestoran||"";
-    el("alamatRestoranDisplay").textContent=restoData.restoAddress||"";
-    el("teleponRestoranDisplay").textContent=restoData.restoPhone||"";
-    ["rooms","meetings","packages"].forEach(id=>el(id).innerHTML="");
-    (restoData.rooms||[]).forEach(r=>{
-      if(r.kategori==="meeting") el("meetings").appendChild(createRoomCard(r));
-      else if(r.kategori==="package") el("packages").appendChild(createRoomCard(r));
-      else el("rooms").appendChild(createRoomCard(r));
-    });
-    el("empty").classList.toggle("hidden",(restoData.rooms||[]).length>0);
-  }
+    // === Dark mode toggle ===
+    const darkToggle = document.getElementById("darkToggle");
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+      darkToggle.textContent = "☀️";
+    }
 
-  // ---------- CART ----------
-  function updateCart(){
-    const preview=el("cartPreview"); preview.innerHTML="";
-    if(cart.length===0){ preview.innerHTML="<p><i>No choice</i></p>"; el("cartTotal").textContent="Total:0"; return;}
-    let total=0;
-    cart.forEach((it,i)=>{
-      const div=document.createElement("div"); div.className="cart-item";
-      const sub=(it.harga||0)*(it.qty||1); total+=sub;
-      div.innerHTML=`${it.nama} x${it.qty} = ${formatCurrency(sub)}`;
-      const rm=document.createElement("button"); rm.textContent="×"; rm.className="remove-btn"; rm.onclick=()=>{cart.splice(i,1);updateCart();};
-      div.appendChild(rm); preview.appendChild(div);
+    darkToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      if (document.body.classList.contains("dark")) {
+        localStorage.setItem("theme", "dark");
+        darkToggle.textContent = "☀️";
+      } else {
+        localStorage.setItem("theme", "light");
+        darkToggle.textContent = "🌙";
+      }
     });
-    el("cartTotal").textContent="Total:"+formatCurrency(total);
-  }
-  function tambahKeCart(r){ const i=cart.findIndex(x=>x.nama===r.nama); if(i>=0) cart[i].qty++; else cart.push({...r,qty:1}); updateCart(); }
 
-  // ---------- SETUP ----------
-  function setupTabs(){
-    document.querySelectorAll(".tabs button").forEach(btn=>{
-      btn.onclick=()=>{
-        document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
-        btn.classList.add("active");
-        document.querySelectorAll(".grid").forEach(g=>g.classList.add("hidden"));
-        el(btn.dataset.target).classList.remove("hidden");
-      };
+    // === Fixbar button actions ===
+    document.getElementById("cartBtn").addEventListener("click", () => {
+      alert("Cart masih kosong bro 😅");
     });
-  }
-  function setupLocaleSelect(){
-    el("localeSelect").onchange=()=>{
-      const v=el("localeSelect").value;
-      if(v==="auto"){ currentLocale=navigator.language; currentCurrency="IDR"; }
-      else { [currentLocale,currentCurrency]=v.split("|"); }
-      tampilkanData(); updateCart();
-    };
-  }
 
-  // ---------- INIT ----------
-  document.addEventListener("DOMContentLoaded",async()=>{
-    applyTheme();
-    el("darkToggle").onclick=toggleDark;
-    setupTabs(); setupLocaleSelect();
-    el("loadingIndicator").style.display="block";
-    await initDB();
-    restoData=await loadDataFromDB();
-    el("loadingIndicator").style.display="none";
-    tampilkanData();
-    updateCart();
-  });
-})();
-</script>
+    document.getElementById("reserveBtn").addEventListener("click", () => {
+      window.open("https://wa.me/6281234567890?text=Halo%20saya%20ingin%20reservasi%20kamar", "_blank");
+    });
+
+    // === Init ===
+    openDB()
+      .then(() => loadRooms())
+      .then(data => {
+        if (data.length === 0) {
+          // Dummy data kalau admin belum isi
+          renderRooms([
+            { name: "Deluxe Room", description: "Nyaman dan luas untuk keluarga", price: 750000, image: "" },
+            { name: "Standard Room", description: "Hemat dan simpel", price: 350000, image: "" },
+            { name: "Suite Room", description: "Mewah dengan pemandangan indah", price: 1500000, image: "" }
+          ]);
+        } else {
+          renderRooms(data);
+        }
+      });
+  </script>
 </body>
 </html>
