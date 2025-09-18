@@ -56,11 +56,11 @@ header {
   box-shadow: var(--shadow);
 }
 
-/* pastikan header-inner ikut stretch */
+/* penting: biar tinggi kanan ikut tinggi header */
 .header-inner {
   display: flex;
   justify-content: space-between;
-  align-items: stretch; /* biar kanan bisa full tinggi */
+  align-items: stretch; /* kanan ikut full tinggi */
   gap: 12px;
 }
 /* --- HEADER LEFT --- */
@@ -113,15 +113,14 @@ header {
   margin: 0;
   line-height: 1.2;
 }
+/* --- HEADER RIGHT (fix posisi toggle & dropdown) --- */
 .header-right {
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* atas–bawah */
-  align-items: flex-end;
+  justify-content: space-between; /* dorong toggle ke atas, dropdown ke bawah */
+  align-items: flex-end;          /* tetap nempel kanan */
   flex: 0 0 auto;
-  height: 100%; /* isi penuh header */
 }
-
 /* Tombol dark toggle */
 .dark-toggle {
   background: rgba(255,255,255,0.2);
@@ -475,7 +474,7 @@ header {
       </div>
     </div>
     <!-- KANAN: Dark mode toggle + Dropdown -->
-    <div class="header-controls">
+    <div class="header-right">
       <button class="dark-toggle" onclick="toggleDark()" title="Toggle theme">🌙</button>
       <select id="localeSelect" class="locale-select" title="Change locale / currency">
         <option value="auto">Auto (browser)</option>
@@ -1090,6 +1089,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
