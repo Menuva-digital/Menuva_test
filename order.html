@@ -43,7 +43,6 @@
   background: linear-gradient(90deg, var(--brand-2), var(--brand-3));
   color: #fff;
   padding: 16px;
-  position: sticky;
   top: 0;
   left: 0;
   right: 0;
@@ -58,16 +57,17 @@
 /* Kiri: Logo + Info */
 .header-left {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column; /* ubah ke kolom */
+  align-items: center; /* biar logo & teks center */
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
 
 /* Logo */
 .header-left img {
-  width: 44px;
-  height: 44px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
   border-radius: 8px;
   background: rgba(255,255,255,.1);
@@ -1007,6 +1007,7 @@ function refreshAllPriceDisplays() {
 
 </body>
 </html>
+
 
 
 
