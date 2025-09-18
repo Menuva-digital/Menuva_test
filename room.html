@@ -41,18 +41,62 @@ body{
 /* header */
 header{position:relative;text-align:center;padding:16px 20px;}
 header .header-inner{display:flex;justify-content:center;align-items:center;position:relative;gap:12px;}
-.header-right{position:absolute;right:16px;top:12px;display:flex;align-items:center;gap:8px;}
+.header-right {
+  position: absolute;
+  right: 16px;
+  top: 12px; /* ini buat dark toggle */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#darkToggle {
+  font-size: 1.3rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text, #fff);
+}
+
+/* Dropdown pojok kanan bawah */
+.header-bottom-right {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+}
+.locale-select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+body.dark .locale-select {
+  background: var(--card-dark);
+  color: var(--text);
+  border-color: #444;
+}
+
 header img#restoLogo{width:70px;height:70px;object-fit:contain;border-radius:8px;}
 header h1{font-size:1.2rem;margin:0;color:var(--text);}
 header .contact-info{font-size:0.8rem;color:var(--text);line-height:1.3;}
 .dark-toggle{font-size:1.2rem;cursor:pointer;background:none;border:none;color:var(--text)}
 
 /* main container */
-.main-container{
-  width:95%;max-width:900px;margin:20px auto;background:var(--card-light);border-radius:10px;padding:16px;box-shadow:var(--shadow);transition:background .25s;
+.main-container {
+  width: 98%;              /* hampir penuh layar */
+  max-width: 1400px;       /* gedein batas maksimal */
+  margin: 20px auto;
+  background: var(--card-light);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: background .25s;
 }
-body.dark .main-container{background:var(--card-dark);}
 
+body.dark .main-container {
+  background: var(--card-dark);
+}
 /* tabs */
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
 .tabs button{width:100%;padding:10px 16px;border-radius:999px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;font-weight:500}
@@ -112,18 +156,23 @@ body.dark .room-card{background:var(--card-dark);border-color:#444}
         <div id="teleponRestoranDisplay"></div>
       </div>
     </div>
-    <!-- right controls placed inside header as original -->
-    <div class="header-right">
-      <button id="darkToggle" class="dark-toggle" title="Toggle theme">🌙</button>
-      <select id="localeSelect" class="locale-select" title="Change locale / currency">
-        <option value="auto">Auto (browser)</option>
-        <option value="id-ID|IDR">INA — IDR</option>
-        <option value="en-US|USD">US — USD</option>
-        <option value="en-GB|GBP">UK — GBP</option>
-        <option value="ja-JP|JPY">JP — JPY</option>
-        <option value="fr-FR|EUR">FR — EUR</option>
-      </select>
-    </div>
+  </div>
+
+  <!-- kanan atas -->
+  <div class="header-right">
+    <button id="darkToggle" class="dark-toggle" title="Toggle theme">🌙</button>
+  </div>
+
+  <!-- kanan bawah -->
+  <div class="header-bottom-right">
+    <select id="localeSelect" class="locale-select" title="Change locale / currency">
+      <option value="auto">Auto (browser)</option>
+      <option value="id-ID|IDR">INA — IDR</option>
+      <option value="en-US|USD">US — USD</option>
+      <option value="en-GB|GBP">UK — GBP</option>
+      <option value="ja-JP|JPY">JP — JPY</option>
+      <option value="fr-FR|EUR">FR — EUR</option>
+    </select>
   </div>
 </header>
 
@@ -499,3 +548,4 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
