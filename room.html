@@ -66,41 +66,35 @@ body.dark .locale-select {
 }
 
 header {
-  padding: 16px;
+  position: relative;
   background: var(--card-light);
+  padding: 16px;
   border-radius: 10px;
   box-shadow: var(--shadow);
   margin-bottom: 20px;
-  position: relative;
 }
-body.dark header {
-  background: var(--card-dark);
-}
+body.dark header { background: var(--card-dark); }
 
 .header-inner {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   position: relative;
 }
 
-/* LEFT SIDE */
 .header-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 header img#restoLogo {
   width: 70px;
   height: 70px;
   object-fit: contain;
   border-radius: 8px;
 }
-.resto-info {
-  display: flex;
-  flex-direction: column;
-}
+
 header h1 {
   font-size: 1.2rem;
   margin: 0;
@@ -112,24 +106,27 @@ header .contact-info {
   line-height: 1.3;
 }
 
-/* RIGHT SIDE */
+/* --- Header Right (button + dropdown) --- */
 .header-right {
+  position: absolute;
+  right: 16px;
+  top: 8px;
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* biar toggle di atas, dropdown di bawah */
   align-items: flex-end;
   gap: 8px;
 }
+
 .dark-toggle {
-  background: transparent;
+  background: none;
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
 }
+
 .locale-select {
-  padding: 4px 8px;
+  padding: 4px 6px;
   border-radius: 6px;
-  border: 1px solid var(--border);
-  font-size: 0.9rem;
 }
 
 /* main container */
@@ -598,5 +595,6 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
