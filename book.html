@@ -47,108 +47,80 @@
     img { max-width: 100%; display: block; }
     .container { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
 
- header {
+header {
   width: 100%; 
   background: linear-gradient(90deg, var(--brand-2), var(--brand-3));
   color: #fff;
   padding: 16px;
-  top: 0;
-  left: 0;
-  right: 0; 
-  z-index: 50;
+  position: relative; /* ikut scroll */
   box-shadow: var(--shadow);
-  position: relative; /* ikut scroll, bukan sticky */
 }
 
 .header-inner {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* biar kiri dan kanan rata atas */
+  align-items: flex-start; /* kiri & kanan rata atas */
   gap: 12px;
 }
 
+/* --- HEADER LEFT --- */
 .header-left {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column; /* logo atas, info bawah */
+  align-items: flex-start; /* rata kiri */
+  gap: 6px;
   flex: 1;
   min-width: 0;
-  flex-direction: column; /* ubah ke kolom */
-  align-items: center; /* biar logo & teks center */
+}
+
+#restoLogo {
+  height: 60px;
+  width: 60px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255,255,255,.1);
+  flex-shrink: 0;
+  margin-bottom: 4px; /* jarak logo ke info */
 }
 
 .resto-info {
   display: flex;
   flex-direction: column;
-  text-align: left; /* tetap rata kiri */
-  gap: 2px; /* rapat, tapi masih kebaca */
+  text-align: left;
+  gap: 2px; /* rapat */
 }
 
 #restoName {
   margin: 0;
   font-size: 16px;
   font-weight: bold;
-  white-space: normal;   /* ⬅️ biar text bisa turun */
-  word-break: break-word; /* ⬅️ kalau kepanjangan, pecah */
+  color: #fff;
+  line-height: 1.2;
+  word-break: break-word;
 }
 
 .contact-info {
   font-size: 12px;
   opacity: .9;
-  white-space: normal;   /* ⬅️ jangan pakai nowrap */
+  margin: 0;
+  line-height: 1.2;
   word-break: break-word;
 }
-.header-controls {
+
+#teleponRestoranDisplay {
+  color: #fff;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* --- HEADER RIGHT --- */
+.header-right {
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* toggle di atas, dropdown di bawah */
   align-items: flex-end;
   gap: 6px;
   flex-shrink: 0;
-  max-width: 120px; /* ⬅️ batasi lebar */
-}
-
-.dark-toggle {
- width: 44px; height: 44px; 
-  border-radius: 0; 
-  border: none;
-  background: transparent; 
-  color: #fff; 
-  cursor: pointer; 
-  font-size: 20px; /* lebih kecil */ 
-  line-height: 1; 
-  margin-bottom: 6px; /* kasih jarak ke bawah */
-}
-
-.locale-select {
-  font-size: 12px;   /* kecil */
-  padding: 4px 6px;  /* tipis */
-  border-radius: 6px;
-  border: 0; 
-  background: rgba(255,255,255,.12); 
-  color: #fff; 
-  font-weight: 600;
-  max-width: 120px; /* jangan melar */
-}
-#restoLogo {
-  height: 44px;
-  width: 44px;
-  object-fit: contain;
-  border-radius: 8px;
-  background: rgba(255,255,255,.1);
-  flex-shrink: 0;
-}
-@media (max-width: 480px) {
-  #restoLogo {
-    height: 36px;
-    width: 36px;
-  }
-}
-    /* --- Header Right (toggle & dropdown) --- */
-.header-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
 }
 
 .dark-toggle {
@@ -162,10 +134,24 @@
 }
 
 .locale-select {
+  font-size: 12px;
   padding: 4px 6px;
   border-radius: 6px;
   border: none;
+  background: rgba(255,255,255,.12); 
+  color: #fff; 
+  font-weight: 600;
+  max-width: 120px;
 }
+
+/* --- RESPONSIVE --- */
+@media (max-width: 480px) {
+  #restoLogo {
+    height: 44px;
+    width: 44px;
+  }
+}
+
     /* =====================
        TABS
        ===================== */
@@ -1102,6 +1088,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
