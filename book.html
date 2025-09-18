@@ -56,13 +56,13 @@ header {
   box-shadow: var(--shadow);
 }
 
+/* pastikan header-inner ikut stretch */
 .header-inner {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* kiri & kanan rata atas */
+  align-items: stretch; /* biar kanan bisa full tinggi */
   gap: 12px;
 }
-
 /* --- HEADER LEFT --- */
 .header-left {
   display: flex;
@@ -113,17 +113,13 @@ header {
   margin: 0;
   line-height: 1.2;
 }
-
-/* --- Header Right (toggle & dropdown) --- */
 .header-right {
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* toggle di atas, dropdown di bawah */
-  align-items: flex-end; /* tetap nempel kanan */
-  gap: 0; 
-  height: 100%; /* biar bisa dorong ke atas & bawah */
+  justify-content: space-between; /* atas–bawah */
+  align-items: flex-end;
   flex: 0 0 auto;
-  padding: 2px 0; /* sedikit napas */
+  height: 100%; /* isi penuh header */
 }
 
 /* Tombol dark toggle */
@@ -1094,6 +1090,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
