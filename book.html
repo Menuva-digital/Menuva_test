@@ -114,15 +114,19 @@ header {
   line-height: 1.2;
 }
 
-/* --- HEADER RIGHT --- */
+/* --- Header Right (toggle & dropdown) --- */
 .header-right {
   display: flex;
-  flex-direction: column; /* toggle di atas, dropdown di bawah */
-  align-items: flex-end;
-  gap: 6px;
-  flex-shrink: 0;
+  flex-direction: column;
+  justify-content: space-between; /* toggle di atas, dropdown di bawah */
+  align-items: flex-end; /* tetap nempel kanan */
+  gap: 0; 
+  height: 100%; /* biar bisa dorong ke atas & bawah */
+  flex: 0 0 auto;
+  padding: 2px 0; /* sedikit napas */
 }
 
+/* Tombol dark toggle */
 .dark-toggle {
   background: rgba(255,255,255,0.2);
   border: none;
@@ -133,16 +137,18 @@ header {
   border-radius: 6px;
 }
 
+/* Dropdown locale */
 .locale-select {
-  font-size: 12px;
   padding: 4px 6px;
   border-radius: 6px;
   border: none;
-  background: rgba(255,255,255,.12); 
-  color: #fff; 
+  background: rgba(255,255,255,0.12);
+  color: #fff;
   font-weight: 600;
+  font-size: 12px;
   max-width: 120px;
 }
+
 
 /* --- RESPONSIVE --- */
 @media (max-width: 480px) {
@@ -1088,6 +1094,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
