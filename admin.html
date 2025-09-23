@@ -472,24 +472,32 @@ button {
     <div id="flipbookMenuPreview"></div>
   </div>
 
-  <div class="section-box" id="roomContainerBox">
-    <h2>🏨 Room / Packages</h2>
-    <div class="room-section">
-      <h3>🛏️ Room Hotel</h3>
-      <button onclick="tambahRoom('hotel')" class="btn-tambah-room">+ Add Hotel Room</button>
-      <div id="roomHotelContainer"></div>
-    </div>
-    <div class="room-section">
-      <h3>💼 Meeting Room</h3>
-      <button onclick="tambahRoom('meeting')" class="btn-tambah-room">+ Add Meeting Room</button>
-      <div id="meetingRoomContainer"></div>
-    </div>
-    <div class="room-section">
-      <h3>🎁 Packages</h3>
-      <button onclick="tambahRoom('package')" class="btn-tambah-room">+ Add Packages</button>
-      <div id="packageContainer"></div>
-    </div>
+ <div class="section-box" id="roomToggleBox">
+  <h2>⚙️ Room Page Setting</h2>
+  <label>
+    <input type="checkbox" id="toggleRoomPage">
+    Enable Room Page (room.html)
+  </label>
+</div>
+
+<div class="section-box" id="roomContainerBox">
+  <h2>🏨 Room / Packages</h2>
+  <div class="room-section">
+    <h3>🛏️ Room Hotel</h3>
+    <button onclick="tambahRoom('hotel')" class="btn-tambah-room">+ Add Hotel Room</button>
+    <div id="roomHotelContainer"></div>
   </div>
+  <div class="room-section">
+    <h3>💼 Meeting Room</h3>
+    <button onclick="tambahRoom('meeting')" class="btn-tambah-room">+ Add Meeting Room</button>
+    <div id="meetingRoomContainer"></div>
+  </div>
+  <div class="room-section">
+    <h3>🎁 Packages</h3>
+    <button onclick="tambahRoom('package')" class="btn-tambah-room">+ Add Packages</button>
+    <div id="packageContainer"></div>
+  </div>
+</div>
 
   <hr>
 
@@ -1461,6 +1469,30 @@ function hideLoader() {
 }
 </script>
 
+<script>
+  const toggleRoomPage = document.getElementById("toggleRoomPage");
+  const roomContainerBox = document.getElementById("roomContainerBox");
+
+  // Load state saat admin page dibuka
+  window.addEventListener("load", () => {
+    const saved = localStorage.getItem("page_room");
+    if (saved !== null) {
+      toggleRoomPage.checked = saved === "true";
+      roomContainerBox.style.display = saved === "true" ? "block" : "none";
+    } else {
+      toggleRoomPage.checked = false; // default off
+      roomContainerBox.style.display = "none";
+    }
+  });
+
+  // Simpan perubahan toggle
+  toggleRoomPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_room", enabled);
+    roomContainerBox.style.display = enabled ? "block" : "none";
+  });
+</script>
+
 <div class="fixed-bar">
   <button onclick="window.location.href='index.html'" class="btn-success">🔒 Logout</button>
   <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
@@ -1478,6 +1510,7 @@ function hideLoader() {
   });
 </script>
 </html>
+
 
 
 
