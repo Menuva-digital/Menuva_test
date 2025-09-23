@@ -644,8 +644,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   if (ld) ld.classList.remove('active');
 });
 </script>
+
+  <script>
+  const enabled = localStorage.getItem("page_room");
+  if (enabled === "false" || enabled === null) {
+    // redirect kalau halaman dimatikan
+    window.location.href = "menu.html";
+  }
+</script>
+
 </body>
 </html>
+
 
 
 
