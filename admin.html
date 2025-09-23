@@ -407,6 +407,25 @@ button {
     <br>
     <p style="color: white;">Digital Solution For Restaurant, Hotel, & Cafe's</p>
   </div>
+  <div class="header-right">
+  <button class="dark-toggle" onclick="toggleDark()" title="Toggle theme">🌙</button>
+  <select id="localeSelect" class="locale-select" title="Change locale / currency">
+    <option value="auto">Auto (browser)</option>
+    <option value="en-US|USD">US — USD</option>
+    <option value="id-ID|IDR">INA — IDR</option>
+    <option value="en-GB|GBP">UK — GBP</option>
+    <option value="de-DE|EUR">Germany — EUR</option>
+    <option value="ja-JP|JPY">Japan — JPY</option>
+    <option value="zh-CN|CNY">China — CNY</option>
+    <option value="fr-FR|EUR">France — EUR</option>
+  </select>
+</div>
+
+<div style="margin-top:20px;">
+  <label for="price">Input harga:</label>
+  <input type="number" id="price" placeholder="Masukkan angka" step="0.01">
+  <p id="preview"></p>
+</div>
 
   <div class="section">
     <h2>📇 Business Identity</h2>
@@ -1460,6 +1479,50 @@ function hideLoader() {
   if (el) el.style.display = "none";
 }
 </script>
+
+<script>
+  const localeSelect = document.getElementById('localeSelect');
+  const priceInput = document.getElementById('price');
+  const preview = document.getElementById('preview');
+
+  function formatPrice() {
+    const selected = localeSelect.value;
+    let [locale, currency] = selected.split('|');
+
+    let price = parseFloat(priceInput.value);
+    if (isNaN(price)) {
+      preview.textContent = "";
+      return;
+    }
+
+    // Kalau auto → ambil setting browser
+    if (selected === "auto") {
+      locale = navigator.language;
+      currency = "USD"; // default fallback
+    }
+
+    // khusus IDR → jadi "IDR 60K"
+    if (currency === "IDR") {
+      if (price >= 1000) {
+        price = (price / 1000) + "K";
+      }
+      preview.textContent = `${currency} ${price}`;
+    } else {
+      // gunakan Intl.NumberFormat
+      const formatter = new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      preview.textContent = formatter.format(price);
+    }
+  }
+
+  localeSelect.addEventListener('change', formatPrice);
+  priceInput.addEventListener('input', formatPrice);
+</script>
+
 <div class="fixed-bar">
   <button onclick="window.location.href='index.html'" class="btn-success">🔒 Logout</button>
   <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
@@ -1477,6 +1540,7 @@ function hideLoader() {
   });
 </script>
 </html>
+
 
 
 
