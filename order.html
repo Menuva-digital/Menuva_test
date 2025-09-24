@@ -513,6 +513,12 @@ body.dark .qty-controls span {
 
   <div id="menu-list" class="menu-grid"></div>
 
+  <div id="voucherSection" style="display:none; margin-top:10px;">
+  <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
+  <button onclick="applyVoucher()">Apply</button>
+  <p id="voucherMessage"></p>
+  </div>
+
   <div class="order-summary">
     <h2>🧾 Order Summary</h2>
     <p>Total Item: <span id="total-item">0</span></p>
@@ -1007,30 +1013,34 @@ function refreshAllPriceDisplays() {
   updateRingkasan();
 }
 </script>
+
+<script>
+  window.addEventListener("load", () => {
+    const plan = localStorage.getItem("user_plan"); 
+    const voucherEnabled = localStorage.getItem("page_voucher") === "true";
+    
+    if (plan !== "monthly" && voucherEnabled) {
+      document.getElementById("voucherSection").style.display = "block";
+    }
+  });
+
+  function applyVoucher() {
+    const input = document.getElementById("voucherInput").value.trim();
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+
+    if (!voucher) {
+      document.getElementById("voucherMessage").innerText = "⚠️ Tidak ada voucher aktif!";
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    if (input === voucher.code && today <= voucher.expiry) {
+      document.getElementById("voucherMessage").innerText = 
+        `✅ Voucher valid! Diskon ${voucher.discount}% diterapkan`;
+    } else {
+      document.getElementById("voucherMessage").innerText = "❌ Voucher tidak valid atau sudah expired!";
+    }
+  }
+</script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
