@@ -503,15 +503,18 @@ function tampilkanData(){
 }
 
 /* ========= CART ========= */
-function updateCartUI(){
+function updateCartUI() {
   const preview = getEl('cartPreview');
-  const totalEl = getEl('cartTotal');
+  const totalEl = getEl('totalPrice');
   if (!preview || !totalEl) return;
+
   if (cart.length === 0) {
     preview.innerHTML = '<p><i>There are no selected items.</i></p>';
     totalEl.innerText = 'Total: 0';
+    totalEl.dataset.raw = 0;
     return;
   }
+
   preview.innerHTML = '';
   let total = 0;
   cart.forEach((item, idx) => {
@@ -520,6 +523,7 @@ function updateCartUI(){
 
     const div = document.createElement('div');
     div.className = 'cart-item';
+
     const span = document.createElement('span');
     span.innerHTML = `${escapeHtml(item.nama)} - ${formatCurrency(item.harga)} x ${item.qty} = <b>${formatCurrency(subtotal)}</b>`;
     div.appendChild(span);
@@ -527,10 +531,21 @@ function updateCartUI(){
     if (item.kategori === 'package') {
       const ctrl = document.createElement('div');
       ctrl.className = 'qty-controls';
-      const dec = document.createElement('button'); dec.textContent = '-'; dec.onclick = () => ubahQty(idx, -1);
-      const qtySpan = document.createElement('span'); qtySpan.textContent = item.qty;
-      const inc = document.createElement('button'); inc.textContent = '+'; inc.onclick = () => ubahQty(idx, 1);
-      ctrl.appendChild(dec); ctrl.appendChild(qtySpan); ctrl.appendChild(inc);
+
+      const dec = document.createElement('button');
+      dec.textContent = '-';
+      dec.onclick = () => ubahQty(idx, -1);
+
+      const qtySpan = document.createElement('span');
+      qtySpan.textContent = item.qty;
+
+      const inc = document.createElement('button');
+      inc.textContent = '+';
+      inc.onclick = () => ubahQty(idx, 1);
+
+      ctrl.appendChild(dec);
+      ctrl.appendChild(qtySpan);
+      ctrl.appendChild(inc);
       div.appendChild(ctrl);
     }
 
@@ -542,7 +557,32 @@ function updateCartUI(){
 
     preview.appendChild(div);
   });
+
+  // simpan total asli
+  totalEl.dataset.raw = total;
   totalEl.innerText = 'Total: ' + formatCurrency(total);
+
+  // cek kalau voucher valid → langsung re-apply diskon
+  autoApplyVoucher();
+}
+
+function autoApplyVoucher() {
+  const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+  const input = document.getElementById("voucherInput")?.value.trim();
+  const msg = document.getElementById("voucherMessage");
+  const totalEl = document.getElementById("totalPrice");
+
+  if (!voucher || !input || !msg || !totalEl) return;
+
+  const today = new Date().toISOString().split("T")[0];
+  if (input === voucher.code && today <= voucher.expiry) {
+    const discountPercent = parseFloat(voucher.discount);
+    let total = parseFloat(totalEl.dataset.raw) || 0;
+    let discounted = total - (total * (discountPercent / 100));
+
+    totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
+    msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+  }
 }
 
 function tambahKeCart(room){
@@ -658,43 +698,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     window.location.href = "menu.html";
   }
 </script>
-<script>
-  window.addEventListener("load", () => {
-    const plan = localStorage.getItem("user_plan"); 
-    const voucherEnabled = localStorage.getItem("page_voucher") === "true";
-    
-    if (plan !== "monthly" && voucherEnabled) {
-      document.getElementById("voucherSection").style.display = "block";
-    }
-  });
-
-  function applyVoucher() {
-    const input = document.getElementById("voucherInput").value.trim();
-    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-
-    if (!voucher) {
-      document.getElementById("voucherMessage").innerText = "⚠️ Tidak ada voucher aktif!";
-      return;
-    }
-
-    const today = new Date().toISOString().split("T")[0];
-    if (input === voucher.code && today <= voucher.expiry) {
-      // hitung diskon
-      const discountPercent = parseFloat(voucher.discount);
-      const totalElement = document.getElementById("totalPrice"); // misalnya ada total
-      let total = parseFloat(totalElement.dataset.raw); // harga asli disimpan di dataset
-      
-      let discounted = total - (total * (discountPercent / 100));
-      totalElement.innerText = `Total: Rp ${discounted.toLocaleString()}`;
-
-      document.getElementById("voucherMessage").innerText = 
-        `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-    } else {
-      document.getElementById("voucherMessage").innerText = "❌ Voucher tidak valid atau sudah expired!";
-    }
-  }
-</script>
 </body>
 </html>
+
 
 
