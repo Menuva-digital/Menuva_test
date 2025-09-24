@@ -567,6 +567,23 @@ button {
   </div>
 </div>
 
+  <div class="section-box" id="voucherContainerBox">
+  <h2>🎟️ Voucher Diskon</h2>
+  <label class="switch">
+    <input type="checkbox" id="toggleVoucherPage">
+    <span class="slider round"></span>
+  </label>
+  
+  <div id="voucherForm" style="margin-top:15px; display:none;">
+    <input type="text" id="voucherCode" placeholder="Kode Voucher">
+    <input type="number" id="voucherDiscount" placeholder="Diskon (%)">
+    <input type="date" id="voucherExpiry">
+    <button onclick="saveVoucher()">💾 Simpan Voucher</button>
+  </div>
+  
+  <div id="voucherPreview"></div>
+</div>
+
   <hr>
 
   <div class="section">
@@ -1594,6 +1611,61 @@ function hideLoader() {
 
 </body>
 <script>
+  const toggleVoucherPage = document.getElementById("toggleVoucherPage");
+  const voucherForm = document.getElementById("voucherForm");
+  const voucherPreview = document.getElementById("voucherPreview");
+
+  // Load state saat buka admin
+  window.addEventListener("load", () => {
+    const plan = localStorage.getItem("user_plan"); 
+    if (plan === "monthly") {
+      document.getElementById("voucherContainerBox").style.display = "none";
+      return; // monthly ga dapat fitur voucher
+    }
+
+    const enabled = localStorage.getItem("page_voucher") === "true";
+    toggleVoucherPage.checked = enabled;
+    voucherForm.style.display = enabled ? "block" : "none";
+    renderVoucher();
+  });
+
+  toggleVoucherPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_voucher", enabled);
+    voucherForm.style.display = enabled ? "block" : "none";
+    if (!enabled) {
+      localStorage.removeItem("voucher");
+      renderVoucher();
+    }
+  });
+
+  function saveVoucher() {
+    const code = document.getElementById("voucherCode").value.trim();
+    const discount = document.getElementById("voucherDiscount").value;
+    const expiry = document.getElementById("voucherExpiry").value;
+
+    if (!code || !discount || !expiry) {
+      alert("Lengkapi semua data voucher!");
+      return;
+    }
+
+    const voucher = { code, discount, expiry };
+    localStorage.setItem("voucher", JSON.stringify(voucher));
+
+    renderVoucher();
+    alert("Voucher berhasil disimpan!");
+  }
+
+  function renderVoucher() {
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+    if (voucher) {
+      voucherPreview.innerHTML = `📌 ${voucher.code} — ${voucher.discount}% (exp: ${voucher.expiry})`;
+    } else {
+      voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
+    }
+  }
+</script>
+<script>
   window.addEventListener("load", function() {
     const fixbar = document.querySelector(".fixed-bar");
     if (fixbar) {
@@ -1604,6 +1676,7 @@ function hideLoader() {
   });
 </script>
 </html>
+
 
 
 
