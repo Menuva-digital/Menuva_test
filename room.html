@@ -291,12 +291,12 @@ body.dark .room-card {
   <p id="empty" class="hidden" style="text-align:center;color:#666;margin-top:8px">Data Empty.</p>
   
   <div class="reservasi-container">
-  <div id="voucherSection" style="display:none; margin-top:10px;">
-    <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
-    <button onclick="autoApplyVoucher()">Apply</button>
-    <p id="voucherMessage"></p>
-  </div>
-  
+  <div id="voucherSection" style="display:none; margin:10px 0;">
+  <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
+  <button onclick="applyVoucher()">Gunakan</button>
+  <p id="voucherMessage"></p>
+</div>
+
   <div id="cartPreview"><p><i>No choice</i></p></div>
   <p id="totalPrice" data-raw="0">Total: Rp 0</p>
     
@@ -587,11 +587,23 @@ function autoApplyVoucher() {
 
 function tambahKeCart(room){
   if(!room || !room.nama) return;
+
   const idx = cart.findIndex(r => r.nama === room.nama);
-  if (idx >= 0) cart[idx].qty = (cart[idx].qty || 0) + 1;
-  else cart.push({...room, qty: 1});
+  if (idx >= 0) {
+    cart[idx].qty = (cart[idx].qty || 0) + 1;
+  } else {
+    cart.push({...room, qty: 1});
+  }
+
   updateCartUI();
+
+  // kalau ada voucher aktif, langsung hitung ulang diskon
+  const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+  if (voucher) {
+    applyVoucher();
+  }
 }
+
 function hapusDariCart(i){ cart.splice(i,1); updateCartUI(); }
 function ubahQty(i,d){ cart[i].qty += d; if (cart[i].qty < 1) cart[i].qty = 1; updateCartUI(); }
 
@@ -700,6 +712,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
