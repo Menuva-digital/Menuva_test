@@ -539,6 +539,15 @@ body.dark .qty-controls span {
   <button onclick="kirimPesanan()" class="btn-wa">📤 Send Order List</button>
   <button onclick="window.location.href='menu.html'" class="btn-back">⬅️ Back To Menu</button>
 </div>
+  
+<script>
+  const enabled = localStorage.getItem("page_order");
+  if (enabled === "false" || enabled === null) {
+    window.location.href = "menu.html"; 
+    // atau tampilkan pesan kalau mau:
+    // document.body.innerHTML = "<h2>⚠️ Reservation & Delivery tidak aktif</h2>";
+  }
+</script>
 
 <script>
 /* ================= THEME (restore + toggle) ================= */
@@ -998,9 +1007,38 @@ function refreshAllPriceDisplays() {
   updateRingkasan();
 }
 </script>
+  <script>
+  const toggleOrderPage = document.getElementById("toggleOrderPage");
+  const orderContainerBox = document.getElementById("orderContainerBox"); // kalau ada section khusus di admin
+
+  window.addEventListener("load", () => {
+    const saved = localStorage.getItem("page_order");
+    if (saved !== null) {
+      toggleOrderPage.checked = saved === "true";
+      if (orderContainerBox) {
+        orderContainerBox.style.display = saved === "true" ? "block" : "none";
+      }
+    } else {
+      toggleOrderPage.checked = false; // default off
+      if (orderContainerBox) {
+        orderContainerBox.style.display = "none";
+      }
+    }
+  });
+
+  toggleOrderPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_order", enabled);
+    if (orderContainerBox) {
+      orderContainerBox.style.display = enabled ? "block" : "none";
+    }
+  });
+</script>
+
 
 </body>
 </html>
+
 
 
 
