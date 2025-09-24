@@ -179,6 +179,50 @@
   .btn-order { background:#007bff; }
   .btn-room { background:#28a745; }
   .fixed-bar button:hover { opacity:0.85; }
+
+  .fixed-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  background: #ffffff;
+  border-top: 1px solid #ddd;
+  padding: 6px 0;
+  z-index: 1000;
+}
+
+.nav-btn {
+  display: flex;
+  flex-direction: column; /* icon di atas, teks di bawah */
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  outline: none;
+  flex: 1;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: inherit;
+  color: #444;
+  transition: color 0.2s ease;
+}
+
+.nav-btn:hover {
+  color: #000;
+}
+
+.nav-btn .icon {
+  font-size: 22px; /* ukuran icon */
+  line-height: 1.2;
+}
+
+.nav-btn .label {
+  font-size: 12px; /* ukuran teks kecil */
+  margin-top: 2px;
+}
+
 </style>
 </head>
 <body>
@@ -229,14 +273,25 @@
   <span class="nav-btn next-btn" onclick="showNext()">⟩</span>
 </div>
 
-<!-- Tombol Dine-in -->
-<button class="btn-book" onclick="window.location.href='book.html'">📖 Dine-in Menu</button>
-
 <!-- Fixed Button Bar -->
 <div class="fixed-bar">
-  <button class="btn-order" onclick="window.location.href='order.html'">🛒 Reserve</button>
-  <button class="btn-room" onclick="window.location.href='room.html'">🏢 Room & Package</button>
+  <!-- Tombol Dine-in -->
+  <button class="nav-btn" onclick="window.location.href='book.html'">
+    <span class="icon">📖</span>
+    <span class="label">Dine-in</span>
+  </button>
+
+  <button class="nav-btn" onclick="window.location.href='order.html'">
+    <span class="icon">🛒</span>
+    <span class="label">Reserve</span>
+  </button>
+
+  <button class="nav-btn" onclick="window.location.href='room.html'">
+    <span class="icon">🏢</span>
+    <span class="label">Room</span>
+  </button>
 </div>
+
   
 <script>
 const DB_NAME = "MenuvaDB";
@@ -469,6 +524,7 @@ window.onload = async ()=>{
 
 </body>
 </html>
+
 
 
 
