@@ -698,9 +698,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   updateCartUI();
   setupWA();
 
+  // === Tambahkan ini di sini (masih di dalam DOMContentLoaded) ===
+  const plan = localStorage.getItem("user_plan"); 
+  const voucherEnabled = localStorage.getItem("page_voucher") === "true";
+
+  if (plan !== "monthly" && voucherEnabled) {
+    document.getElementById("voucherSection").style.display = "block";
+  }
+
   // hide loader
   if (ld) ld.classList.remove('active');
 });
+
 </script>
 
 <script>
@@ -712,6 +721,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
