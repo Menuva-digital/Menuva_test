@@ -1536,7 +1536,33 @@ function hideLoader() {
   if (el) el.style.display = "none";
 }
 </script>
+  <script>
+  const toggleOrderPage = document.getElementById("toggleOrderPage");
+  const orderContainerBox = document.getElementById("orderContainerBox"); // kalau ada section khusus di admin
 
+  window.addEventListener("load", () => {
+    const saved = localStorage.getItem("page_order");
+    if (saved !== null) {
+      toggleOrderPage.checked = saved === "true";
+      if (orderContainerBox) {
+        orderContainerBox.style.display = saved === "true" ? "block" : "none";
+      }
+    } else {
+      toggleOrderPage.checked = false; // default off
+      if (orderContainerBox) {
+        orderContainerBox.style.display = "none";
+      }
+    }
+  });
+
+  toggleOrderPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_order", enabled);
+    if (orderContainerBox) {
+      orderContainerBox.style.display = enabled ? "block" : "none";
+    }
+  });
+</script>
 <script>
   const toggleRoomPage = document.getElementById("toggleRoomPage");
   const roomContainerBox = document.getElementById("roomContainerBox");
@@ -1578,6 +1604,7 @@ function hideLoader() {
   });
 </script>
 </html>
+
 
 
 
