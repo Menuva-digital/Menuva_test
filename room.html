@@ -289,17 +289,17 @@ body.dark .room-card {
   <section id="meetings" class="grid hidden"></section>
   <section id="packages" class="grid hidden"></section>
   <p id="empty" class="hidden" style="text-align:center;color:#666;margin-top:8px">Data Empty.</p>
-
-  <div id="voucherSection" style="display:none; margin-top:10px;">
-  <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
-  <button onclick="applyVoucher()">Apply</button>
-  <p id="voucherMessage"></p>
-  </div>
-
-  <!-- Cart + Form -->
+  
   <div class="reservasi-container">
-    <div id="cartPreview"><p><i>No choice</i></p></div>
-    <p id="cartTotal">Total: 0</p>
+  <div id="voucherSection" style="display:none; margin-top:10px;">
+    <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
+    <button onclick="applyVoucher()">Apply</button>
+    <p id="voucherMessage"></p>
+  </div>
+  
+  <div id="cartPreview"><p><i>No choice</i></p></div>
+  <p id="totalPrice" data-raw="0">Total: Rp 0</p>
+    
     <br>
     <div class="form-input"><label>Orderer Name</label><input type="text" id="custName"></div>
     <div class="form-input"><label>Address</label><input type="text" id="custAddress"></div>
@@ -658,7 +658,6 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     window.location.href = "menu.html";
   }
 </script>
-
 <script>
   window.addEventListener("load", () => {
     const plan = localStorage.getItem("user_plan"); 
@@ -680,8 +679,16 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
     const today = new Date().toISOString().split("T")[0];
     if (input === voucher.code && today <= voucher.expiry) {
+      // hitung diskon
+      const discountPercent = parseFloat(voucher.discount);
+      const totalElement = document.getElementById("totalPrice"); // misalnya ada total
+      let total = parseFloat(totalElement.dataset.raw); // harga asli disimpan di dataset
+      
+      let discounted = total - (total * (discountPercent / 100));
+      totalElement.innerText = `Total: Rp ${discounted.toLocaleString()}`;
+
       document.getElementById("voucherMessage").innerText = 
-        `✅ Voucher valid! Diskon ${voucher.discount}% diterapkan`;
+        `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
     } else {
       document.getElementById("voucherMessage").innerText = "❌ Voucher tidak valid atau sudah expired!";
     }
@@ -689,4 +696,5 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
