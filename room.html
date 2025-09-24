@@ -572,16 +572,21 @@ function autoApplyVoucher() {
   const msg = document.getElementById("voucherMessage");
   const totalEl = document.getElementById("totalPrice");
 
-  if (!voucher || !input || !msg || !totalEl) return;
+  if (!input || !msg || !totalEl) return;
 
   const today = new Date().toISOString().split("T")[0];
-  if (input === voucher.code && today <= voucher.expiry) {
+
+  if (voucher && input === voucher.code && today <= voucher.expiry) {
     const discountPercent = parseFloat(voucher.discount);
     let total = parseFloat(totalEl.dataset.raw) || 0;
     let discounted = total - (total * (discountPercent / 100));
 
     totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+    console.log("✅ Voucher valid:", input);
+  } else {
+    msg.innerText = "❌ Kode voucher tidak valid atau sudah kadaluarsa";
+    console.warn("❌ Voucher tidak valid:", input);
   }
 }
 
@@ -721,6 +726,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
