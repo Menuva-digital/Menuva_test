@@ -241,24 +241,20 @@ body.dark .room-card {
   header h1{font-size:1rem}
   .room-card img{height:80px}
 }
-.voucher-message.success {
-  color: #16a34a; /* hijau */
-  font-weight: 600;
-}
-.voucher-message.error {
-  color: #dc2626; /* merah */
-  font-weight: 600;
-}
 .voucher-box {
   display: flex;
   gap: 8px;
+  justify-content: center; /* biar center */
 }
+
 .voucher-box input {
-  flex: 1;
+  width: 180px;      /* atur sesuai selera */
+  max-width: 60%;    /* biar tetap responsif di HP */
   padding: 6px 10px;
   border: 1px solid #ccc;
   border-radius: 6px;
 }
+
 .voucher-box button {
   background: #f59e0b;
   color: #fff;
@@ -267,9 +263,6 @@ body.dark .room-card {
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
-}
-.voucher-box button:hover {
-  background: #d97706;
 }
 
 </style>
@@ -772,6 +765,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
