@@ -241,6 +241,37 @@ body.dark .room-card {
   header h1{font-size:1rem}
   .room-card img{height:80px}
 }
+.voucher-message.success {
+  color: #16a34a; /* hijau */
+  font-weight: 600;
+}
+.voucher-message.error {
+  color: #dc2626; /* merah */
+  font-weight: 600;
+}
+.voucher-box {
+  display: flex;
+  gap: 8px;
+}
+.voucher-box input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+.voucher-box button {
+  background: #f59e0b;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.voucher-box button:hover {
+  background: #d97706;
+}
+
 </style>
 </head>
 <body>
@@ -290,11 +321,20 @@ body.dark .room-card {
   <section id="packages" class="grid hidden"></section>
   <p id="empty" class="hidden" style="text-align:center;color:#666;margin-top:8px">Data Empty.</p>
   
-  <div class="reservasi-container">
-  <div id="voucherSection" style="display:none; margin:10px 0;">
-  <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
-  <button onclick="applyVoucher()">Gunakan</button>
-  <p id="voucherMessage"></p>
+ <div class="reservasi-container">
+  <div id="voucherSection" style="display:none; margin:15px 0;">
+    <div class="voucher-box">
+      <input 
+        type="text" 
+        id="voucherInput" 
+        placeholder="Masukkan kode voucher"
+      >
+      <button type="button" onclick="autoApplyVoucher()">Use Voucher Code</button>
+    </div>
+    <p id="voucherMessage" class="voucher-message"></p>
+  </div>
+</div>
+
 </div>
 
   <div id="cartPreview"><p><i>No choice</i></p></div>
@@ -574,6 +614,7 @@ function autoApplyVoucher() {
 
   if (!input || !msg || !totalEl) return;
 
+  msg.className = ""; // reset class dulu
   const today = new Date().toISOString().split("T")[0];
 
   if (voucher && input === voucher.code && today <= voucher.expiry) {
@@ -583,12 +624,17 @@ function autoApplyVoucher() {
 
     totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+    msg.classList.add("success");
+
     console.log("✅ Voucher valid:", input);
   } else {
-    msg.innerText = "❌ Kode voucher tidak valid atau sudah kadaluarsa";
-    console.warn("❌ Voucher tidak valid:", input);
+    msg.innerText = "❌ Vouche code is invalid or has expired";
+    msg.classList.add("error");
+
+    console.warn("❌ Invalid Voucher Code:", input);
   }
 }
+
 
 function tambahKeCart(room){
   if(!room || !room.nama) return;
@@ -726,6 +772,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
