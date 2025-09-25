@@ -325,7 +325,8 @@ body.dark .room-card {
 </div>
 
   <div id="cartPreview"><p><i>No choice</i></p></div>
-  <p id="totalPrice" data-raw="0">Total: Rp 0</p>
+  <p id="totalPrice" data-raw="0">Total: 0</p>
+  <p id="voucherDiscount" style="display:none; font-size:0.85em; color:green;"></p>
     
     <br>
     <div class="form-input"><label>Orderer Name</label><input type="text" id="custName"></div>
@@ -605,30 +606,40 @@ function autoApplyVoucher() {
   const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
   const input = document.getElementById("voucherInput")?.value.trim();
   const msg = document.getElementById("voucherMessage");
-  const totalEl = document.getElementById("totalPrice");
+  const totalEl = document.getElementById("totalPrice") || document.getElementById("cartTotal");
+  const discountEl = document.getElementById("voucherDiscount");
 
-  if (!input || !msg || !totalEl) {
-    msg.innerText = "";
-    return;
-  }
+  if (!input || !msg || !totalEl) return;
 
   const today = new Date().toISOString().split("T")[0];
 
   if (voucher && input === voucher.code && today <= voucher.expiry) {
     const discountPercent = parseFloat(voucher.discount);
     let total = parseFloat(totalEl.dataset.raw) || 0;
-    let discounted = total - (total * (discountPercent / 100));
+    let potongan = total * (discountPercent / 100);
+    let discounted = total - potongan;
 
     totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
+    totalEl.dataset.raw = discounted; // simpan nilai baru
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-    msg.style.color = "green";
+
+    if (discountEl) {
+      discountEl.style.display = "block";
+      discountEl.innerText = `💸 Diskon ${discountPercent}% = ${formatCurrency(potongan)}`;
+    }
+
     console.log("✅ Voucher valid:", input);
   } else {
-    msg.innerText = "❌ Kode voucher tidak valid atau sudah kadaluarsa";
-    msg.style.color = "red";
-    console.warn("❌ Voucher tidak valid:", input);
+    msg.innerText = "❌ Voucher Code is invalid or expired";
+    console.warn("❌ Voucher Code valid:", input);
+
+    if (discountEl) {
+      discountEl.style.display = "none";
+      discountEl.innerText = "";
+    }
   }
 }
+
 
 function tambahKeCart(room){
   if(!room || !room.nama) return;
@@ -766,6 +777,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
