@@ -1659,38 +1659,30 @@ function hideLoader() {
   function renderVoucher() {
     const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
     if (voucher) {
-      voucherPreview.innerHTML = `📌 ${voucher.code} — ${voucher.discount}% (exp: ${voucher.expiry})`;
+      voucherPreview.innerHTML = `
+        <p>
+          <strong>Kode Voucher:</strong> 
+          <span id="voucherCodeText">${voucher.code}</span>
+          <button onclick="copyVoucherCode()">📋 Copy</button>
+        </p>
+        <p><strong>Diskon:</strong> ${voucher.discount}%</p>
+        <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
+      `;
     } else {
       voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
     }
   }
+
+  function copyVoucherCode() {
+    const codeText = document.getElementById("voucherCodeText").innerText;
+    navigator.clipboard.writeText(codeText).then(() => {
+      alert("Kode voucher berhasil di-copy: " + codeText);
+    }).catch(err => {
+      console.error("Gagal copy", err);
+    });
+  }
 </script>
-<script>
 
-  // Simpan ke localStorage
-  localStorage.setItem("voucher", JSON.stringify(voucher));
-
-  // Tampilkan preview dengan tombol copy
-  document.getElementById("voucherPreview").innerHTML = `
-    <p>
-      <strong>Kode Voucher:</strong> 
-      <span id="voucherCodeText">${code}</span>
-      <button onclick="copyVoucherCode()">📋 Copy</button>
-    </p>
-    <p><strong>Diskon:</strong> ${discount}%</p>
-    <p><strong>Berlaku sampai:</strong> ${expiry}</p>
-  `;
-}
-
-function copyVoucherCode() {
-  const codeText = document.getElementById("voucherCodeText").innerText;
-  navigator.clipboard.writeText(codeText).then(() => {
-    alert("Kode voucher berhasil di-copy: " + codeText);
-  }).catch(err => {
-    console.error("Gagal copy", err);
-  });
-}
-</script>
 <script>
   window.addEventListener("load", function() {
     const fixbar = document.querySelector(".fixed-bar");
@@ -1702,23 +1694,3 @@ function copyVoucherCode() {
   });
 </script>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
