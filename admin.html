@@ -456,6 +456,30 @@ button {
     color: #334155;
     vertical-align: middle;
   }
+
+    /* Tombol simpan voucher */
+  #saveVoucherBtn {
+    background: linear-gradient(135deg, #b8860b, #ffd700);
+    color: #1a1a1a;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  }
+  #saveVoucherBtn:hover {
+    background: linear-gradient(135deg, #ffd700, #ffcc33);
+    transform: translateY(-2px);
+  }
+
+  /* Tombol copy voucher */
+  #voucherPreview button {
+    background: linear-gradient(135deg, #b8860b, #ffd700);
+    color: #1a1a1a;
+    font-size: 14px;
+    margin-left: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  #voucherPreview button:hover {
+    background: linear-gradient(135deg, #ffd700, #ffcc33);
+    transform: scale(1.05);
+  }
   </style>
 </head>
 <body>
@@ -578,7 +602,7 @@ button {
     <input type="text" id="voucherCode" placeholder="Kode Voucher">
     <input type="number" id="voucherDiscount" placeholder="Diskon (%)">
     <input type="date" id="voucherExpiry">
-    <button onclick="saveVoucher()">💾 Simpan Voucher</button>
+   <button id="saveVoucherBtn" onclick="saveVoucher()">💾 Save Voucher Code</button>
   </div>
   
   <div id="voucherPreview"></div>
@@ -1694,3 +1718,4 @@ function hideLoader() {
   });
 </script>
 </html>
+
