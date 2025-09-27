@@ -1071,24 +1071,24 @@ window.addEventListener('DOMContentLoaded', async () => {
   const voucherInput = document.getElementById("voucherInput");
   const voucherMessage = document.getElementById("voucherMessage");
 
-  if (voucherInput) {
-    voucherInput.addEventListener("change", () => {
-      const code = voucherInput.value.trim();
-      const vouchers = restoData?.vouchers || [];
-      const match = vouchers.find(v => v.code === code);
+ if (voucherInput) {
+  voucherInput.addEventListener("change", () => {
+    const code = voucherInput.value.trim();
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
 
-      if (match) {
-        activeVoucherCode = match.code;
-        voucherMessage.textContent = `✅ Voucher applied: ${match.discount}% off`;
-        voucherMessage.style.color = "green";
-      } else {
-        activeVoucherCode = null;
-        voucherMessage.textContent = "❌ Invalid voucher code";
-        voucherMessage.style.color = "red";
-      }
-      refreshAllPriceDisplays();
-    });
-  }
+    if (voucher && code.toUpperCase() === (voucher.code || "").toUpperCase()) {
+      activeVoucherCode = voucher.code;
+      voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
+      voucherMessage.style.color = "green";
+    } else {
+      activeVoucherCode = null;
+      voucherMessage.textContent = "❌ Invalid voucher code";
+      voucherMessage.style.color = "red";
+    }
+    refreshAllPriceDisplays();
+  });
+}
+
   // === End Voucher Section ===
 
   // expose for debug
@@ -1200,7 +1200,3 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
-
-
-
-
