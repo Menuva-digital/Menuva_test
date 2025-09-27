@@ -1678,6 +1678,7 @@ async function saveVoucher() {
   localStorage.setItem("voucher", JSON.stringify(voucher));
 
   // push ke server
+  /*
   try {
     await fetch("https://yourserver.com/api/voucher", {
       method: "POST",
@@ -1689,6 +1690,7 @@ async function saveVoucher() {
     console.error("Gagal simpan ke server", err);
     alert("Voucher tersimpan lokal. Sinkron gagal!");
   }
+  */
 
   renderVoucher();
 }
@@ -1732,6 +1734,7 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
 
 
