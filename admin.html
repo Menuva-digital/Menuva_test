@@ -1674,9 +1674,6 @@ async function saveVoucher() {
 
   const voucher = { code, discount, expiry };
 
-  // simpan ke IndexedDB
-  await saveVoucherToIndexedDB(voucher);
-
   // simpan juga ke localStorage biar renderVoucher bisa baca
   localStorage.setItem("voucher", JSON.stringify(voucher));
 
@@ -1721,35 +1718,6 @@ async function saveVoucher() {
       console.error("Gagal copy", err);
     });
   }
- async function saveVoucherToIndexedDB(voucher) {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("MenuvaDB", 2); // naikin versi jadi 2
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains("voucher")) {
-        db.createObjectStore("voucher", { keyPath: "id" });
-      }
-    };
-
-    request.onsuccess = (event) => {
-      const db = event.target.result;
-      const tx = db.transaction("voucher", "readwrite");
-      const store = tx.objectStore("voucher");
-
-      store.put({ id: "active", ...voucher });
-
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = (err) => reject(err);
-    };
-
-    request.onerror = (err) => {
-      console.error("IndexedDB error:", err);
-      reject(err);
-    };
-  });
-}
-
 
 </script>
 
@@ -1764,6 +1732,7 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
 
 
