@@ -1112,10 +1112,9 @@ window.refreshAllPriceDisplays = function() {
   let discount = 0;
 
   if (activeVoucherCode) {
-    const vouchers = restoData?.vouchers || [];
-    const match = vouchers.find(v => v.code === activeVoucherCode);
-    if (match) {
-      discount = rawTotal * (parseFloat(match.discount) / 100);
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+    if (voucher && voucher.code === activeVoucherCode) {
+      discount = rawTotal * (parseFloat(voucher.discount) / 100);
     }
   }
 
@@ -1131,6 +1130,7 @@ window.refreshAllPriceDisplays = function() {
     totalPriceEl.textContent = `Total: ${formatWithActive(rawTotal)}`;
   }
 };
+
 </script>
 <script>
 function switchTab(tabName) {
@@ -1200,6 +1200,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
