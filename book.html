@@ -457,6 +457,25 @@ header {
 .btn-wa:hover { background: var(--brand-3); }
 .btn-back:hover { background: #ccc; }
 
+    .voucher-box {
+  display: flex;
+  gap: 8px;
+  justify-content: left;
+}
+
+.voucher-box input {
+  width: 180px;      /* atur sesuai selera */
+  max-width: 60%;    /* biar tetap responsif di HP */
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+#voucherMessage {
+  margin-top: 10px;   /* kasih jarak dari textbox */
+  font-size: 0.85em; /* kecilkan sedikit */
+  font-style: italic;
+  color: #666;       /* default abu2 biar soft */
+}
 </style>
 </head>
 <body>
@@ -1176,4 +1195,5 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
