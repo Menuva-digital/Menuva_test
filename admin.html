@@ -1662,22 +1662,36 @@ function hideLoader() {
     }
   });
 
-  function saveVoucher() {
-    const code = document.getElementById("voucherCode").value.trim();
-    const discount = document.getElementById("voucherDiscount").value;
-    const expiry = document.getElementById("voucherExpiry").value;
+ async function saveVoucher() {
+  const code = document.getElementById("voucherCode").value.trim();
+  const discount = document.getElementById("voucherDiscount").value;
+  const expiry = document.getElementById("voucherExpiry").value;
 
-    if (!code || !discount || !expiry) {
-      alert("Lengkapi semua data voucher!");
-      return;
-    }
-
-    const voucher = { code, discount, expiry };
-    localStorage.setItem("voucher", JSON.stringify(voucher));
-
-    renderVoucher();
-    alert("Voucher berhasil disimpan!");
+  if (!code || !discount || !expiry) {
+    alert("Lengkapi semua data voucher!");
+    return;
   }
+
+  const voucher = { code, discount, expiry };
+
+  // simpan ke IndexedDB
+  await saveVoucherToIndexedDB(voucher);
+
+  // push ke server
+  try {
+    await fetch("https://yourserver.com/api/voucher", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(voucher),
+    });
+    alert("Voucher berhasil disimpan ke server!");
+  } catch (err) {
+    console.error("Gagal simpan ke server", err);
+    alert("Voucher tersimpan lokal. Sinkron gagal!");
+  }
+
+  renderVoucher();
+}
 
   function renderVoucher() {
     const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
@@ -1717,5 +1731,6 @@ function hideLoader() {
   });
 </script>
 </html>
+
 
 
