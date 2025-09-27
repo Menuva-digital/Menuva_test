@@ -626,34 +626,56 @@ function autoApplyVoucher() {
   const totalEl = document.getElementById("totalPrice") || document.getElementById("cartTotal");
   const discountEl = document.getElementById("voucherDiscount");
 
-  if (!input || !msg || !totalEl) return;
+  if (!totalEl || !msg) return;
+
+  // ensure we keep original raw total (do not overwrite original)
+  if (!totalEl.dataset.rawOriginal) {
+    // prefer existing dataset.raw if numeric, else extract digits from text
+    let candidate = parseFloat(totalEl.dataset.raw);
+    if (isNaN(candidate)) {
+      const txt = (totalEl.textContent || '').replace(/[^0-9.,-]/g, '').replace(',', '.');
+      candidate = parseFloat(txt) || 0;
+    }
+    totalEl.dataset.rawOriginal = String(candidate);
+  }
+
+  const originalTotal = parseFloat(totalEl.dataset.rawOriginal) || 0;
+
+  if (!input) {
+    // no code entered -> restore original
+    totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
+    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
+    msg.innerText = "";
+    return;
+  }
 
   const today = new Date().toISOString().split("T")[0];
 
-  if (voucher && input === voucher.code && today <= voucher.expiry) {
-    const discountPercent = parseFloat(voucher.discount);
-    let total = parseFloat(totalEl.dataset.raw) || 0;
-    let potongan = total * (discountPercent / 100);
-    let discounted = total - potongan;
+  if (voucher && (input.toUpperCase() === (voucher.code || '').toUpperCase()) && today <= voucher.expiry) {
+    const discountPercent = parseFloat(voucher.discount) || 0;
+    const potongan = originalTotal * (discountPercent / 100);
+    const discounted = originalTotal - potongan;
 
     totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
-    totalEl.dataset.raw = discounted; // simpan nilai baru
+    // do NOT overwrite data-raw; keep original in data-raw-original
+    // optionally set a separate field for UI-only
+    totalEl.dataset.raw = String(discounted); // ok to set for display but original preserved
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-
     if (discountEl) {
       discountEl.style.display = "block";
       discountEl.innerText = `💸 Diskon ${discountPercent}% = ${formatCurrency(potongan)}`;
     }
-
     console.log("✅ Voucher valid:", input);
   } else {
+    // invalid/expired -> restore
+    totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
+    totalEl.dataset.raw = String(originalTotal);
     msg.innerText = "❌ Voucher Code is invalid or expired";
-    console.warn("❌ Voucher Code valid:", input);
-
     if (discountEl) {
       discountEl.style.display = "none";
       discountEl.innerText = "";
     }
+    console.warn("❌ Voucher Code invalid:", input);
   }
 }
 
@@ -794,3 +816,4 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
