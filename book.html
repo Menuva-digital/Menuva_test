@@ -1022,19 +1022,17 @@ function refreshAllPriceDisplays() {
 let activeVoucherCode = null; // simpan voucher aktif global
 
 window.addEventListener('DOMContentLoaded', async () => {
-  try {
-    applyTheme?.(); // optional from your other code
-  } catch (e) {}
+  try { applyTheme?.(); } catch (e) {}
 
   initLocaleSelect();
 
-  // init DB and load data (use restoId from URL if provided)
+  // init DB and load data
   await initDB();
   const restoId = getQueryRestoId();
   const data = await loadDataFromDB(restoId);
   restoData = data || {};
-  menuData = (data && Array.isArray(data.menu)) ? data.menu : [];
-  menuPromo = (data && Array.isArray(data.menuPromo)) ? data.menuPromo : [];
+  menuData = Array.isArray(data?.menu) ? data.menu : [];
+  menuPromo = Array.isArray(data?.menuPromo) ? data.menuPromo : [];
 
   // header info
   const logoEl = document.getElementById('restoLogo');
@@ -1076,13 +1074,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (voucherInput) {
     voucherInput.addEventListener("change", () => {
       const code = voucherInput.value.trim();
-      if (code === "KM100") { // contoh kode
-        activeVoucherCode = code;
-        voucherMessage.textContent = "Voucher applied: 10% off";
+      const vouchers = restoData?.vouchers || [];
+      const match = vouchers.find(v => v.code === code);
+
+      if (match) {
+        activeVoucherCode = match.code;
+        voucherMessage.textContent = `✅ Voucher applied: ${match.discount}% off`;
         voucherMessage.style.color = "green";
       } else {
         activeVoucherCode = null;
-        voucherMessage.textContent = "Invalid voucher code";
+        voucherMessage.textContent = "❌ Invalid voucher code";
         voucherMessage.style.color = "red";
       }
       refreshAllPriceDisplays();
@@ -1101,31 +1102,35 @@ window.addEventListener('DOMContentLoaded', async () => {
 /* --- Patch refreshAllPriceDisplays to apply voucher discount --- */
 const _origRefresh = window.refreshAllPriceDisplays;
 window.refreshAllPriceDisplays = function() {
-  _origRefresh(); // jalankan fungsi asli
+  _origRefresh?.(); // jalankan fungsi asli kalau ada
 
   const totalPriceEl = document.getElementById("totalPrice");
   const voucherDiscount = document.getElementById("voucherDiscount");
-
   if (!totalPriceEl) return;
 
   const rawTotal = parseFloat(totalPriceEl.dataset.raw) || 0;
   let discount = 0;
 
-  if (activeVoucherCode === "KM100") {
-    discount = rawTotal * 0.1;
+  if (activeVoucherCode) {
+    const vouchers = restoData?.vouchers || [];
+    const match = vouchers.find(v => v.code === activeVoucherCode);
+    if (match) {
+      discount = rawTotal * (parseFloat(match.discount) / 100);
+    }
   }
 
   if (discount > 0) {
     const newTotal = rawTotal - discount;
-    voucherDiscount.style.display = "block";
-    voucherDiscount.textContent = `Discount: -${discount}`;
-    totalPriceEl.textContent = `Total: ${newTotal}`;
+    if (voucherDiscount) {
+      voucherDiscount.style.display = "block";
+      voucherDiscount.textContent = `💸 Discount: -${formatWithActive(discount)}`;
+    }
+    totalPriceEl.textContent = `Total: ${formatWithActive(newTotal)}`;
   } else {
     if (voucherDiscount) voucherDiscount.style.display = "none";
-    totalPriceEl.textContent = `Total: ${rawTotal}`;
+    totalPriceEl.textContent = `Total: ${formatWithActive(rawTotal)}`;
   }
 };
-
 </script>
 <script>
 function switchTab(tabName) {
@@ -1195,5 +1200,6 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
