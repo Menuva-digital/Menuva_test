@@ -511,11 +511,25 @@ header {
     <section id="promo" class="tab-content"><div class="grid" id="promoGrid"></div></section>
   </main>
 
-  <div id="voucherSection" style="display:none; margin-top:10px;">
-  <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
-  <button onclick="applyVoucher()">Apply</button>
-  <p id="voucherMessage"></p>
-   </div>
+  <!-- Tambahkan di dalam book.html (misalnya di bawah cart atau sebelum total price) -->
+<div class="reservasi-container">
+  <div id="voucherSection" style="display:none; margin:15px 0;">
+    <div class="voucher-box">
+      <input 
+        type="text" 
+        id="voucherInput" 
+        placeholder="Use Voucher Code"
+      >
+    </div>
+    <p id="voucherMessage"></p>
+  </div>
+</div>
+
+<div id="cartPreview"><p><i>No choice</i></p></div>
+<p id="totalPrice" data-raw="0">Total: 0</p>
+<br>
+<p id="voucherDiscount" style="display:none; font-size:0.85em; color:green;"></p>
+
 
   <!-- ===================== FOOTER / CART + FORM ===================== -->
   <footer>
@@ -986,6 +1000,8 @@ function refreshAllPriceDisplays() {
 }
 
 /* ------------------ INIT (on DOM ready) ---------------- */
+let activeVoucherCode = null; // simpan voucher aktif global
+
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     applyTheme?.(); // optional from your other code
@@ -1001,7 +1017,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   menuData = (data && Array.isArray(data.menu)) ? data.menu : [];
   menuPromo = (data && Array.isArray(data.menuPromo)) ? data.menuPromo : [];
 
-  // header info (IDs in markup: restoLogo, restoName, alamatRestoranDisplay, teleponRestoranDisplay)
+  // header info
   const logoEl = document.getElementById('restoLogo');
   if (logoEl) { logoEl.src = data?.logo || ''; logoEl.style.display = data?.logo ? 'block' : 'none'; }
   const nameEl = document.getElementById('restoName');
@@ -1011,7 +1027,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const telEl = document.getElementById('teleponRestoranDisplay');
   if (telEl) telEl.innerText = data?.restoPhone || '';
 
-  // set default date/time fields if present
+  // set default date/time fields
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
   const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
@@ -1027,6 +1043,34 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderCart();
   refreshAllPriceDisplays();
 
+  // === Voucher Section ===
+  const plan = localStorage.getItem("user_plan"); 
+  const voucherEnabled = localStorage.getItem("page_voucher") === "true";
+
+  if (plan !== "monthly" && voucherEnabled) {
+    document.getElementById("voucherSection").style.display = "block";
+  }
+
+  const voucherInput = document.getElementById("voucherInput");
+  const voucherMessage = document.getElementById("voucherMessage");
+
+  if (voucherInput) {
+    voucherInput.addEventListener("change", () => {
+      const code = voucherInput.value.trim();
+      if (code === "KM100") { // contoh kode
+        activeVoucherCode = code;
+        voucherMessage.textContent = "Voucher applied: 10% off";
+        voucherMessage.style.color = "green";
+      } else {
+        activeVoucherCode = null;
+        voucherMessage.textContent = "Invalid voucher code";
+        voucherMessage.style.color = "red";
+      }
+      refreshAllPriceDisplays();
+    });
+  }
+  // === End Voucher Section ===
+
   // expose for debug
   window._menuva = {
     getActiveLocaleCurrency, formatWithActive, refreshAllPriceDisplays, addToCart, loadDataFromDB
@@ -1035,8 +1079,34 @@ window.addEventListener('DOMContentLoaded', async () => {
   console.log('book.html: initialized. restoId param=', restoId, 'loaded:', !!data);
 });
 
-/* Expose sendOrder globally if used by onclick attr */
-window.sendOrder = sendOrder;
+/* --- Patch refreshAllPriceDisplays to apply voucher discount --- */
+const _origRefresh = window.refreshAllPriceDisplays;
+window.refreshAllPriceDisplays = function() {
+  _origRefresh(); // jalankan fungsi asli
+
+  const totalPriceEl = document.getElementById("totalPrice");
+  const voucherDiscount = document.getElementById("voucherDiscount");
+
+  if (!totalPriceEl) return;
+
+  const rawTotal = parseFloat(totalPriceEl.dataset.raw) || 0;
+  let discount = 0;
+
+  if (activeVoucherCode === "KM100") {
+    discount = rawTotal * 0.1;
+  }
+
+  if (discount > 0) {
+    const newTotal = rawTotal - discount;
+    voucherDiscount.style.display = "block";
+    voucherDiscount.textContent = `Discount: -${discount}`;
+    totalPriceEl.textContent = `Total: ${newTotal}`;
+  } else {
+    if (voucherDiscount) voucherDiscount.style.display = "none";
+    totalPriceEl.textContent = `Total: ${rawTotal}`;
+  }
+};
+
 </script>
 <script>
 function switchTab(tabName) {
@@ -1103,24 +1173,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("voucherSection").style.display = "block";
     }
   });
-
-  function applyVoucher() {
-    const input = document.getElementById("voucherInput").value.trim();
-    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-
-    if (!voucher) {
-      document.getElementById("voucherMessage").innerText = "⚠️ Tidak ada voucher aktif!";
-      return;
-    }
-
-    const today = new Date().toISOString().split("T")[0];
-    if (input === voucher.code && today <= voucher.expiry) {
-      document.getElementById("voucherMessage").innerText = 
-        `✅ Voucher valid! Diskon ${voucher.discount}% diterapkan`;
-    } else {
-      document.getElementById("voucherMessage").innerText = "❌ Voucher tidak valid atau sudah expired!";
-    }
-  }
 </script>
 </body>
 </html>
+
