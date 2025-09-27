@@ -1662,7 +1662,7 @@ function hideLoader() {
     }
   });
 
- async function saveVoucher() {
+async function saveVoucher() {
   const code = document.getElementById("voucherCode").value.trim();
   const discount = document.getElementById("voucherDiscount").value;
   const expiry = document.getElementById("voucherExpiry").value;
@@ -1676,6 +1676,9 @@ function hideLoader() {
 
   // simpan ke IndexedDB
   await saveVoucherToIndexedDB(voucher);
+
+  // simpan juga ke localStorage biar renderVoucher bisa baca
+  localStorage.setItem("voucher", JSON.stringify(voucher));
 
   // push ke server
   try {
@@ -1718,6 +1721,32 @@ function hideLoader() {
       console.error("Gagal copy", err);
     });
   }
+  async function saveVoucherToIndexedDB(voucher) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("MenuvaDB", 1);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains("voucher")) {
+        db.createObjectStore("voucher", { keyPath: "id" });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      const tx = db.transaction("voucher", "readwrite");
+      const store = tx.objectStore("voucher");
+
+      store.put({ id: "active", ...voucher });
+
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (err) => reject(err);
+    };
+
+    request.onerror = (err) => reject(err);
+  });
+}
+
 </script>
 
 <script>
@@ -1731,6 +1760,7 @@ function hideLoader() {
   });
 </script>
 </html>
+
 
 
 
