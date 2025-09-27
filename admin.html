@@ -1721,9 +1721,9 @@ async function saveVoucher() {
       console.error("Gagal copy", err);
     });
   }
-  async function saveVoucherToIndexedDB(voucher) {
+ async function saveVoucherToIndexedDB(voucher) {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("MenuvaDB", 1);
+    const request = indexedDB.open("MenuvaDB", 2); // naikin versi jadi 2
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
@@ -1743,9 +1743,13 @@ async function saveVoucher() {
       tx.onerror = (err) => reject(err);
     };
 
-    request.onerror = (err) => reject(err);
+    request.onerror = (err) => {
+      console.error("IndexedDB error:", err);
+      reject(err);
+    };
   });
 }
+
 
 </script>
 
@@ -1760,6 +1764,7 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
 
 
