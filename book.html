@@ -1096,19 +1096,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderCart();
   refreshAllPriceDisplays();
 
-  // === Voucher Section ===
-  const plan = localStorage.getItem("user_plan"); 
-  const voucherEnabled = localStorage.getItem("page_voucher") === "true";
+ // === Voucher Section ===
+const plan = localStorage.getItem("user_plan"); 
+const voucherEnabled = localStorage.getItem("page_voucher") === "true";
 
-  if (plan !== "monthly" && voucherEnabled) {
-    document.getElementById("voucherSection").style.display = "block";
-  }
+if (plan !== "monthly" && voucherEnabled) {
+  document.getElementById("voucherSection").style.display = "block";
+}
 
-  const voucherInput = document.getElementById("voucherInput");
-  const voucherMessage = document.getElementById("voucherMessage");
+const voucherInput = document.getElementById("voucherInput");
+const voucherMessage = document.getElementById("voucherMessage");
 
- if (voucherInput) {
-  voucherInput.addEventListener("change", () => {
+if (voucherInput) {
+  voucherInput.addEventListener("input", () => { // << ganti dari "change" ke "input"
     const code = voucherInput.value.trim();
     const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
 
@@ -1116,16 +1116,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       activeVoucherCode = voucher.code;
       voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
       voucherMessage.style.color = "green";
-    } else {
+    } else if (code.length > 0) {
       activeVoucherCode = null;
       voucherMessage.textContent = "❌ Invalid voucher code";
       voucherMessage.style.color = "red";
+    } else {
+      activeVoucherCode = null;
+      voucherMessage.textContent = ""; // kosong kalau input kosong
     }
+
     refreshAllPriceDisplays();
   });
 }
-
-  // === End Voucher Section ===
 
   // expose for debug
   window._menuva = {
@@ -1236,6 +1238,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
