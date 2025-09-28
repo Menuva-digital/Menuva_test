@@ -531,7 +531,13 @@ header {
   </main>
 
   <!-- Tambahkan di dalam book.html (misalnya di bawah cart atau sebelum total price) -->
-<div class="reservasi-container">
+
+  <!-- ===================== FOOTER / CART + FORM ===================== -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="cart" id="cartBox">
+        <h3>🛒 Your Cart</h3>
+        <div class="reservasi-container">
   <div id="voucherSection" style="display:none; margin:15px 0;">
     <div class="voucher-box">
       <input 
@@ -543,18 +549,8 @@ header {
     <p id="voucherMessage"></p>
   </div>
 </div>
-
-<div id="cartPreview"><p><i>No choice</i></p></div>
-<p id="totalPrice" data-raw="0">Total: 0</p>
-<br>
 <p id="voucherDiscount" style="display:none; font-size:0.85em; color:green;"></p>
-
-
-  <!-- ===================== FOOTER / CART + FORM ===================== -->
-  <footer>
-    <div class="container footer-inner">
-      <div class="cart" id="cartBox">
-        <h3>🛒 Your Cart</h3>
+        
         <div id="cartRows" class="cart-rows"></div>
         <div id="cartEmpty" class="cart-empty">No items choice</div>
         <div class="cart-total">
@@ -1227,6 +1223,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
