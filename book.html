@@ -262,35 +262,41 @@
   </main>
 
   <footer>
-    <div class="container footer-inner">
-      <div class="cart" id="cartBox">
-        <h3>🛒 Your Cart</h3>
+  <div class="container footer-inner">
+  <div class="cart" id="cartBox">
+    <h3>🛒 Your Cart</h3>
 
-        <div id="voucherSection" style="display:none; margin:15px 0;">
-          <div class="voucher-box">
-            <input type="text" id="voucherInput" placeholder="Use Voucher Code">
-          </div>
-          <p id="voucherMessage"></p>
-        </div>
+    <!-- Voucher selalu tampil -->
+    <div id="voucherSection" style="margin:15px 0;">
+      <div class="voucher-box">
+        <input 
+          type="text" 
+          id="voucherInput" 
+          placeholder="Use Voucher Code"
+        >
+      </div>
+      <p id="voucherMessage"></p>
+    </div>
 
-        <div id="cartRows" class="cart-rows"></div>
-        <div id="cartEmpty" class="cart-empty">No items choice</div>
+    <div id="cartRows" class="cart-rows"></div>
+    <div id="cartEmpty" class="cart-empty">No items choice</div>
 
-        <div class="cart-total">
-          <div class="total-row">
-            <span>Total Price</span>
-            <span id="cartTotal">0</span>
-          </div>
-          <div class="total-row" id="discountRow" style="display:none; color:green;">
-            <span>Discount</span>
-            <span id="voucherDiscount">0</span>
-          </div>
-          <div class="total-row grand-total">
-            <span>Grand Total</span>
-            <span id="grandTotal">0</span>
-          </div>
-        </div>
-
+    <div class="cart-total">
+      <div class="total-row">
+        <span>Total Price</span>
+        <span id="cartTotal">0</span>
+      </div>
+      <div class="total-row" id="discountRow" style="display:none; color:green;">
+        <span>Discount</span>
+        <span id="voucherDiscount">0</span>
+      </div>
+      <div class="total-row grand-total">
+        <span>Grand Total</span>
+        <span id="grandTotal">0</span>
+      </div>
+    </div>
+  </div>
+</div>
         <div class="form" style="margin-top:12px">
           <div>
             <label for="custName">Customer Name</label>
@@ -906,5 +912,99 @@ function formatWithActive(num) {
   });
 
   </script>
+  <script>
+// Helper aman parse angka
+function cleanNumber(val) {
+  if (val == null) return 0;
+  return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
+}
+
+// Format currency sederhana
+function formatCurrency(num) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR"
+  }).format(num);
+}
+
+// === Apply Voucher otomatis ===
+function autoApplyVoucher() {
+  const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+  const input = document.getElementById("voucherInput")?.value.trim();
+  const msg = document.getElementById("voucherMessage");
+
+  const totalEl = document.getElementById("cartTotal");        // total asli
+  const discountEl = document.getElementById("voucherDiscount"); // nominal diskon
+  const grandEl = document.getElementById("grandTotal");        // total setelah diskon
+
+  if (!totalEl || !msg || !grandEl) return;
+
+  // simpan total original hanya sekali
+  if (!totalEl.dataset.rawOriginal) {
+    totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.innerText) || 0);
+  }
+
+  const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
+
+  if (!input) {
+    // reset kalau input kosong
+    totalEl.innerText = formatCurrency(originalTotal);
+    totalEl.dataset.raw = String(originalTotal);
+
+    if (discountEl) { 
+      discountEl.parentElement.style.display = "none"; 
+      discountEl.innerText = "0"; 
+    }
+
+    msg.innerText = "";
+    grandEl.innerText = formatCurrency(originalTotal);
+    return;
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  if (voucher && input.toUpperCase() === (voucher.code || "").toUpperCase() && today <= voucher.expiry) {
+    const discountPercent = parseFloat(voucher.discount) || 0;
+    const potongan = originalTotal * (discountPercent / 100);
+    const discounted = originalTotal - potongan;
+
+    totalEl.innerText = formatCurrency(originalTotal);
+    totalEl.dataset.raw = String(discounted);
+
+    msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+
+    if (discountEl) {
+      discountEl.parentElement.style.display = "block";
+      discountEl.innerText = formatCurrency(potongan);
+    }
+
+    grandEl.innerText = formatCurrency(discounted);
+  } else {
+    totalEl.innerText = formatCurrency(originalTotal);
+    totalEl.dataset.raw = String(originalTotal);
+
+    msg.innerText = "❌ Voucher Code is invalid or expired";
+
+    if (discountEl) {
+      discountEl.parentElement.style.display = "none";
+      discountEl.innerText = "0";
+    }
+
+    grandEl.innerText = formatCurrency(originalTotal);
+  }
+}
+
+// === Attach event multiple biar aman di HP/desktop ===
+document.addEventListener("DOMContentLoaded", () => {
+  const voucherInput = document.getElementById("voucherInput");
+  if (voucherInput) {
+    ["input", "keyup", "change", "blur"].forEach(evt => {
+      voucherInput.addEventListener(evt, autoApplyVoucher);
+    });
+  }
+});
+</script>
+
 </body>
 </html>
+
