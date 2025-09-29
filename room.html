@@ -557,20 +557,22 @@ function updateCartUI() {
     totalEl.innerText = 'Total: 0';
     totalEl.dataset.raw = 0;
     totalEl.dataset.rawOriginal = 0;
+    const discountEl = getEl("voucherDiscount");
+    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
     return;
   }
 
   preview.innerHTML = '';
-  let total = 0;
+  let subtotal = 0;
   cart.forEach((item, idx) => {
-    const subtotal = (Number(item.harga) || 0) * (Number(item.qty) || 0);
-    total += subtotal;
+    const subtotalItem = (Number(item.harga) || 0) * (Number(item.qty) || 0);
+    subtotal += subtotalItem;
 
     const div = document.createElement('div');
     div.className = 'cart-item';
 
     const span = document.createElement('span');
-    span.innerHTML = `${escapeHtml(item.nama)} - ${formatCurrency(item.harga)} x ${item.qty} = <b>${formatCurrency(subtotal)}</b>`;
+    span.innerHTML = `${escapeHtml(item.nama)} - ${formatCurrency(item.harga)} x ${item.qty} = <b>${formatCurrency(subtotalItem)}</b>`;
     div.appendChild(span);
 
     if (item.kategori === 'package') {
@@ -603,31 +605,36 @@ function updateCartUI() {
     preview.appendChild(div);
   });
 
-  // simpan total asli
-  totalEl.dataset.raw = total;
-  totalEl.dataset.rawOriginal = total;
-  totalEl.innerText = 'Total: ' + formatCurrency(total);
+  // simpan subtotal asli
+  totalEl.dataset.rawOriginal = subtotal;
+  totalEl.dataset.raw = subtotal;
+  totalEl.innerText = 'Total: ' + formatCurrency(subtotal);
 
-  // cek kalau voucher valid → langsung re-apply diskon
+  // cek voucher aktif → langsung re-apply diskon
   autoApplyVoucher();
 }
-
-/* ========= VOUCHER ========= */
 function autoApplyVoucher() {
   const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
   const input = document.getElementById("voucherInput")?.value.trim();
   const msg = document.getElementById("voucherMessage");
   const totalEl = document.getElementById("totalPrice");
-  const discountEl = document.getElementById("voucherDiscount");
+  let discountEl = document.getElementById("voucherDiscount");
 
   if (!totalEl || !msg) return;
+
+  // kalau elemen diskon belum ada, bikin otomatis
+  if (!discountEl) {
+    discountEl = document.createElement("div");
+    discountEl.id = "voucherDiscount";
+    totalEl.insertAdjacentElement("afterend", discountEl);
+  }
 
   const originalTotal = parseFloat(totalEl.dataset.rawOriginal) || 0;
 
   if (!input) {
     totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
-    totalEl.dataset.raw = String(originalTotal);
-    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
+    discountEl.style.display = "none";
+    discountEl.innerText = "";
     msg.innerText = "";
     return;
   }
@@ -640,23 +647,20 @@ function autoApplyVoucher() {
     const discounted = originalTotal - potongan;
 
     totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
-    totalEl.dataset.raw = String(discounted);
+    totalEl.dataset.raw = discounted;
+
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-    if (discountEl) {
-      discountEl.style.display = "block";
-      discountEl.innerText = `💸 Diskon ${discountPercent}% = ${formatCurrency(potongan)}`;
-    }
+    discountEl.style.display = "block";
+    discountEl.innerText = `💸 Subtotal: ${formatCurrency(originalTotal)}\n💸 Diskon ${discountPercent}% = -${formatCurrency(potongan)}`;
+
   } else {
     totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
-    totalEl.dataset.raw = String(originalTotal);
+    totalEl.dataset.raw = originalTotal;
     msg.innerText = "❌ Voucher Code is invalid or expired";
-    if (discountEl) {
-      discountEl.style.display = "none";
-      discountEl.innerText = "";
-    }
+    discountEl.style.display = "none";
+    discountEl.innerText = "";
   }
 }
-
 function tambahKeCart(room){
   if(!room || !room.nama) return;
 
@@ -816,5 +820,6 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
