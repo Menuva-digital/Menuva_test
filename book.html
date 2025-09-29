@@ -933,29 +933,22 @@ function autoApplyVoucher() {
   const input = document.getElementById("voucherInput")?.value.trim();
   const msg = document.getElementById("voucherMessage");
 
-  const totalEl = document.getElementById("cartTotal");        // total asli
-  const discountEl = document.getElementById("voucherDiscount"); // nominal diskon
-  const grandEl = document.getElementById("grandTotal");        // total setelah diskon
+  const totalEl = document.getElementById("cartTotal");
+  const discountEl = document.getElementById("voucherDiscount");
+  const grandEl = document.getElementById("grandTotal");
 
   if (!totalEl || !msg || !grandEl) return;
 
-  // simpan total original hanya sekali
   if (!totalEl.dataset.rawOriginal) {
-    totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.innerText) || 0);
+    totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
   }
 
   const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
 
   if (!input) {
-    // reset kalau input kosong
     totalEl.innerText = formatCurrency(originalTotal);
     totalEl.dataset.raw = String(originalTotal);
-
-    if (discountEl) { 
-      discountEl.parentElement.style.display = "none"; 
-      discountEl.innerText = "0"; 
-    }
-
+    if (discountEl) { discountEl.parentElement.style.display = "none"; discountEl.innerText = ""; }
     msg.innerText = "";
     grandEl.innerText = formatCurrency(originalTotal);
     return;
@@ -972,10 +965,11 @@ function autoApplyVoucher() {
     totalEl.dataset.raw = String(discounted);
 
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+    msg.style.color = "green";
 
     if (discountEl) {
-      discountEl.parentElement.style.display = "block";
-      discountEl.innerText = formatCurrency(potongan);
+      discountEl.parentElement.style.display = "flex";
+      discountEl.innerText = `${formatCurrency(potongan)}`;
     }
 
     grandEl.innerText = formatCurrency(discounted);
@@ -984,15 +978,17 @@ function autoApplyVoucher() {
     totalEl.dataset.raw = String(originalTotal);
 
     msg.innerText = "❌ Voucher Code is invalid or expired";
+    msg.style.color = "red";
 
     if (discountEl) {
       discountEl.parentElement.style.display = "none";
-      discountEl.innerText = "0";
+      discountEl.innerText = "";
     }
 
     grandEl.innerText = formatCurrency(originalTotal);
   }
 }
+
 
 // === Attach event multiple biar aman di HP/desktop ===
 document.addEventListener("DOMContentLoaded", () => {
@@ -1007,4 +1003,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
