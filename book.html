@@ -536,25 +536,35 @@ header {
       <div class="cart" id="cartBox">
         <h3>🛒 Your Cart</h3>
         <div class="reservasi-container">
-  <div id="voucherSection" style="display:none; margin:15px 0;">
-    <div class="voucher-box">
-      <input 
-        type="text" 
-        id="voucherInput" 
-        placeholder="Use Voucher Code"
-      >
-    </div>
-    <p id="voucherMessage"></p>
+          <div id="voucherSection" style="display:none; margin:15px 0;">
+  <div class="voucher-box">
+    <input 
+      type="text" 
+      id="voucherInput" 
+      placeholder="Use Voucher Code"
+    >
+  </div>
+  <p id="voucherMessage"></p>
+</div>
+
+<div id="cartRows" class="cart-rows"></div>
+<div id="cartEmpty" class="cart-empty">No items choice</div>
+
+<!-- Total Section -->
+<div class="cart-total">
+  <div class="total-row">
+    <span>Total Price</span>
+    <span id="cartTotal">0</span>
+  </div>
+  <div class="total-row" id="discountRow" style="display:none; color:green;">
+    <span>Discount</span>
+    <span id="voucherDiscount">0</span>
+  </div>
+  <div class="total-row grand-total">
+    <span>Grand Total</span>
+    <span id="grandTotal">0</span>
   </div>
 </div>
-<p id="voucherDiscount" style="display:none; font-size:0.85em; color:green;"></p>
-        
-        <div id="cartRows" class="cart-rows"></div>
-        <div id="cartEmpty" class="cart-empty">No items choice</div>
-        <div class="cart-total">
-          <div>Total</div>
-          <div id="cartTotal"> 0</div>
-        </div>
 
         <div class="form">
           <div>
@@ -1166,13 +1176,17 @@ const _origRefresh = window.refreshAllPriceDisplays;
 window.refreshAllPriceDisplays = function() {
   _origRefresh?.(); // jalankan fungsi asli kalau ada
 
-  const totalPriceEl = document.getElementById("cartTotal"); 
-  const voucherDiscount = document.getElementById("voucherDiscount");
-  if (!totalPriceEl) return;
+  const cartTotalEl = document.getElementById("cartTotal"); 
+  const discountRow = document.getElementById("discountRow");
+  const voucherDiscountEl = document.getElementById("voucherDiscount");
+  const grandTotalEl = document.getElementById("grandTotal");
 
-  const rawTotal = parseFloat(totalPriceEl.dataset.raw) || 0;
+  if (!cartTotalEl || !grandTotalEl) return;
+
+  const rawTotal = parseFloat(cartTotalEl.dataset.raw) || 0;
   let discount = 0;
 
+  // cek voucher
   if (activeVoucherCode) {
     const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
     if (voucher && voucher.code === activeVoucherCode) {
@@ -1180,18 +1194,21 @@ window.refreshAllPriceDisplays = function() {
     }
   }
 
+  const newTotal = rawTotal - discount;
+
+  // Update tampilan
+  cartTotalEl.textContent = formatWithActive(rawTotal);
+
   if (discount > 0) {
-    const newTotal = rawTotal - discount;
-    if (voucherDiscount) {
-      voucherDiscount.style.display = "block";
-      voucherDiscount.textContent = `💸 Discount: -${formatWithActive(discount)}`;
-    }
-    totalPriceEl.textContent = `Total: ${formatWithActive(newTotal)}`;
+    if (discountRow) discountRow.style.display = "flex";
+    if (voucherDiscountEl) voucherDiscountEl.textContent = `${formatWithActive(discount)}`;
   } else {
-    if (voucherDiscount) voucherDiscount.style.display = "none";
-    totalPriceEl.textContent = `Total: ${formatWithActive(rawTotal)}`;
+    if (discountRow) discountRow.style.display = "none";
   }
+
+  grandTotalEl.textContent = formatWithActive(newTotal);
 };
+
 
 </script>
 <script>
@@ -1262,6 +1279,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
