@@ -762,56 +762,59 @@ function renderCart() {
   if (!cart || cart.length === 0) {
     empty.style.display = 'block';
 
+    // reset total
     const cartTotalEl = document.getElementById('cartTotal');
     if (cartTotalEl) {
       cartTotalEl.dataset.raw = 0;
       cartTotalEl.textContent = formatWithActive(0);
     }
 
-    const voucherDiscount = document.getElementById("voucherDiscount");
-    if (voucherDiscount) voucherDiscount.style.display = "none";
+    // reset grand total
+    const grandTotalEl = document.getElementById('grandTotal');
+    if (grandTotalEl) {
+      grandTotalEl.dataset.raw = 0;
+      grandTotalEl.textContent = formatWithActive(0);
+    }
 
-    // update tampilan total biar konsisten
-    refreshAllPriceDisplays();
+    // hide discount row
+    const discountRow = document.getElementById("discountRow");
+    if (discountRow) discountRow.style.display = "none";
+
     return;
   }
 
+  // ada item → tampilkan rows
   empty.style.display = 'none';
+
   let total = 0;
-
-  cart.forEach((c, i) => {
-    const subtotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
-    total += subtotal;
-
+  cart.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'cart-row';
     row.innerHTML = `
-      <div>
-        <strong>${escapeHtml(c.nama)}</strong>
-        <div style="font-size:12px;color:var(--muted)">
-          ${formatWithActive(c.harga)} × ${c.qty}
-        </div>
-      </div>
+      <div>${escapeHtml(item.name)}</div>
       <div class="qty-wrap">
-        <button onclick="updateQty(${i}, -1)">-</button>
-        <input type="text" value="${c.qty}" readonly />
-        <button onclick="updateQty(${i}, 1)">+</button>
+        <button onclick="changeQty(${idx}, -1)">-</button>
+        <input type="text" value="${item.qty}" readonly />
+        <button onclick="changeQty(${idx}, 1)">+</button>
       </div>
-      <div class="price-right">${formatWithActive(subtotal)}</div>
-      <button class="remove-btn" title="Remove" onclick="removeFromCart(${i})">✕</button>
+      <div class="price-right">${formatWithActive(item.price * item.qty)}</div>
+      <button class="remove-btn" onclick="removeFromCart(${idx})">✕</button>
     `;
     rows.appendChild(row);
+    total += item.price * item.qty;
   });
 
-  // --- SET RAW TOTAL SAJA ---
-  const cartTotalEl = document.getElementById("cartTotal");
+  // update total & grand total
+  const cartTotalEl = document.getElementById('cartTotal');
+  const grandTotalEl = document.getElementById('grandTotal');
   if (cartTotalEl) {
     cartTotalEl.dataset.raw = total;
     cartTotalEl.textContent = formatWithActive(total);
   }
-
-  // biar perhitungan diskon + grand total diatur rapi
-  refreshAllPriceDisplays();
+  if (grandTotalEl) {
+    grandTotalEl.dataset.raw = total;
+    grandTotalEl.textContent = formatWithActive(total);
+  }
 }
 
 function addToCart(name, price) {
@@ -1268,6 +1271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
