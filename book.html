@@ -762,60 +762,71 @@ function renderCart() {
   if (!cart || cart.length === 0) {
     empty.style.display = 'block';
 
-    // reset total
     const cartTotalEl = document.getElementById('cartTotal');
-    if (cartTotalEl) {
-      cartTotalEl.dataset.raw = 0;
-      cartTotalEl.textContent = formatWithActive(0);
-    }
-
-    // reset grand total
     const grandTotalEl = document.getElementById('grandTotal');
-    if (grandTotalEl) {
-      grandTotalEl.dataset.raw = 0;
-      grandTotalEl.textContent = formatWithActive(0);
-    }
+    if (cartTotalEl) { cartTotalEl.dataset.raw = 0; cartTotalEl.textContent = formatWithActive(0); }
+    if (grandTotalEl) { grandTotalEl.dataset.raw = 0; grandTotalEl.textContent = formatWithActive(0); }
 
-    // hide discount row
     const discountRow = document.getElementById("discountRow");
     if (discountRow) discountRow.style.display = "none";
 
     return;
   }
 
-  // ada item → tampilkan rows
   empty.style.display = 'none';
-
   let total = 0;
-  cart.forEach((item, idx) => {
+
+  cart.forEach((c, i) => {
+    const subtotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
+    total += subtotal;
+
     const row = document.createElement('div');
     row.className = 'cart-row';
     row.innerHTML = `
-      <div>${escapeHtml(item.name)}</div>
-      <div class="qty-wrap">
-        <button onclick="changeQty(${idx}, -1)">-</button>
-        <input type="text" value="${item.qty}" readonly />
-        <button onclick="changeQty(${idx}, 1)">+</button>
+      <div>
+        <strong>${escapeHtml(c.nama)}</strong>
+        <div style="font-size:12px;color:var(--muted)">
+          ${formatWithActive(c.harga)} × ${c.qty}
+        </div>
       </div>
-      <div class="price-right">${formatWithActive(item.price * item.qty)}</div>
-      <button class="remove-btn" onclick="removeFromCart(${idx})">✕</button>
+      <div class="qty-wrap">
+        <button onclick="updateQty(${i}, -1)">-</button>
+        <input type="text" value="${c.qty}" readonly />
+        <button onclick="updateQty(${i}, 1)">+</button>
+      </div>
+      <div class="price-right">${formatWithActive(subtotal)}</div>
+      <button class="remove-btn" onclick="removeFromCart(${i})">✕</button>
     `;
     rows.appendChild(row);
-    total += item.price * item.qty;
   });
 
-  // update total & grand total
-  const cartTotalEl = document.getElementById('cartTotal');
-  const grandTotalEl = document.getElementById('grandTotal');
-  if (cartTotalEl) {
-    cartTotalEl.dataset.raw = total;
-    cartTotalEl.textContent = formatWithActive(total);
+  // --- APPLY DISKON VOUCHER ---
+  const cartTotalEl = document.getElementById("cartTotal");
+  const grandTotalEl = document.getElementById("grandTotal");
+  const discountRow = document.getElementById("discountRow");
+  const voucherDiscount = document.getElementById("voucherDiscount");
+
+  let discount = 0;
+  if (activeVoucherCode) {
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+    if (voucher && voucher.code === activeVoucherCode) {
+      discount = total * (parseFloat(voucher.discount) / 100);
+    }
   }
-  if (grandTotalEl) {
-    grandTotalEl.dataset.raw = total;
-    grandTotalEl.textContent = formatWithActive(total);
+
+  const finalTotal = total - discount;
+
+  if (cartTotalEl) { cartTotalEl.dataset.raw = total; cartTotalEl.textContent = formatWithActive(total); }
+  if (grandTotalEl) { grandTotalEl.dataset.raw = finalTotal; grandTotalEl.textContent = formatWithActive(finalTotal); }
+
+  if (discount > 0) {
+    if (discountRow) discountRow.style.display = "flex";
+    if (voucherDiscount) voucherDiscount.textContent = `-${formatWithActive(discount)}`;
+  } else {
+    if (discountRow) discountRow.style.display = "none";
   }
 }
+
 
 function addToCart(name, price) {
   const harga = typeof price === 'string' ? parseFloat(String(price).replace(/[^0-9.]/g, '')) : Number(price);
@@ -1271,6 +1282,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
