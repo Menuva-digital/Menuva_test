@@ -546,13 +546,15 @@ function renderMenu() {
         <div class="menu-title">${escapeHtml(m.nama)}</div>
         <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
         <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
-        <span class="item-count">0</span> <!-- ganti dari order-count -->
+        <span class="badge">0</span> <!-- badge bulat biru -->
       `;
       grid.appendChild(card);
     });
   });
 }
- function tambahPesanan(item, cardEl) {
+
+/* ------------------ TAMBAH PESANAN ------------------ */
+function tambahPesanan(item, cardEl) {
   const existing = cart.find(c => c.nama === item.nama);
   const hargaNum = Number(item.harga) || 0;
 
@@ -563,55 +565,70 @@ function renderMenu() {
   }
 
   // update counter khusus card
-  const counter = cardEl.querySelector('.item-count'); // ganti dari .order-count
+  const counter = cardEl.querySelector('.badge');
   if (counter) {
     const cartItem = cart.find(c => c.nama === item.nama);
     counter.textContent = cartItem.qty;
-    counter.style.display = 'inline-block';
+    counter.style.display = 'flex';
   }
 
   renderCart();
 }
-  /* ------------------ PROMO (render + countdown) -------- */
-  let promoCountdownTimer = null;
-  function renderPromo(){
-    const grid = document.getElementById('promoGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const now = Date.now();
-    const promos = (menuPromo||[]).filter(p=>{
-      if (!p.tanggalAkhir) return true;
-      const end = new Date(p.tanggalAkhir).getTime();
-      return isFinite(end) ? end > now : true;
-    });
-    if (!promos || promos.length === 0) {
-      grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
-      stopPromoCountdown();
-      return;
-    }
-    promos.forEach(p=>{
-      const card = document.createElement('div');
-      card.className = 'promo-card';
-      const item = { nama: p.namaPromo || p.namaMenu || 'Promo Item', harga: Number(p.harga)||0, deskripsi: p.deskripsi||'', image: p.image||'' };
-      card.addEventListener('click', ()=> {
-        if (p.tanggalAkhir) {
-          const end = new Date(p.tanggalAkhir).getTime();
-          if (isFinite(end) && Date.now() > end) return;
-        }
-        tambahPesanan(item, card);
-      });
-      const badge = document.createElement('span'); badge.className='promo-badge'; badge.textContent='PROMO'; card.appendChild(badge);
-      if (p.image) { const img = document.createElement('img'); img.src = p.image; img.alt = item.nama; card.appendChild(img); }
-      else { const ph = document.createElement('div'); ph.className='menu-thumb'; card.appendChild(ph); }
-      const title = document.createElement('div'); title.className='promo-name'; title.textContent = p.namaPromo || p.namaMenu || 'Promo'; card.appendChild(title);
-      const desc = document.createElement('div'); desc.className='promo-menu-desc'; desc.textContent = p.deskripsi||''; card.appendChild(desc);
-      const price = document.createElement('div'); price.className='promo-price'; price.dataset.price = Number(p.harga)||0; price.textContent = formatWithActive(Number(p.harga)||0); card.appendChild(price);
-      if (p.tanggalAkhir) { const c = document.createElement('div'); c.className='promo-count'; c.dataset.end = p.tanggalAkhir; card.appendChild(c); }
-      const counter = document.createElement('span'); counter.className='order-count'; counter.textContent='0'; counter.style.display='none'; card.appendChild(counter);
-      grid.appendChild(card);
-    });
-    startPromoCountdown();
+
+/* ------------------ RENDER PROMO -------------------- */
+function renderPromo(){
+  const grid = document.getElementById('promoGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const now = Date.now();
+  const promos = (menuPromo||[]).filter(p=>{
+    if (!p.tanggalAkhir) return true;
+    const end = new Date(p.tanggalAkhir).getTime();
+    return isFinite(end) ? end > now : true;
+  });
+  if (!promos || promos.length === 0) {
+    grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
+    stopPromoCountdown();
+    return;
   }
+  promos.forEach(p=>{
+    const card = document.createElement('div');
+    card.className = 'promo-card';
+    const item = { nama: p.namaPromo || p.namaMenu || 'Promo Item', harga: Number(p.harga)||0, deskripsi: p.deskripsi||'', image: p.image||'' };
+    card.addEventListener('click', ()=> {
+      if (p.tanggalAkhir) {
+        const end = new Date(p.tanggalAkhir).getTime();
+        if (isFinite(end) && Date.now() > end) return;
+      }
+      tambahPesanan(item, card);
+    });
+
+    // Badge PROMO
+    const promoBadge = document.createElement('span');
+    promoBadge.className='badge';
+    promoBadge.textContent='0'; // inisial qty 0
+    card.appendChild(promoBadge);
+
+    if (p.image) { 
+      const img = document.createElement('img'); 
+      img.src = p.image; 
+      img.alt = item.nama; 
+      card.appendChild(img); 
+    } else { 
+      const ph = document.createElement('div'); 
+      ph.className='menu-thumb'; 
+      card.appendChild(ph); 
+    }
+    const title = document.createElement('div'); title.className='promo-name'; title.textContent = p.namaPromo || p.namaMenu || 'Promo'; card.appendChild(title);
+    const desc = document.createElement('div'); desc.className='promo-menu-desc'; desc.textContent = p.deskripsi||''; card.appendChild(desc);
+    const price = document.createElement('div'); price.className='promo-price'; price.dataset.price = Number(p.harga)||0; price.textContent = formatWithActive(Number(p.harga)||0); card.appendChild(price);
+    if (p.tanggalAkhir) { const c = document.createElement('div'); c.className='promo-count'; c.dataset.end = p.tanggalAkhir; card.appendChild(c); }
+
+    grid.appendChild(card);
+  });
+  startPromoCountdown();
+}
+
   function startPromoCountdown(){
     stopPromoCountdown();
     const tick = ()=>{
@@ -862,6 +879,7 @@ function renderMenu() {
   </script>
 </body>
 </html>
+
 
 
 
