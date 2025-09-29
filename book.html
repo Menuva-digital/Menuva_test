@@ -122,7 +122,28 @@
     .menu-title{font-weight:700;font-size:14px;text-align:center;margin:2px 0 0 0}
     .menu-desc{font-size:12px;color:var(--muted);text-align:center}
     .menu-price{font-size:13px;font-weight:800;text-align:center;margin-top:4px}
+    
+    /* Badge khusus di menu card */
+.menu-card {
+  position: relative; /* supaya badge bisa nempel relatif ke card */
+}
 
+.menu-card .badge {
+  position: absolute;
+  top: 8px;       /* jarak dari atas card */
+  right: 8px;     /* jarak dari kanan card */
+  background-color: #007bff; /* biru elegan */
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%; /* bikin bulat */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
     /* PROMO */
     .promo-card{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;min-height:260px}
     .promo-badge{position:absolute;top:10px;left:10px;background:#ffcc00;color:#222;padding:4px 8px;border-radius:999px;font-weight:800}
@@ -841,6 +862,7 @@ function renderMenu() {
   </script>
 </body>
 </html>
+
 
 
 
