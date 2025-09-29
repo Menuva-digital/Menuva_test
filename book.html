@@ -546,33 +546,11 @@ function renderMenu() {
         <div class="menu-title">${escapeHtml(m.nama)}</div>
         <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
         <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
-        <span class="badge">0</span> <!-- badge bulat biru -->
+        <span class="badge">0</span>
       `;
       grid.appendChild(card);
     });
   });
-}
-
-/* ------------------ TAMBAH PESANAN ------------------ */
-function tambahPesanan(item, cardEl) {
-  const existing = cart.find(c => c.nama === item.nama);
-  const hargaNum = Number(item.harga) || 0;
-
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    cart.push({ key:item.nama, nama:item.nama, harga:hargaNum, qty:1 });
-  }
-
-  // update counter khusus card
-  const counter = cardEl.querySelector('.badge');
-  if (counter) {
-    const cartItem = cart.find(c => c.nama === item.nama);
-    counter.textContent = cartItem.qty;
-    counter.style.display = 'flex';
-  }
-
-  renderCart();
 }
 
 /* ------------------ RENDER PROMO -------------------- */
@@ -603,10 +581,9 @@ function renderPromo(){
       tambahPesanan(item, card);
     });
 
-    // Badge PROMO
     const promoBadge = document.createElement('span');
     promoBadge.className='badge';
-    promoBadge.textContent='0'; // inisial qty 0
+    promoBadge.textContent='0';
     card.appendChild(promoBadge);
 
     if (p.image) { 
@@ -627,6 +604,58 @@ function renderPromo(){
     grid.appendChild(card);
   });
   startPromoCountdown();
+}
+
+/* ------------------ TAMBAH PESANAN ------------------ */
+function tambahPesanan(item, cardEl) {
+  const existing = cart.find(c => c.nama === item.nama);
+  const hargaNum = Number(item.harga) || 0;
+
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    cart.push({ key:item.nama, nama:item.nama, harga:hargaNum, qty:1 });
+  }
+
+  const counter = cardEl.querySelector('.badge');
+  if (counter) {
+    const cartItem = cart.find(c => c.nama === item.nama);
+    counter.textContent = cartItem.qty;
+    counter.style.display = 'flex';
+  }
+
+  renderCart();
+}
+
+/* ------------------ INPUT VOUCHER ------------------ */
+const voucherInput = document.getElementById("voucherInput");
+const voucherMessage = document.getElementById("voucherMessage");
+
+function applyVoucher() {
+  const code = voucherInput.value.trim().toUpperCase();
+  if (!code) {
+    voucherMessage.textContent = "Please enter voucher code!";
+    return;
+  }
+
+  // validasi voucher sesuai project lo
+  if (code === "DISKON10") {
+    voucherMessage.textContent = "Voucher applied! 10% off";
+  } else {
+    voucherMessage.textContent = "Invalid voucher code!";
+  }
+}
+
+document.getElementById("applyVoucherBtn")?.addEventListener("click", applyVoucher);
+
+/* ------------------ HELPERS ------------------ */
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function formatWithActive(num) {
+  return num.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
 }
 
   function startPromoCountdown(){
@@ -879,6 +908,7 @@ function renderPromo(){
   </script>
 </body>
 </html>
+
 
 
 
