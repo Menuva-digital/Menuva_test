@@ -334,17 +334,17 @@ body.dark .room-card {
         placeholder="Use Voucher Code"
       >
     </div>
-    <p id="voucherMessage" style="margin-top:5px; color:#666;"></p>
+    <p id="voucherMessage"></p>
   </div>
 </div>
 
 <div id="cartPreview"><p><i>No choice</i></p></div>
 
-<!-- Total harga -->
-<p id="totalPrice" data-raw="0" style="font-weight:bold; margin-top:10px;">Total: 0</p>
-
-<!-- Diskon tampil setelah total -->
-<p id="voucherDiscount" style="display:none; font-size:0.9em; color:green; font-weight:bold; margin-top:3px;"></p>
+<div id="priceSummary" style="margin-top:10px; font-size:0.9em;">
+  <p id="totalPrice" data-raw="0">Total Price = 0</p>
+  <p id="voucherDiscount" style="display:none; color:green;">Discount = 0</p>
+  <p id="grandTotal" style="font-weight:bold;">Grand Total = 0</p>
+</div>
 
     
     <br>
@@ -548,19 +548,21 @@ function tampilkanData(){
   });
   if (getEl('empty')) getEl('empty').classList.toggle('hidden', total > 0);
 }
-/* ========= CART ========= */
+  
 function updateCartUI() {
   const preview = getEl('cartPreview');
   const totalEl = getEl('totalPrice');
-  if (!preview || !totalEl) return;
+  const discountEl = getEl('voucherDiscount');
+  const grandEl = getEl('grandTotal');
+  if (!preview || !totalEl || !grandEl) return;
 
   if (cart.length === 0) {
     preview.innerHTML = '<p><i>There are no selected items.</i></p>';
-    totalEl.innerText = 'Total: 0';
+    totalEl.innerText = 'Total Price = 0';
     totalEl.dataset.raw = 0;
     totalEl.dataset.rawOriginal = 0;
-    const discountEl = getEl("voucherDiscount");
     if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
+    grandEl.innerText = 'Grand Total = 0';
     return;
   }
 
@@ -610,11 +612,13 @@ function updateCartUI() {
   // simpan subtotal asli
   totalEl.dataset.rawOriginal = subtotal;
   totalEl.dataset.raw = subtotal;
-  totalEl.innerText = 'Total: ' + formatCurrency(subtotal);
+  totalEl.innerText = 'Total Price = ' + formatCurrency(subtotal);
+  grandEl.innerText = 'Grand Total = ' + formatCurrency(subtotal);
 
   // cek voucher aktif → langsung re-apply diskon
   autoApplyVoucher();
 }
+
 // Helper aman parse angka
 function cleanNumber(val) {
   if (val == null) return 0;
@@ -626,10 +630,12 @@ function autoApplyVoucher() {
   const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
   const input = document.getElementById("voucherInput")?.value.trim();
   const msg = document.getElementById("voucherMessage");
-  const totalEl = document.getElementById("totalPrice") || document.getElementById("cartTotal");
-  const discountEl = document.getElementById("voucherDiscount");
 
-  if (!totalEl || !msg) return;
+  const totalEl = document.getElementById("totalPrice");   // total asli
+  const discountEl = document.getElementById("voucherDiscount"); // nominal diskon
+  const grandEl = document.getElementById("grandTotal");   // total setelah diskon
+
+  if (!totalEl || !msg || !grandEl) return;
 
   // simpan total asli sekali aja
   if (!totalEl.dataset.rawOriginal) {
@@ -640,10 +646,11 @@ function autoApplyVoucher() {
 
   if (!input) {
     // restore original
-    totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
+    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
     if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
     msg.innerText = "";
+    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
     return;
   }
 
@@ -654,23 +661,26 @@ function autoApplyVoucher() {
     const potongan = originalTotal * (discountPercent / 100);
     const discounted = originalTotal - potongan;
 
-    totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
+    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
     totalEl.dataset.raw = String(discounted);
 
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
 
     if (discountEl) {
       discountEl.style.display = "block";
-      discountEl.innerText = `💸 Diskon ${discountPercent}% = ${formatCurrency(potongan)}`;
+      discountEl.innerText = `Discount ${discountPercent}% = ${formatCurrency(potongan)}`;
     }
+
+    grandEl.innerText = `Grand Total = ${formatCurrency(discounted)}`;
   } else {
-    totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
+    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
     msg.innerText = "❌ Voucher Code is invalid or expired";
     if (discountEl) {
       discountEl.style.display = "none";
       discountEl.innerText = "";
     }
+    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
   }
 }
 
@@ -741,6 +751,7 @@ function setupTabs(){
   });
 }
 
+
 /* ========= WA & Buttons ========= */
 function setupWA(){
   const sendBtn = getEl('btnSend');
@@ -752,38 +763,36 @@ function setupWA(){
       return;
     }
     if (cart.length === 0) { alert("Cart is still empty."); return; }
-
     const adminNoRaw = Array.isArray(adminNos) ? adminNos[0] : adminNos;
     const adminNo = String(adminNoRaw).replace(/[^0-9]/g,'');
 
-    let pesan = `🏨 New Room Reservation - ${restoData.namaRestoran || 'Admin'}\n\n`;
+    // === Buat pesan WA ===
+    let pesan = `Hello ${restoData.namaRestoran || 'Admin'}, I want a reservation:\n\n`;
     cart.forEach((it,i) => {
       pesan += `${i+1}. ${it.nama} - ${formatCurrency(it.harga)} x ${it.qty} = ${formatCurrency((it.harga||0)*it.qty)}\n`;
     });
 
-    const originalTotal = parseFloat(getEl('totalPrice')?.dataset.rawOriginal) || 0;
-    const currentTotal = parseFloat(getEl('totalPrice')?.dataset.raw) || originalTotal;
+    // ambil total asli & diskon
+    const totalEl = getEl("totalPrice");
+    const discountEl = getEl("voucherDiscount");
+    const grandEl = getEl("grandTotal");
 
-    // ambil info voucher
-    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-    const inputCode = document.getElementById("voucherInput")?.value.trim();
-    let discount = 0, discountPercent = 0;
+    const originalTotal = cleanNumber(totalEl?.dataset.rawOriginal || 0);
+    const grandTotal = cleanNumber(totalEl?.dataset.raw || originalTotal);
+    const discountText = discountEl?.innerText || "";
 
-    if (voucher && inputCode && inputCode.toUpperCase() === (voucher.code||'').toUpperCase()) {
-      discountPercent = parseFloat(voucher.discount) || 0;
-      discount = originalTotal * (discountPercent / 100);
-    }
+    pesan += `\nTotal Price = ${formatCurrency(originalTotal)}\n`;
+    if (discountText) pesan += discountText + "\n";
+    pesan += `Grand Total = ${formatCurrency(grandTotal)}\n\n`;
 
-    if (discount > 0) {
-      pesan += `\nSubtotal: ${formatCurrency(originalTotal)}`;
-      pesan += `\nDiscount (${voucher.code} - ${discountPercent}%): -${formatCurrency(discount)}`;
-      pesan += `\nTotal: ${formatCurrency(currentTotal)}`;
-    } else {
-      pesan += `\nTotal: ${formatCurrency(originalTotal)}`;
-    }
+    // Tambahan data customer
+    pesan += `Name: ${getEl('custName')?.value || ''}\n`;
+    pesan += `Address: ${getEl('custAddress')?.value || ''}\n`;
+    pesan += `Phone: ${getEl('custPhone')?.value || ''}\n`;
+    pesan += `Date: ${getEl('custDate')?.value || ''}\n`;
+    pesan += `Notes: ${getEl('custNote')?.value || ''}\n`;
 
-    pesan += `\n\nName: ${getEl('custName')?.value || ''}\nAddress: ${getEl('custAddress')?.value || ''}\nPhone: ${getEl('custPhone')?.value || ''}\nDate: ${getEl('custDate')?.value || ''}\nNotes: ${getEl('custNote')?.value || ''}\n`;
-
+    // buka WhatsApp
     window.open(`https://wa.me/${adminNo}?text=${encodeURIComponent(pesan)}`, '_blank');
   });
 
@@ -843,6 +852,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
