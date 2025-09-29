@@ -919,13 +919,15 @@ function cleanNumber(val) {
   return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
 }
 
-// Format currency sederhana
 function formatCurrency(num) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
-    currency: "IDR"
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(num);
 }
+
 
 // === Apply Voucher otomatis ===
 function autoApplyVoucher() {
@@ -1003,5 +1005,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
