@@ -325,7 +325,7 @@ body.dark .room-card {
   <section id="packages" class="grid hidden"></section>
   <p id="empty" class="hidden" style="text-align:center;color:#666;margin-top:8px">Data Empty.</p>
   
- <div class="reservasi-container">
+<div class="reservasi-container">
   <div id="voucherSection" style="display:none; margin:15px 0;">
     <div class="voucher-box">
       <input 
@@ -334,16 +334,18 @@ body.dark .room-card {
         placeholder="Use Voucher Code"
       >
     </div>
-    <p id="voucherMessage"></p>
+    <p id="voucherMessage" style="margin-top:5px; color:#666;"></p>
   </div>
 </div>
 
-</div>
+<div id="cartPreview"><p><i>No choice</i></p></div>
 
-  <div id="cartPreview"><p><i>No choice</i></p></div>
-  <p id="totalPrice" data-raw="0">Total: 0</p>
-  <br>
-  <p id="voucherDiscount" style="display:none; font-size:0.85em; color:green;"></p>
+<!-- Total harga -->
+<p id="totalPrice" data-raw="0" style="font-weight:bold; margin-top:10px;">Total: 0</p>
+
+<!-- Diskon tampil setelah total -->
+<p id="voucherDiscount" style="display:none; font-size:0.9em; color:green; font-weight:bold; margin-top:3px;"></p>
+
     
     <br>
     <div class="form-input"><label>Orderer Name</label><input type="text" id="custName"></div>
@@ -613,54 +615,75 @@ function updateCartUI() {
   // cek voucher aktif → langsung re-apply diskon
   autoApplyVoucher();
 }
+// Helper aman parse angka
+function cleanNumber(val) {
+  if (val == null) return 0;
+  return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
+}
+
+// === Apply Voucher otomatis ===
 function autoApplyVoucher() {
   const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
   const input = document.getElementById("voucherInput")?.value.trim();
   const msg = document.getElementById("voucherMessage");
-  const totalEl = document.getElementById("totalPrice");
-  let discountEl = document.getElementById("voucherDiscount");
+  const totalEl = document.getElementById("totalPrice") || document.getElementById("cartTotal");
+  const discountEl = document.getElementById("voucherDiscount");
 
   if (!totalEl || !msg) return;
 
-  // kalau elemen diskon belum ada, bikin otomatis
-  if (!discountEl) {
-    discountEl = document.createElement("div");
-    discountEl.id = "voucherDiscount";
-    totalEl.insertAdjacentElement("afterend", discountEl);
+  // simpan total asli sekali aja
+  if (!totalEl.dataset.rawOriginal) {
+    totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
   }
 
-  const originalTotal = parseFloat(totalEl.dataset.rawOriginal) || 0;
+  const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
 
   if (!input) {
+    // restore original
     totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
-    discountEl.style.display = "none";
-    discountEl.innerText = "";
+    totalEl.dataset.raw = String(originalTotal);
+    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
     msg.innerText = "";
     return;
   }
 
   const today = new Date().toISOString().split("T")[0];
 
-  if (voucher && (input.toUpperCase() === (voucher.code || '').toUpperCase()) && today <= voucher.expiry) {
+  if (voucher && input.toUpperCase() === (voucher.code || "").toUpperCase() && today <= voucher.expiry) {
     const discountPercent = parseFloat(voucher.discount) || 0;
     const potongan = originalTotal * (discountPercent / 100);
     const discounted = originalTotal - potongan;
 
     totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
-    totalEl.dataset.raw = discounted;
+    totalEl.dataset.raw = String(discounted);
 
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-    discountEl.style.display = "block";
-    discountEl.innerText = `💸 Subtotal: ${formatCurrency(originalTotal)}\n💸 Diskon ${discountPercent}% = -${formatCurrency(potongan)}`;
 
+    if (discountEl) {
+      discountEl.style.display = "block";
+      discountEl.innerText = `💸 Diskon ${discountPercent}% = ${formatCurrency(potongan)}`;
+    }
   } else {
     totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
-    totalEl.dataset.raw = originalTotal;
+    totalEl.dataset.raw = String(originalTotal);
     msg.innerText = "❌ Voucher Code is invalid or expired";
-    discountEl.style.display = "none";
-    discountEl.innerText = "";
+    if (discountEl) {
+      discountEl.style.display = "none";
+      discountEl.innerText = "";
+    }
   }
 }
+
+// === Attach event multiple biar aman di HP/desktop ===
+document.addEventListener("DOMContentLoaded", () => {
+  const voucherInput = document.getElementById("voucherInput");
+  if (voucherInput) {
+    ["input", "keyup", "change", "blur"].forEach(evt => {
+      voucherInput.addEventListener(evt, autoApplyVoucher);
+    });
+  }
+});
+
 function tambahKeCart(room){
   if(!room || !room.nama) return;
 
@@ -820,6 +843,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
