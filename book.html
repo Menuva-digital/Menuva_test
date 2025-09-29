@@ -49,7 +49,7 @@
       background:var(--bg);
       color:var(--text);
       transition: background .25s,color .25s;
-      padding-bottom:80px;
+      padding-bottom:100px;
     }
     img{max-width:100%;display:block}
     .container{max-width:var(--container-max);margin:0 auto;padding:0 16px}
@@ -243,7 +243,7 @@
   <footer>
     <div class="container footer-inner">
       <div class="cart" id="cartBox">
-        <h3>🛒 Your Cart <span id="cartCount" class="order-count">0</span></h3>
+        <h3>🛒 Your Cart</h3>
 
         <div id="voucherSection" style="display:none; margin:15px 0;">
           <div class="voucher-box">
@@ -503,50 +503,54 @@
     cart.splice(index,1);
     renderCart();
   }
-
-  /* ------------------ RENDER MENU ---------------------- */
-  function renderMenu() {
-    const map = { food:'foodGrid', snack:'snackGrid', drink:'drinkGrid', special:'specialGrid' };
-    Object.keys(map).forEach(k=>{
-      const grid = document.getElementById(map[k]);
-      if (!grid) return;
-      grid.innerHTML = '';
-      const items = (menuData || []).filter(m => m.kategori === k);
-      if (!items || items.length ===0) {
-        grid.innerHTML = '<div class="cart-empty">No item yet</div>';
-        return;
-      }
-      items.forEach(m=>{
-        const card = document.createElement('div');
-        card.className = 'menu-card';
-        card.onclick = () => tambahPesanan(m, card);
-        const hargaNum = Number(m.harga) || 0;
-        card.innerHTML = `
-          ${m.image ? `<img class="menu-thumb" src="${m.image}" alt="${escapeHtml(m.nama)}">` : `<div class="menu-thumb"></div>`}
-          <div class="menu-title">${escapeHtml(m.nama)}</div>
-          <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
-          <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
-          <span class="order-count">0</span>
-        `;
-        grid.appendChild(card);
-      });
-    });
-  }
-
-  function tambahPesanan(item, cardEl) {
-    const existing = cart.find(c => c.nama === item.nama);
-    const hargaNum = Number(item.harga) || 0;
-    if (existing) existing.qty += 1;
-    else cart.push({ key:item.nama, nama:item.nama, harga:hargaNum, qty:1 });
-    const counter = cardEl.querySelector('.order-count');
-    if (counter) {
-      const cartItem = cart.find(c => c.nama === item.nama);
-      counter.textContent = cartItem.qty;
-      counter.style.display = 'inline-block';
+/* ------------------ RENDER MENU ---------------------- */
+function renderMenu() {
+  const map = { food:'foodGrid', snack:'snackGrid', drink:'drinkGrid', special:'specialGrid' };
+  Object.keys(map).forEach(k=>{
+    const grid = document.getElementById(map[k]);
+    if (!grid) return;
+    grid.innerHTML = '';
+    const items = (menuData || []).filter(m => m.kategori === k);
+    if (!items || items.length ===0) {
+      grid.innerHTML = '<div class="cart-empty">No item yet</div>';
+      return;
     }
-    renderCart();
+    items.forEach(m=>{
+      const card = document.createElement('div');
+      card.className = 'menu-card';
+      card.onclick = () => tambahPesanan(m, card);
+      const hargaNum = Number(m.harga) || 0;
+      card.innerHTML = `
+        ${m.image ? `<img class="menu-thumb" src="${m.image}" alt="${escapeHtml(m.nama)}">` : `<div class="menu-thumb"></div>`}
+        <div class="menu-title">${escapeHtml(m.nama)}</div>
+        <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
+        <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
+        <span class="item-count">0</span> <!-- ganti dari order-count -->
+      `;
+      grid.appendChild(card);
+    });
+  });
+}
+ function tambahPesanan(item, cardEl) {
+  const existing = cart.find(c => c.nama === item.nama);
+  const hargaNum = Number(item.harga) || 0;
+
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    cart.push({ key:item.nama, nama:item.nama, harga:hargaNum, qty:1 });
   }
 
+  // update counter khusus card
+  const counter = cardEl.querySelector('.item-count'); // ganti dari .order-count
+  if (counter) {
+    const cartItem = cart.find(c => c.nama === item.nama);
+    counter.textContent = cartItem.qty;
+    counter.style.display = 'inline-block';
+  }
+
+  renderCart();
+}
   /* ------------------ PROMO (render + countdown) -------- */
   let promoCountdownTimer = null;
   function renderPromo(){
@@ -837,5 +841,6 @@
   </script>
 </body>
 </html>
+
 
 
