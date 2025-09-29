@@ -1020,13 +1020,37 @@ function sendOrder() {
   msg += `Date: ${date}\n`;
   msg += `Time: ${time}\n\n`;
   msg += `📝 Order:\n`;
-  let total = 0;
+
+  let subtotal = 0;
   cart.forEach((c, i) => {
-    const subtotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
-    total += subtotal;
-    msg += `${i + 1}. ${c.nama}  x${c.qty}  -  ${formatWithActive(subtotal)}\n`;
+    const itemTotal = (Number(c.harga) || 0) * (Number(c.qty) || 0);
+    subtotal += itemTotal;
+    msg += `${i + 1}. ${c.nama}  x${c.qty}  -  ${formatWithActive(itemTotal)}\n`;
   });
-  msg += `\nTotal: ${formatWithActive(total)}`;
+
+  // === Cek voucher aktif ===
+  let discount = 0;
+  let voucherCode = null;
+  let discountPercent = 0;
+
+  if (activeVoucherCode) {
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+    if (voucher && voucher.code === activeVoucherCode) {
+      discountPercent = parseFloat(voucher.discount) || 0;
+      discount = subtotal * (discountPercent / 100);
+      voucherCode = voucher.code;
+    }
+  }
+
+  if (discount > 0) {
+    const finalTotal = subtotal - discount;
+    msg += `\nSubtotal: ${formatWithActive(subtotal)}`;
+    msg += `\nDiscount (${voucherCode} - ${discountPercent}%): -${formatWithActive(discount)}`;
+    msg += `\nTotal: ${formatWithActive(finalTotal)}`;
+  } else {
+    msg += `\nTotal: ${formatWithActive(subtotal)}`;
+  }
+
   if (note) msg += `\n\nNotes: ${note}`;
 
   const url = `https://wa.me/${adminNo}?text=${encodeURIComponent(msg)}`;
@@ -1238,6 +1262,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
