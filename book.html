@@ -261,72 +261,73 @@
     <section id="promo" class="tab-content"><div class="grid" id="promoGrid"></div></section>
   </main>
 
-  <footer>
+<footer>
   <div class="container footer-inner">
-  <div class="cart" id="cartBox">
-    <h3>🛒 Your Cart</h3>
+    <div class="cart" id="cartBox">
+      <h3>🛒 Your Cart</h3>
 
-    <!-- Voucher selalu tampil -->
-    <div id="voucherSection" style="margin:15px 0;">
-      <div class="voucher-box">
-        <input 
-          type="text" 
-          id="voucherInput" 
-          placeholder="Use Voucher Code"
-        >
-      </div>
-      <p id="voucherMessage"></p>
-    </div>
-
-    <div id="cartRows" class="cart-rows"></div>
-    <div id="cartEmpty" class="cart-empty">No items choice</div>
-
-    <div class="cart-total">
-      <div class="total-row">
-        <span>Total Price</span>
-        <span id="cartTotal">0</span>
-      </div>
-      <div class="total-row" id="discountRow" style="display:none; color:green;">
-        <span>Discount</span>
-        <span id="voucherDiscount">0</span>
-      </div>
-      <div class="total-row grand-total">
-        <span>Grand Total</span>
-        <span id="grandTotal">0</span>
-      </div>
-    </div>
-  </div>
-</div>
-        <div class="form" style="margin-top:12px">
-          <div>
-            <label for="custName">Customer Name</label>
-            <input type="text" id="custName" placeholder="e.g. John Doe">
-          </div>
-          <div>
-            <label for="custTable">Table No</label>
-            <input type="text" id="custTable" placeholder="e.g. A12">
-          </div>
-          <div>
-            <label for="custDate">Date</label>
-            <input type="text" id="custDate" readonly>
-          </div>
-          <div>
-            <label for="custTime">Time</label>
-            <input type="text" id="custTime" readonly>
-          </div>
-          <div style="grid-column:1/-1">
-            <label for="custNote">Special Request / Notes</label>
-            <textarea id="custNote" placeholder="e.g. no spicy, extra sauce"></textarea>
-          </div>
+      <!-- Voucher selalu tampil -->
+      <div id="voucherSection" style="margin:15px 0;">
+        <div class="voucher-box">
+          <input 
+            type="text" 
+            id="voucherInput" 
+            placeholder="Use Voucher Code"
+          >
         </div>
+        <p id="voucherMessage"></p>
+      </div>
 
-        <div class="fixed-bar">
-          <button class="btn btn-wa" id="btnSend" onclick="sendOrder()">📤 Submit Order</button>
-          <button class="btn btn-back" onclick="history.back()">🔙 Back</button>
+      <div id="cartRows" class="cart-rows"></div>
+      <div id="cartEmpty" class="cart-empty">No items choice</div>
+
+      <div class="cart-total">
+        <div class="total-row">
+          <span>Total Price</span>
+          <span id="cartTotal">0</span>
+        </div>
+        <div class="total-row" id="discountRow" style="display:none; color:green;">
+          <span>Discount</span>
+          <span id="voucherDiscount">0</span>
+        </div>
+        <div class="total-row grand-total">
+          <span>Grand Total</span>
+          <span id="grandTotal">0</span>
         </div>
       </div>
+    </div> <!-- tutup cart -->
+
+    <!-- form masih di dalam container yang sama -->
+    <div class="form" style="margin-top:12px">
+      <div>
+        <label for="custName">Customer Name</label>
+        <input type="text" id="custName" placeholder="e.g. John Doe">
+      </div>
+      <div>
+        <label for="custTable">Table No</label>
+        <input type="text" id="custTable" placeholder="e.g. A12">
+      </div>
+      <div>
+        <label for="custDate">Date</label>
+        <input type="text" id="custDate" readonly>
+      </div>
+      <div>
+        <label for="custTime">Time</label>
+        <input type="text" id="custTime" readonly>
+      </div>
+      <div style="grid-column:1/-1">
+        <label for="custNote">Special Request / Notes</label>
+        <textarea id="custNote" placeholder="e.g. no spicy, extra sauce"></textarea>
+      </div>
     </div>
-  </footer>
+
+    <div class="fixed-bar">
+      <button class="btn btn-wa" id="btnSend" onclick="sendOrder()">📤 Submit Order</button>
+      <button class="btn btn-back" onclick="history.back()">🔙 Back</button>
+    </div>
+  </div> <!-- tutup container -->
+</footer>
+
 
   <!-- ========================= FULL JS (self-contained) ========================= -->
   <script>
@@ -912,22 +913,20 @@ function formatWithActive(num) {
   });
 
   </script>
-  <script>
+<script>
 // Helper aman parse angka
 function cleanNumber(val) {
   if (val == null) return 0;
   return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
 }
 
+// Format currency tanpa ,00 di belakang
 function formatCurrency(num) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
+  return "Rp " + Number(num).toLocaleString("id-ID", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(num);
+  });
 }
-
 
 // === Apply Voucher otomatis ===
 function autoApplyVoucher() {
@@ -991,7 +990,6 @@ function autoApplyVoucher() {
   }
 }
 
-
 // === Attach event multiple biar aman di HP/desktop ===
 document.addEventListener("DOMContentLoaded", () => {
   const voucherInput = document.getElementById("voucherInput");
@@ -1002,9 +1000,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 </script>
-
 </body>
 </html>
+
 
 
 
