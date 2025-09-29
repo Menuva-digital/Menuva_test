@@ -546,7 +546,6 @@ function tampilkanData(){
   });
   if (getEl('empty')) getEl('empty').classList.toggle('hidden', total > 0);
 }
-
 /* ========= CART ========= */
 function updateCartUI() {
   const preview = getEl('cartPreview');
@@ -557,6 +556,7 @@ function updateCartUI() {
     preview.innerHTML = '<p><i>There are no selected items.</i></p>';
     totalEl.innerText = 'Total: 0';
     totalEl.dataset.raw = 0;
+    totalEl.dataset.rawOriginal = 0;
     return;
   }
 
@@ -605,45 +605,28 @@ function updateCartUI() {
 
   // simpan total asli
   totalEl.dataset.raw = total;
+  totalEl.dataset.rawOriginal = total;
   totalEl.innerText = 'Total: ' + formatCurrency(total);
 
   // cek kalau voucher valid → langsung re-apply diskon
   autoApplyVoucher();
 }
 
-// Auto cek saat user ngetik
-document.addEventListener("DOMContentLoaded", () => {
-  const voucherInput = document.getElementById("voucherInput");
-  if (voucherInput) {
-    voucherInput.addEventListener("input", autoApplyVoucher);
-  }
-});
-
+/* ========= VOUCHER ========= */
 function autoApplyVoucher() {
   const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
   const input = document.getElementById("voucherInput")?.value.trim();
   const msg = document.getElementById("voucherMessage");
-  const totalEl = document.getElementById("totalPrice") || document.getElementById("cartTotal");
+  const totalEl = document.getElementById("totalPrice");
   const discountEl = document.getElementById("voucherDiscount");
 
   if (!totalEl || !msg) return;
 
-  // ensure we keep original raw total (do not overwrite original)
-  if (!totalEl.dataset.rawOriginal) {
-    // prefer existing dataset.raw if numeric, else extract digits from text
-    let candidate = parseFloat(totalEl.dataset.raw);
-    if (isNaN(candidate)) {
-      const txt = (totalEl.textContent || '').replace(/[^0-9.,-]/g, '').replace(',', '.');
-      candidate = parseFloat(txt) || 0;
-    }
-    totalEl.dataset.rawOriginal = String(candidate);
-  }
-
   const originalTotal = parseFloat(totalEl.dataset.rawOriginal) || 0;
 
   if (!input) {
-    // no code entered -> restore original
     totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
+    totalEl.dataset.raw = String(originalTotal);
     if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
     msg.innerText = "";
     return;
@@ -657,17 +640,13 @@ function autoApplyVoucher() {
     const discounted = originalTotal - potongan;
 
     totalEl.innerText = `Total: ${formatCurrency(discounted)}`;
-    // do NOT overwrite data-raw; keep original in data-raw-original
-    // optionally set a separate field for UI-only
-    totalEl.dataset.raw = String(discounted); // ok to set for display but original preserved
+    totalEl.dataset.raw = String(discounted);
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
     if (discountEl) {
       discountEl.style.display = "block";
       discountEl.innerText = `💸 Diskon ${discountPercent}% = ${formatCurrency(potongan)}`;
     }
-    console.log("✅ Voucher valid:", input);
   } else {
-    // invalid/expired -> restore
     totalEl.innerText = `Total: ${formatCurrency(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
     msg.innerText = "❌ Voucher Code is invalid or expired";
@@ -675,10 +654,8 @@ function autoApplyVoucher() {
       discountEl.style.display = "none";
       discountEl.innerText = "";
     }
-    console.warn("❌ Voucher Code invalid:", input);
   }
 }
-
 
 function tambahKeCart(room){
   if(!room || !room.nama) return;
@@ -748,15 +725,38 @@ function setupWA(){
       return;
     }
     if (cart.length === 0) { alert("Cart is still empty."); return; }
+
     const adminNoRaw = Array.isArray(adminNos) ? adminNos[0] : adminNos;
     const adminNo = String(adminNoRaw).replace(/[^0-9]/g,'');
-    let pesan = `Hello ${restoData.namaRestoran || 'Admin'}, I want a reservation:\n\n`;
+
+    let pesan = `🏨 New Room Reservation - ${restoData.namaRestoran || 'Admin'}\n\n`;
     cart.forEach((it,i) => {
       pesan += `${i+1}. ${it.nama} - ${formatCurrency(it.harga)} x ${it.qty} = ${formatCurrency((it.harga||0)*it.qty)}\n`;
     });
-    const total = cart.reduce((a,b)=>a + ((Number(b.harga)||0) * (b.qty||0)),0);
-    pesan += `\nTotal: ${formatCurrency(total)}\n\n`;
-    pesan += `Name: ${getEl('custName')?.value || ''}\nAddress: ${getEl('custAddress')?.value || ''}\nPhone: ${getEl('custPhone')?.value || ''}\nDate: ${getEl('custDate')?.value || ''}\nNotes: ${getEl('custNote')?.value || ''}\n`;
+
+    const originalTotal = parseFloat(getEl('totalPrice')?.dataset.rawOriginal) || 0;
+    const currentTotal = parseFloat(getEl('totalPrice')?.dataset.raw) || originalTotal;
+
+    // ambil info voucher
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+    const inputCode = document.getElementById("voucherInput")?.value.trim();
+    let discount = 0, discountPercent = 0;
+
+    if (voucher && inputCode && inputCode.toUpperCase() === (voucher.code||'').toUpperCase()) {
+      discountPercent = parseFloat(voucher.discount) || 0;
+      discount = originalTotal * (discountPercent / 100);
+    }
+
+    if (discount > 0) {
+      pesan += `\nSubtotal: ${formatCurrency(originalTotal)}`;
+      pesan += `\nDiscount (${voucher.code} - ${discountPercent}%): -${formatCurrency(discount)}`;
+      pesan += `\nTotal: ${formatCurrency(currentTotal)}`;
+    } else {
+      pesan += `\nTotal: ${formatCurrency(originalTotal)}`;
+    }
+
+    pesan += `\n\nName: ${getEl('custName')?.value || ''}\nAddress: ${getEl('custAddress')?.value || ''}\nPhone: ${getEl('custPhone')?.value || ''}\nDate: ${getEl('custDate')?.value || ''}\nNotes: ${getEl('custNote')?.value || ''}\n`;
+
     window.open(`https://wa.me/${adminNo}?text=${encodeURIComponent(pesan)}`, '_blank');
   });
 
@@ -816,4 +816,5 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
