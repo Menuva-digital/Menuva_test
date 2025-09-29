@@ -761,13 +761,18 @@ function renderCart() {
 
   if (!cart || cart.length === 0) {
     empty.style.display = 'block';
+
     const cartTotalEl = document.getElementById('cartTotal');
     if (cartTotalEl) {
       cartTotalEl.dataset.raw = 0;
-      cartTotalEl.textContent = `Total: ${formatWithActive(0)}`;
+      cartTotalEl.textContent = formatWithActive(0);
     }
+
     const voucherDiscount = document.getElementById("voucherDiscount");
     if (voucherDiscount) voucherDiscount.style.display = "none";
+
+    // update tampilan total biar konsisten
+    refreshAllPriceDisplays();
     return;
   }
 
@@ -798,32 +803,16 @@ function renderCart() {
     rows.appendChild(row);
   });
 
-  // --- APPLY DISKON VOUCHER ---
+  // --- SET RAW TOTAL SAJA ---
   const cartTotalEl = document.getElementById("cartTotal");
-  const voucherDiscount = document.getElementById("voucherDiscount");
   if (cartTotalEl) {
     cartTotalEl.dataset.raw = total;
-    let discount = 0;
-    if (activeVoucherCode) {
-      const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-      if (voucher && voucher.code === activeVoucherCode) {
-        discount = total * (parseFloat(voucher.discount) / 100);
-      }
-    }
-    if (discount > 0) {
-      const newTotal = total - discount;
-      if (voucherDiscount) {
-        voucherDiscount.style.display = "block";
-        voucherDiscount.textContent = `💸 Discount: -${formatWithActive(discount)}`;
-      }
-      cartTotalEl.textContent = `Total: ${formatWithActive(newTotal)}`;
-    } else {
-      if (voucherDiscount) voucherDiscount.style.display = "none";
-      cartTotalEl.textContent = `Total: ${formatWithActive(total)}`;
-    }
+    cartTotalEl.textContent = formatWithActive(total);
   }
-}
 
+  // biar perhitungan diskon + grand total diatur rapi
+  refreshAllPriceDisplays();
+}
 
 function addToCart(name, price) {
   const harga = typeof price === 'string' ? parseFloat(String(price).replace(/[^0-9.]/g, '')) : Number(price);
@@ -1279,6 +1268,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
