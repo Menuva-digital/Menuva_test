@@ -24,6 +24,7 @@
       --qty-btn-bg: #eef4ff;
       --qty-btn-text: #1f2a44;
       --container-max: 1200px;
+       --fixed-bar-height: 70px;
     }
     body.dark-mode{
       --bg: #0e1116;
@@ -43,13 +44,13 @@
        ===================== */
     *{box-sizing:border-box}
     html,body{height:100%}
- body {
+body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   background: var(--bg);
   color: var(--text);
-  transition: background .25s,color .25s;
-  padding-bottom: var(--fixed-bar-height); /* konsisten sama fixbar */
+  transition: background .25s, color .25s;
+  padding-bottom: var(--fixed-bar-height); /* ruang kosong sesuai tinggi fixbar */
 }
 
     img{max-width:100%;display:block}
@@ -207,11 +208,11 @@
 }
 
     /* CART / FOOTER */
-    footer {
+ footer {
   background: var(--surface);
   margin-top: 24px;
   box-shadow: var(--shadow);
-  padding-bottom: var(--fixed-bar-height); 
+  padding-bottom: calc(var(--fixed-bar-height) + 20px); /* kasih extra biar lebih lega */
 }
 
     .footer-inner{padding:18px 0 24px;}
@@ -1096,6 +1097,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
