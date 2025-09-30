@@ -45,14 +45,15 @@
        ===================== */
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{
-      margin:0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:var(--bg);
-      color:var(--text);
-      transition: background .25s,color .25s;
-      padding-bottom:70px;
-    }
+ body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--bg);
+  color: var(--text);
+  transition: background .25s,color .25s;
+  padding-bottom: var(--fixed-bar-height); /* konsisten sama fixbar */
+}
+
     img{max-width:100%;display:block}
     .container{max-width:var(--container-max);margin:0 auto;padding:0 16px}
 
@@ -149,23 +150,62 @@
    .promo-card {
   position: relative; /* supaya anak absolute bisa nempel di dalam card */
 }
+    .promo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform .12s;
+  position: relative; /* biar badge bisa nempel */
+}
+.promo-card:hover { transform: translateY(-4px); }
+
+.promo-card img,
+.promo-card .menu-thumb {
+  aspect-ratio: 1/1;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #e9eefc;
+}
+
+.promo-name {
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  margin: 2px 0 0 0;
+}
+.promo-menu-desc {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+.promo-price {
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  margin-top: 4px;
+}
 
 .promo-card .badge {
   position: absolute;
-  top: 8px; /* jarak dari atas */
-  right: 8px; /* jarak dari kanan */
-  background: #007bff; /* biru */
+  top: 8px;
+  right: 8px;
+  background: #007bff;
   color: #fff;
   font-size: 12px;
   font-weight: bold;
   border-radius: 50%;
-  padding: 4px 7px; /* biar bulat */
-  line-height: 1;
+  min-width: 20px;
+  min-height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  min-height: 20px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 
     /* CART / FOOTER */
@@ -1052,6 +1092,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
