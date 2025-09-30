@@ -662,7 +662,7 @@ function escapeHtml(text) {
 }
 
 function formatWithActive(num) {
-  return num.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' });
+  return formatCurrency(num);
 }
 
   function startPromoCountdown(){
@@ -1002,6 +1002,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
