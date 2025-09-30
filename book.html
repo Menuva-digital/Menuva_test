@@ -1013,9 +1013,28 @@ function cleanNumber(val) {
   return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
 }
 
-// Format currency tanpa ,00 di belakang
+let activeLocale = "id-ID";
+let activeCurrency = "IDR";
+
+// Listener dropdown
+document.getElementById("localeSelect").addEventListener("change", (e) => {
+  const val = e.target.value;
+  if (val === "auto") {
+    activeLocale = navigator.language || "id-ID";
+    activeCurrency = "IDR";
+  } else {
+    const [loc, cur] = val.split("|");
+    activeLocale = loc;
+    activeCurrency = cur;
+  }
+  rerenderPrices(); // refresh harga setelah ganti
+});
+
+// Format currency fleksibel
 function formatCurrency(num) {
-  return "Rp " + Number(num).toLocaleString("id-ID", {
+  return Number(num).toLocaleString(activeLocale, {
+    style: "currency",
+    currency: activeCurrency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   });
@@ -1095,17 +1114,3 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
