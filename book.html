@@ -49,7 +49,7 @@
       background:var(--bg);
       color:var(--text);
       transition: background .25s,color .25s;
-      padding-bottom:200px;
+      padding-bottom:70px;
     }
     img{max-width:100%;display:block}
     .container{max-width:var(--container-max);margin:0 auto;padding:0 16px}
@@ -144,9 +144,27 @@
   justify-content: center;
   box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
-    /* PROMO */
-    .promo-card{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;min-height:260px}
-    .promo-badge{position:absolute;top:10px;left:10px;background:#ffcc00;color:#222;padding:4px 8px;border-radius:999px;font-weight:800}
+   .promo-card {
+  position: relative; /* supaya anak absolute bisa nempel di dalam card */
+}
+
+.promo-card .badge {
+  position: absolute;
+  top: 8px; /* jarak dari atas */
+  right: 8px; /* jarak dari kanan */
+  background: #007bff; /* biru */
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 50%;
+  padding: 4px 7px; /* biar bulat */
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 20px;
+}
 
     /* CART / FOOTER */
     footer{background:var(--surface);margin-top:24px;box-shadow:var(--shadow)}
@@ -192,11 +210,40 @@
     .btn-wa{background:var(--success);color:#fff}
     .btn-back{background:#f39c12;color:#fff}
 
-    /* fixed bottom bar */
-    .fixed-bar{position:fixed;bottom:0;left:0;width:100%;background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -2px 6px rgba(0,0,0,.12);padding:10px 12px;display:flex;justify-content:space-between;gap:10px;z-index:100}
-    .fixed-bar button{flex:1;padding:12px;font-size:15px;font-weight:700;border-radius:8px;border:0;cursor:pointer}
-    .btn-wa{background:var(--brand-2);color:#fff}
-    .btn-back{background:#ddd;color:#222}
+   * fixed bottom bar */
+.fixed-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 70px; /* tambahin ini */
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 6px rgba(0,0,0,.12);
+  display: flex;
+  align-items: center; /* biar tombol rapi vertikal */
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px; /* reset padding vertical, biar height konsisten */
+  z-index: 100;
+}
+.fixed-bar button {
+  flex: 1;
+  height: 46px; /* opsional: biar konsisten */
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+}
+.btn-wa {
+  background: var(--brand-2);
+  color: #fff;
+}
+.btn-back {
+  background: #ddd;
+  color: #222;
+}
 
     /* voucher UI */
     .voucher-box{display:flex;gap:8px;justify-content:flex-start}
@@ -1002,6 +1049,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
