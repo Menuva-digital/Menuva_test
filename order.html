@@ -513,16 +513,28 @@ body.dark .qty-controls span {
 
   <div id="menu-list" class="menu-grid"></div>
 
-  <div id="voucherSection" style="display:none; margin-top:10px;">
-  <input type="text" id="voucherInput" placeholder="Masukkan kode voucher">
-  <button onclick="applyVoucher()">Apply</button>
-  <p id="voucherMessage"></p>
+  <div class="reservasi-container">
+  <div id="voucherSection" style="display:none; margin:15px 0;">
+    <div class="voucher-box">
+      <input 
+        type="text" 
+        id="voucherInput" 
+        placeholder="Use Voucher Code"
+      >
+    </div>
+    <p id="voucherMessage"></p>
   </div>
+</div>
 
   <div class="order-summary">
     <h2>🧾 Order Summary</h2>
-    <p>Total Item: <span id="total-item">0</span></p>
-    <p>Total Price: <span id="total-harga">0</span></p>
+    <div id="priceSummary" style="margin-top:10px; font-size:0.9em;">
+  <p id="totalPrice" data-raw="0">Total Price = 0</p>
+  <br>
+  <p id="voucherDiscount" style="display:none; color:green;">Discount = 0</p>
+  <br>
+  <p id="grandTotal" style="font-weight:bold;">Grand Total = 0</p>
+</div>
 
     <label>Orderer Name</label>
     <input id="nama" type="text" placeholder="Example: John">
@@ -1024,23 +1036,80 @@ function refreshAllPriceDisplays() {
     }
   });
 
-  function applyVoucher() {
-    const input = document.getElementById("voucherInput").value.trim();
-    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+  // Helper parse angka
+function cleanNumber(val) {
+  if (val == null) return 0;
+  return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
+}
 
-    if (!voucher) {
-      document.getElementById("voucherMessage").innerText = "⚠️ Tidak ada voucher aktif!";
-      return;
-    }
+// === Apply Voucher otomatis ===
+function autoApplyVoucher() {
+  const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+  const input = document.getElementById("voucherInput")?.value.trim();
+  const msg = document.getElementById("voucherMessage");
 
-    const today = new Date().toISOString().split("T")[0];
-    if (input === voucher.code && today <= voucher.expiry) {
-      document.getElementById("voucherMessage").innerText = 
-        `✅ Voucher valid! Diskon ${voucher.discount}% diterapkan`;
-    } else {
-      document.getElementById("voucherMessage").innerText = "❌ Voucher tidak valid atau sudah expired!";
-    }
+  const totalEl = document.getElementById("totalPrice");
+  const discountEl = document.getElementById("voucherDiscount");
+  const grandEl = document.getElementById("grandTotal");
+
+  if (!totalEl || !msg || !grandEl) return;
+
+  if (!totalEl.dataset.rawOriginal) {
+    totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
   }
+
+  const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
+
+  if (!input) {
+    // restore
+    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
+    totalEl.dataset.raw = String(originalTotal);
+    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
+    msg.innerText = "";
+    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
+    return;
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  if (voucher && input.toUpperCase() === (voucher.code || "").toUpperCase() && today <= voucher.expiry) {
+    const discountPercent = parseFloat(voucher.discount) || 0;
+    const potongan = originalTotal * (discountPercent / 100);
+    const discounted = originalTotal - potongan;
+
+    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
+    totalEl.dataset.raw = String(discounted);
+
+    msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+
+    if (discountEl) {
+      discountEl.style.display = "block";
+      discountEl.innerText = `Discount ${discountPercent}% = ${formatCurrency(potongan)}`;
+    }
+
+    grandEl.innerText = `Grand Total = ${formatCurrency(discounted)}`;
+  } else {
+    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
+    totalEl.dataset.raw = String(originalTotal);
+    msg.innerText = "❌ Voucher Code is invalid or expired";
+    if (discountEl) {
+      discountEl.style.display = "none";
+      discountEl.innerText = "";
+    }
+    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
+  }
+}
+
+// Event attach
+document.addEventListener("DOMContentLoaded", () => {
+  const voucherInput = document.getElementById("voucherInput");
+  if (voucherInput) {
+    ["input", "keyup", "change", "blur"].forEach(evt => {
+      voucherInput.addEventListener(evt, autoApplyVoucher);
+    });
+  }
+});
 </script>
 </body>
 </html>
+
