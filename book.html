@@ -758,27 +758,34 @@ function formatWithActive(num) {
   return formatCurrency(num);
 }
 
-  function startPromoCountdown(){
-    stopPromoCountdown();
-    const tick = ()=>{
-      const nodes = document.querySelectorAll('.promo-count[data-end]');
+ // ✅ deklarasi global di atas semua function
+let promoCountdownTimer = null;
+
+function startPromoCountdown() {
+  stopPromoCountdown();
+  promoCountdownTimer = setInterval(()=>{
+    document.querySelectorAll('.promo-count').forEach(el=>{
+      const end = new Date(el.dataset.end).getTime();
       const now = Date.now();
-      nodes.forEach(el=>{
-        const end = new Date(el.dataset.end).getTime();
-        if (!isFinite(end)) { el.textContent=''; return; }
-        const diff = end - now;
-        if (diff <= 0) { el.textContent='Expired'; return; }
-        const d = Math.floor(diff/86400000);
-        const h = Math.floor((diff%86400000)/3600000);
-        const m = Math.floor((diff%3600000)/60000);
-        const s = Math.floor((diff%60000)/1000);
-        el.textContent = `Ends in ${d}d ${h}h ${m}m ${s}s`;
-      });
-    };
-    tick();
-    promoCountdownTimer = setInterval(tick, 1000);
+      let diff = end - now;
+      if (diff <= 0) {
+        el.textContent = "Expired";
+      } else {
+        let h = Math.floor(diff / (1000*60*60));
+        let m = Math.floor((diff % (1000*60*60)) / (1000*60));
+        let s = Math.floor((diff % (1000*60)) / 1000);
+        el.textContent = `${h}h ${m}m ${s}s`;
+      }
+    });
+  }, 1000);
+}
+
+function stopPromoCountdown() {
+  if (promoCountdownTimer) {
+    clearInterval(promoCountdownTimer);
+    promoCountdownTimer = null;
   }
-  function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
+}
 
   /* ------------------ SEND ORDER (WhatsApp) ------------- */
   function sendOrder(){
@@ -1114,3 +1121,4 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
