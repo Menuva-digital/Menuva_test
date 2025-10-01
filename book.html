@@ -728,6 +728,9 @@ function tambahPesanan(item, cardEl) {
 }
 
 /* ------------------ INPUT VOUCHER ------------------ */
+let activeVoucherCode = null;
+let activeVoucherData = null; // ✅ simpan object voucher aktif
+
 const voucherInput = document.getElementById("voucherInput");
 const voucherMessage = document.getElementById("voucherMessage");
 
@@ -814,15 +817,11 @@ function formatWithActive(num) {
     let discount = 0;
     let voucherCode = null;
     let discountPercent = 0;
-    if (activeVoucherCode) {
-      const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-      if (voucher && voucher.code === activeVoucherCode) {
-        discountPercent = parseFloat(voucher.discount) || 0;
-        discount = subtotal * (discountPercent / 100);
-        voucherCode = voucher.code;
-      }
-    }
-
+    if (activeVoucherData) {
+  discountPercent = parseFloat(activeVoucherData.discount) || 0;
+  discount = subtotal * (discountPercent / 100);
+  voucherCode = activeVoucherData.code;
+}
     if (discount > 0) {
       const finalTotal = subtotal - discount;
       msg += `\nSubtotal: ${formatWithActive(subtotal)}`;
@@ -914,23 +913,21 @@ function formatWithActive(num) {
     const apply = ()=>{
       const code = voucherInput.value.trim();
       const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-      if (voucher && code.toUpperCase() === (voucher.code||'').toUpperCase()) {
-        activeVoucherCode = voucher.code;
-        voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
-        voucherMessage.style.color = 'green';
-      } else if (code.length > 0) {
-        activeVoucherCode = null;
-        voucherMessage.textContent = '❌ Invalid voucher code';
-        voucherMessage.style.color = 'red';
-      } else {
-        activeVoucherCode = null;
-        voucherMessage.textContent = '';
-      }
-      // ensure display updates
-      applyVoucherAndUpdateSummary();
-    };
-    ['input','keyup','change','blur'].forEach(evt=> voucherInput.addEventListener(evt, apply));
-  }
+     if (voucher && code.toUpperCase() === (voucher.code||'').toUpperCase()) {
+  activeVoucherCode = voucher.code;
+  activeVoucherData = voucher; // ✅ simpan data voucher
+  voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
+  voucherMessage.style.color = 'green';
+} else if (code.length > 0) {
+  activeVoucherCode = null;
+  activeVoucherData = null; // reset
+  voucherMessage.textContent = '❌ Invalid voucher code';
+  voucherMessage.style.color = 'red';
+} else {
+  activeVoucherCode = null;
+  activeVoucherData = null; // reset
+  voucherMessage.textContent = '';
+}
 
   /* ------------------ THEME (dark toggle) ------------------ */
   function initTheme(){
@@ -1114,3 +1111,4 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
