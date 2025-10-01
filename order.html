@@ -513,7 +513,9 @@ body.dark .qty-controls span {
 
   <div id="menu-list" class="menu-grid"></div>
 
-  <div class="reservasi-container">
+  <div class="order-summary">
+    <h2>🧾 Order Summary</h2>
+      <div class="reservasi-container">
   <div id="voucherSection" style="display:none; margin:15px 0;">
     <div class="voucher-box">
       <input 
@@ -525,14 +527,9 @@ body.dark .qty-controls span {
     <p id="voucherMessage"></p>
   </div>
 </div>
-
-  <div class="order-summary">
-    <h2>🧾 Order Summary</h2>
-    <div id="priceSummary" style="margin-top:10px; font-size:0.9em;">
+   <div id="priceSummary" style="margin-top:10px; font-size:0.9em;">
   <p id="totalPrice" data-raw="0">Total Price = 0</p>
-  <br>
   <p id="voucherDiscount" style="display:none; color:green;">Discount = 0</p>
-  <br>
   <p id="grandTotal" style="font-weight:bold;">Grand Total = 0</p>
 </div>
 
@@ -952,10 +949,28 @@ function updateRingkasan() {
       totalHargaValue += jumlah * harga;
     }
   });
+
+  // update elemen lama
   const totalItemEl = document.getElementById('total-item');
   const totalHargaEl = document.getElementById('total-harga');
   if (totalItemEl) totalItemEl.textContent = totalQty;
   if (totalHargaEl) totalHargaEl.textContent = formatHarga(totalHargaValue);
+
+  // update elemen baru (voucher)
+  const totalEl = document.getElementById("totalPrice");
+  const grandEl = document.getElementById("grandTotal");
+  if (totalEl) {
+    totalEl.innerText = `Total Price = ${formatHarga(totalHargaValue)}`;
+    totalEl.dataset.raw = String(totalHargaValue);
+    // simpan juga original untuk voucher
+    totalEl.dataset.rawOriginal = String(totalHargaValue);
+  }
+  if (grandEl) {
+    grandEl.innerText = `Grand Total = ${formatHarga(totalHargaValue)}`;
+  }
+
+  // re-apply voucher otomatis setiap update ringkasan
+  autoApplyVoucher();
 }
 
 /* =================== KIRIM PESAN (WhatsApp) =================== */
@@ -1054,6 +1069,7 @@ function autoApplyVoucher() {
 
   if (!totalEl || !msg || !grandEl) return;
 
+  // simpan original total (hanya sekali)
   if (!totalEl.dataset.rawOriginal) {
     totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
   }
@@ -1062,11 +1078,14 @@ function autoApplyVoucher() {
 
   if (!input) {
     // restore
-    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
+    totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
-    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
+    if (discountEl) { 
+      discountEl.style.display = "none"; 
+      discountEl.innerText = ""; 
+    }
     msg.innerText = "";
-    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
+    grandEl.innerText = `Grand Total = ${formatHarga(originalTotal)}`;
     return;
   }
 
@@ -1077,26 +1096,26 @@ function autoApplyVoucher() {
     const potongan = originalTotal * (discountPercent / 100);
     const discounted = originalTotal - potongan;
 
-    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
+    totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
     totalEl.dataset.raw = String(discounted);
 
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
 
     if (discountEl) {
       discountEl.style.display = "block";
-      discountEl.innerText = `Discount ${discountPercent}% = ${formatCurrency(potongan)}`;
+      discountEl.innerText = `Discount ${discountPercent}% = ${formatHarga(potongan)}`;
     }
 
-    grandEl.innerText = `Grand Total = ${formatCurrency(discounted)}`;
+    grandEl.innerText = `Grand Total = ${formatHarga(discounted)}`;
   } else {
-    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
+    totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
     msg.innerText = "❌ Voucher Code is invalid or expired";
     if (discountEl) {
       discountEl.style.display = "none";
       discountEl.innerText = "";
     }
-    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
+    grandEl.innerText = `Grand Total = ${formatHarga(originalTotal)}`;
   }
 }
 
@@ -1109,7 +1128,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 </script>
 </body>
 </html>
+
 
