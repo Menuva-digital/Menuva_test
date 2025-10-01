@@ -428,18 +428,20 @@ body {
   </div> <!-- tutup container -->
 </footer>
 
-  <!-- ========================= FULL JS (self-contained) ========================= -->
-  <script>
+<script>
+(() => {
   /* ------------------ CONFIG / STATE ------------------- */
   const DB_NAME = 'MenuvaDB';
   const STORE_NAME = 'menuvaData';
+  const LOCALE_KEY = 'menuva_localeChoice';
+
   let db = null;
   let menuData = [];
   let menuPromo = [];
   let restoData = {};
   let cart = [];
-  let activeVoucherCode = null;
-  const LOCALE_KEY = 'menuva_localeChoice';
+  let activeVoucherData = null; // object voucher aktif (null jika none)
+  let promoCountdownTimer = null;
 
   /* ------------------ LOCALE / CURRENCY ---------------- */
   const localeToCurrencyFallback = {
@@ -493,7 +495,17 @@ body {
   /* ------------------ HELPERS ------------------- */
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  function cleanNumber(val){
+    if (val == null) return 0;
+    return parseFloat(String(val).replace(/[^0-9.-]/g,'')) || 0;
   }
 
   function getQueryRestoId() {
@@ -513,11 +525,8 @@ body {
 
   function loadDataFromDB(restoId) {
     return new Promise((resolve,reject)=>{
-      if (!db) return reject(new Error('DB not initialized'));
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        console.warn('Store not found:', STORE_NAME);
-        return resolve(null);
-      }
+      if (!db) return resolve(null);
+      if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
 
@@ -551,7 +560,7 @@ body {
     });
   }
 
-  /* ------------------ CART FUNCTIONS ------------------- */
+  /* ------------------ CART ------------------- */
   function updateCartCount() {
     const el = document.getElementById('cartCount');
     if (!el) return;
@@ -592,30 +601,27 @@ body {
           <div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div>
         </div>
         <div class="qty-wrap">
-          <button onclick="updateQty(${i}, -1)">-</button>
+          <button type="button" onclick="window._menuva.updateQty(${i}, -1)">-</button>
           <input type="text" value="${c.qty}" readonly />
-          <button onclick="updateQty(${i}, 1)">+</button>
+          <button type="button" onclick="window._menuva.updateQty(${i}, 1)">+</button>
         </div>
         <div class="price-right">${formatWithActive(subtotal)}</div>
-        <button class="remove-btn" title="Remove" onclick="removeFromCart(${i})">✕</button>
+        <button class="remove-btn" title="Remove" onclick="window._menuva.removeFromCart(${i})">✕</button>
       `;
       rows.appendChild(row);
     });
 
-    // store raw total on element for voucher calculation
     const cartTotalEl = document.getElementById('cartTotal');
     if (cartTotalEl) cartTotalEl.dataset.raw = String(total);
 
-    refreshAllPriceDisplays(); // will compute discount & grand total via patched function
+    refreshAllPriceDisplays();
     updateCartCount();
   }
 
-  function addToCart(name, price) {
-    const harga = typeof price === 'string' ? parseFloat(String(price).replace(/[^0-9.]/g,'')) : Number(price);
-    const key = name;
-    const idx = cart.findIndex(i => i.key === key);
+  function addToCartObj(name, price) {
+    const idx = cart.findIndex(i => i.key === name);
     if (idx >= 0) cart[idx].qty += 1;
-    else cart.push({ key, nama: name, harga: harga || 0, qty: 1 });
+    else cart.push({ key: name, nama: name, harga: Number(price) || 0, qty: 1 });
     renderCart();
   }
 
@@ -627,191 +633,211 @@ body {
   }
 
   function removeFromCart(index) {
+    if (!cart[index]) return;
     cart.splice(index,1);
     renderCart();
   }
-/* ------------------ RENDER MENU ---------------------- */
-function renderMenu() {
-  const map = { food:'foodGrid', snack:'snackGrid', drink:'drinkGrid', special:'specialGrid' };
-  Object.keys(map).forEach(k=>{
-    const grid = document.getElementById(map[k]);
+
+  /* expose these helpers for onclick usage in HTML */
+  window._menuva = window._menuva || {};
+  window._menuva.addToCart = addToCartObj;
+  window._menuva.updateQty = updateQty;
+  window._menuva.removeFromCart = removeFromCart;
+  window._menuva.getActiveLocaleCurrency = getActiveLocaleCurrency;
+  window._menuva.formatWithActive = formatWithActive;
+  window._menuva.refreshAllPriceDisplays = () => refreshAllPriceDisplays();
+
+  /* ------------------ RENDER MENU & PROMO ---------------------- */
+  function renderMenu() {
+    const map = { food:'foodGrid', snack:'snackGrid', drink:'drinkGrid', special:'specialGrid' };
+    Object.keys(map).forEach(k=>{
+      const grid = document.getElementById(map[k]);
+      if (!grid) return;
+      grid.innerHTML = '';
+      const items = (menuData || []).filter(m => m.kategori === k);
+      if (!items || items.length ===0) {
+        grid.innerHTML = '<div class="cart-empty">No item yet</div>';
+        return;
+      }
+      items.forEach(m=>{
+        const card = document.createElement('div');
+        card.className = 'menu-card';
+        card.onclick = () => { addToCartObj(m.nama, Number(m.harga)||0); updateBadge(card, m.nama); };
+        const hargaNum = Number(m.harga) || 0;
+        card.innerHTML = `
+          ${m.image ? `<img class="menu-thumb" src="${m.image}" alt="${escapeHtml(m.nama)}">` : `<div class="menu-thumb"></div>`}
+          <div class="menu-title">${escapeHtml(m.nama)}</div>
+          <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
+          <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
+          <span class="badge" style="display:none">0</span>
+        `;
+        grid.appendChild(card);
+      });
+    });
+  }
+
+  function renderPromo(){
+    const grid = document.getElementById('promoGrid');
     if (!grid) return;
     grid.innerHTML = '';
-    const items = (menuData || []).filter(m => m.kategori === k);
-    if (!items || items.length ===0) {
-      grid.innerHTML = '<div class="cart-empty">No item yet</div>';
+    const now = Date.now();
+    const promos = (menuPromo||[]).filter(p=>{
+      if (!p.tanggalAkhir) return true;
+      const end = new Date(p.tanggalAkhir).getTime();
+      return isFinite(end) ? end > now : true;
+    });
+    if (!promos || promos.length === 0) {
+      grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
+      stopPromoCountdown();
       return;
     }
-    items.forEach(m=>{
+    promos.forEach(p=>{
       const card = document.createElement('div');
-      card.className = 'menu-card';
-      card.onclick = () => tambahPesanan(m, card);
-      const hargaNum = Number(m.harga) || 0;
-      card.innerHTML = `
-        ${m.image ? `<img class="menu-thumb" src="${m.image}" alt="${escapeHtml(m.nama)}">` : `<div class="menu-thumb"></div>`}
-        <div class="menu-title">${escapeHtml(m.nama)}</div>
-        <div class="menu-desc">${escapeHtml(m.deskripsi || '')}</div>
-        <div class="menu-price" data-price="${hargaNum}">${formatWithActive(hargaNum)}</div>
-        <span class="badge">0</span>
-      `;
+      card.className = 'promo-card';
+      const item = { nama: p.namaPromo || p.namaMenu || 'Promo Item', harga: Number(p.harga)||0, deskripsi: p.deskripsi||'', image: p.image||'' };
+      card.addEventListener('click', ()=> {
+        addToCartObj(item.nama, item.harga);
+        updateBadge(card, item.nama);
+      });
+
+      const promoBadge = document.createElement('span');
+      promoBadge.className='badge';
+      promoBadge.textContent='0';
+      promoBadge.style.display = 'none';
+      card.appendChild(promoBadge);
+
+      if (p.image) {
+        const img = document.createElement('img'); img.src = p.image; img.alt = item.nama; card.appendChild(img);
+      } else {
+        const ph = document.createElement('div'); ph.className='menu-thumb'; card.appendChild(ph);
+      }
+      const title = document.createElement('div'); title.className='promo-name'; title.textContent = p.namaPromo || p.namaMenu || 'Promo'; card.appendChild(title);
+      const desc = document.createElement('div'); desc.className='promo-menu-desc'; desc.textContent = p.deskripsi||''; card.appendChild(desc);
+      const price = document.createElement('div'); price.className='promo-price'; price.dataset.price = Number(p.harga)||0; price.textContent = formatWithActive(Number(p.harga)||0); card.appendChild(price);
+      if (p.tanggalAkhir) { const c = document.createElement('div'); c.className='promo-count'; c.dataset.end = p.tanggalAkhir; card.appendChild(c); }
+
       grid.appendChild(card);
     });
-  });
-}
+    startPromoCountdown();
+  }
 
-/* ------------------ RENDER PROMO -------------------- */
-function renderPromo(){
-  const grid = document.getElementById('promoGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  const now = Date.now();
-  const promos = (menuPromo||[]).filter(p=>{
-    if (!p.tanggalAkhir) return true;
-    const end = new Date(p.tanggalAkhir).getTime();
-    return isFinite(end) ? end > now : true;
-  });
-  if (!promos || promos.length === 0) {
-    grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
+  function updateBadge(cardEl, itemName) {
+    try {
+      const badge = cardEl.querySelector('.badge');
+      if (!badge) return;
+      const cartItem = cart.find(c => c.nama === itemName);
+      if (!cartItem) { badge.style.display = 'none'; return; }
+      badge.textContent = cartItem.qty;
+      badge.style.display = 'flex';
+    } catch(e){}
+  }
+
+  /* ------------------ PROMO COUNTDOWN -------------------- */
+  function startPromoCountdown(){
     stopPromoCountdown();
-    return;
+    promoCountdownTimer = setInterval(()=>{
+      document.querySelectorAll('.promo-count[data-end]').forEach(el=>{
+        const end = new Date(el.dataset.end).getTime();
+        if (!isFinite(end)) { el.textContent=''; return; }
+        const diff = end - Date.now();
+        if (diff <= 0) { el.textContent='Expired'; return; }
+        const d = Math.floor(diff/86400000);
+        const h = Math.floor((diff%86400000)/3600000);
+        const m = Math.floor((diff%3600000)/60000);
+        const s = Math.floor((diff%60000)/1000);
+        el.textContent = `Ends in ${d}d ${h}h ${m}m ${s}s`;
+      });
+    }, 1000);
   }
-  promos.forEach(p=>{
-    const card = document.createElement('div');
-    card.className = 'promo-card';
-    const item = { nama: p.namaPromo || p.namaMenu || 'Promo Item', harga: Number(p.harga)||0, deskripsi: p.deskripsi||'', image: p.image||'' };
-    card.addEventListener('click', ()=> {
-      if (p.tanggalAkhir) {
-        const end = new Date(p.tanggalAkhir).getTime();
-        if (isFinite(end) && Date.now() > end) return;
-      }
-      tambahPesanan(item, card);
-    });
+  function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-    const promoBadge = document.createElement('span');
-    promoBadge.className='badge';
-    promoBadge.textContent='0';
-    card.appendChild(promoBadge);
+  /* ------------------ VOUCHER -------------------- */
+  function applyVoucherAndUpdateSummary(){
+    const cartTotalEl = document.getElementById('cartTotal');
+    const grandTotalEl = document.getElementById('grandTotal');
+    const discountRow = document.getElementById('discountRow');
+    const voucherDiscountEl = document.getElementById('voucherDiscount');
 
-    if (p.image) { 
-      const img = document.createElement('img'); 
-      img.src = p.image; 
-      img.alt = item.nama; 
-      card.appendChild(img); 
-    } else { 
-      const ph = document.createElement('div'); 
-      ph.className='menu-thumb'; 
-      card.appendChild(ph); 
+    if (!cartTotalEl || !grandTotalEl) return;
+    const rawTotal = cleanNumber(cartTotalEl.dataset.raw) || 0;
+    let discount = 0;
+    if (activeVoucherData) {
+      discount = rawTotal * (parseFloat(activeVoucherData.discount || 0) / 100);
     }
-    const title = document.createElement('div'); title.className='promo-name'; title.textContent = p.namaPromo || p.namaMenu || 'Promo'; card.appendChild(title);
-    const desc = document.createElement('div'); desc.className='promo-menu-desc'; desc.textContent = p.deskripsi||''; card.appendChild(desc);
-    const price = document.createElement('div'); price.className='promo-price'; price.dataset.price = Number(p.harga)||0; price.textContent = formatWithActive(Number(p.harga)||0); card.appendChild(price);
-    if (p.tanggalAkhir) { const c = document.createElement('div'); c.className='promo-count'; c.dataset.end = p.tanggalAkhir; card.appendChild(c); }
-
-    grid.appendChild(card);
-  });
-  startPromoCountdown();
-}
-
-/* ------------------ TAMBAH PESANAN ------------------ */
-function tambahPesanan(item, cardEl) {
-  const existing = cart.find(c => c.nama === item.nama);
-  const hargaNum = Number(item.harga) || 0;
-
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    cart.push({ key:item.nama, nama:item.nama, harga:hargaNum, qty:1 });
+    const newTotal = Math.max(0, rawTotal - discount);
+    cartTotalEl.textContent = formatWithActive(rawTotal);
+    if (discount > 0) {
+      if (discountRow) discountRow.style.display = 'flex';
+      if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(discount);
+    } else {
+      if (discountRow) discountRow.style.display = 'none';
+      if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(0);
+    }
+    if (grandTotalEl) grandTotalEl.textContent = formatWithActive(newTotal);
   }
 
-  const counter = cardEl.querySelector('.badge');
-  if (counter) {
-    const cartItem = cart.find(c => c.nama === item.nama);
-    counter.textContent = cartItem.qty;
-    counter.style.display = 'flex';
-  }
-
-  renderCart();
-}
-
-/* ------------------ INPUT VOUCHER ------------------ */
-const voucherInput = document.getElementById("voucherInput");
-const voucherMessage = document.getElementById("voucherMessage");
-
-function applyVoucher() {
-  const code = voucherInput.value.trim().toUpperCase();
-  if (!code) {
-    voucherMessage.textContent = "Please enter voucher code!";
-    return;
-  }
-
-  // validasi voucher sesuai project lo
-  if (code === "DISKON10") {
-    voucherMessage.textContent = "Voucher applied! 10% off";
-  } else {
-    voucherMessage.textContent = "Invalid voucher code!";
-  }
-}
-
-document.getElementById("applyVoucherBtn")?.addEventListener("click", applyVoucher);
-
-/* ------------------ HELPERS ------------------ */
-function escapeHtml(text) {
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return text.replace(/[&<>"']/g, m => map[m]);
-}
-
-function formatWithActive(num) {
-  return formatCurrency(num);
-}
-
- // ✅ deklarasi global di atas semua function
-let promoCountdownTimer = null;
-
-function startPromoCountdown() {
-  stopPromoCountdown();
-  promoCountdownTimer = setInterval(()=>{
-    document.querySelectorAll('.promo-count').forEach(el=>{
-      const end = new Date(el.dataset.end).getTime();
-      const now = Date.now();
-      let diff = end - now;
-      if (diff <= 0) {
-        el.textContent = "Expired";
+  function initVoucherInput(){
+    const voucherInput = document.getElementById('voucherInput');
+    const voucherMessage = document.getElementById('voucherMessage');
+    if (!voucherInput || !voucherMessage) return;
+    const apply = ()=>{
+      const code = voucherInput.value.trim();
+      const stored = JSON.parse(localStorage.getItem("voucher") || "null");
+      if (stored && code.length > 0 && code.toUpperCase() === (stored.code||'').toUpperCase()) {
+        activeVoucherData = stored;
+        voucherMessage.textContent = `✅ Voucher applied: ${stored.discount}% off`;
+        voucherMessage.style.color = 'green';
+      } else if (code.length > 0) {
+        activeVoucherData = null;
+        voucherMessage.textContent = '❌ Invalid voucher code';
+        voucherMessage.style.color = 'red';
       } else {
-        let h = Math.floor(diff / (1000*60*60));
-        let m = Math.floor((diff % (1000*60*60)) / (1000*60));
-        let s = Math.floor((diff % (1000*60)) / 1000);
-        el.textContent = `${h}h ${m}m ${s}s`;
+        activeVoucherData = null;
+        voucherMessage.textContent = '';
       }
-    });
-  }, 1000);
-}
-
-function stopPromoCountdown() {
-  if (promoCountdownTimer) {
-    clearInterval(promoCountdownTimer);
-    promoCountdownTimer = null;
+      applyVoucherAndUpdateSummary();
+    };
+    ['input','keyup','change','blur'].forEach(evt=> voucherInput.addEventListener(evt, apply));
   }
-}
+
+  /* ------------------ LOCALE UI ------------------------- */
+  function initLocaleSelect(){
+    const sel = document.getElementById('localeSelect');
+    if (!sel) return;
+    const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
+    sel.value = saved;
+    sel.addEventListener('change', ()=>{
+      saveLocaleChoice(sel.value);
+      refreshAllPriceDisplays();
+    });
+  }
+
+  function refreshAllPriceDisplays(){
+    document.querySelectorAll('.menu-price').forEach(el=>{
+      const p = Number(el.dataset.price) || 0;
+      el.textContent = formatWithActive(p);
+    });
+    // update cart totals formatting too
+    try { applyVoucherAndUpdateSummary(); } catch(e){}
+  }
 
   /* ------------------ SEND ORDER (WhatsApp) ------------- */
   function sendOrder(){
-    // validate WA
     const adminNos = restoData.nomorWaAdmin || restoData.nomor_admin || restoData.nomor || [];
     if (!adminNos || (Array.isArray(adminNos) && adminNos.length === 0)) {
       alert("WhatsApp admin number not configured.");
       return;
     }
-
-    const name = document.getElementById('custName').value.trim();
-    const table = document.getElementById('custTable').value.trim();
+    const name = (document.getElementById('custName')?.value || '').trim();
+    const table = (document.getElementById('custTable')?.value || '').trim();
     if (!name || !table) { alert('Please fill customer name and table number!'); return; }
     if (!cart || cart.length === 0) { alert('Cart is empty!'); return; }
 
     const adminNoRaw = Array.isArray(adminNos) ? adminNos[0] : adminNos;
     const adminNo = String(adminNoRaw).replace(/[^0-9]/g,'');
-    const date = document.getElementById('custDate').value || '';
-    const time = document.getElementById('custTime').value || '';
-    const note = document.getElementById('custNote').value.trim() || '';
+    const date = document.getElementById('custDate')?.value || '';
+    const time = document.getElementById('custTime')?.value || '';
+    const note = document.getElementById('custNote')?.value.trim() || '';
 
     let msg = `🍽️ New Dine-in Order - ${restoData.namaRestoran || ''}\n\n`;
     msg += `Name: ${name}\nTable: ${table}\nDate: ${date}\nTime: ${time}\n\n📝 Order:\n`;
@@ -823,15 +849,15 @@ function stopPromoCountdown() {
       msg += `${i+1}. ${c.nama} x${c.qty} - ${formatWithActive(itemTotal)}\n`;
     });
 
-    // voucher
     let discount = 0;
     let voucherCode = null;
     let discountPercent = 0;
     if (activeVoucherData) {
-  discountPercent = parseFloat(activeVoucherData.discount) || 0;
-  discount = subtotal * (discountPercent / 100);
-  voucherCode = activeVoucherData.code;
-}
+      discountPercent = parseFloat(activeVoucherData.discount) || 0;
+      discount = subtotal * (discountPercent / 100);
+      voucherCode = activeVoucherData.code;
+    }
+
     if (discount > 0) {
       const finalTotal = subtotal - discount;
       msg += `\nSubtotal: ${formatWithActive(subtotal)}`;
@@ -847,118 +873,6 @@ function stopPromoCountdown() {
     window.open(url, '_blank');
   }
 
-  /* ------------------ LOCALE UI ------------------------- */
-  function initLocaleSelect(){
-    const sel = document.getElementById('localeSelect');
-    if (!sel) return;
-    const saved = localStorage.getItem(LOCALE_KEY) || 'auto';
-    sel.value = saved;
-    sel.addEventListener('change', ()=>{
-      saveLocaleChoice(sel.value);
-      refreshAllPriceDisplays();
-    });
-  }
-
-  /* refresh price elements */
-  function refreshAllPriceDisplays(){
-    document.querySelectorAll('.menu-price').forEach(el=>{
-      const p = Number(el.dataset.price) || 0;
-      el.textContent = formatWithActive(p);
-    });
-    // call renderCart to ensure cartTotal.dataset.raw is correct
-    // but to avoid loops we won't call renderCart here; renderCart sets dataset.raw.
-    // Instead compute discount & grand total here using cartTotal.dataset.raw
-    try { applyVoucherAndUpdateSummary(); } catch(e){}
-  }
-
-  /* ---------- Voucher: auto apply & display ---------- */
-  function cleanNumber(val){
-    if (val == null) return 0;
-    return parseFloat(String(val).replace(/[^0-9.-]/g,'')) || 0;
-  }
-
-  function applyVoucherAndUpdateSummary(){
-    const cartTotalEl = document.getElementById('cartTotal');
-    const grandTotalEl = document.getElementById('grandTotal');
-    const discountRow = document.getElementById('discountRow');
-    const voucherDiscountEl = document.getElementById('voucherDiscount');
-
-    if (!cartTotalEl || !grandTotalEl) return;
-
-    const rawTotal = cleanNumber(cartTotalEl.dataset.raw) || 0;
-    let discount = 0;
-
-    if (activeVoucherCode) {
-      const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-      if (voucher && voucher.code === activeVoucherCode) {
-        discount = rawTotal * (parseFloat(voucher.discount) / 100);
-      }
-    }
-
-    const newTotal = Math.max(0, rawTotal - discount);
-    cartTotalEl.textContent = formatWithActive(rawTotal);
-    if (discount > 0) {
-      if (discountRow) discountRow.style.display = 'flex';
-      if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(discount);
-    } else {
-      if (discountRow) discountRow.style.display = 'none';
-      if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(0);
-    }
-    if (grandTotalEl) grandTotalEl.textContent = formatWithActive(newTotal);
-  }
-
-  // patch renderAll (safe wrapper so earlier code can call refreshAllPriceDisplays)
-  const _origRefresh = window.refreshAllPriceDisplays;
-  window.refreshAllPriceDisplays = function(){
-    try { _origRefresh?.(); } catch(e){}
-    // also call applyVoucherAndUpdateSummary in case cartTotal.dataset.raw already set by renderCart
-    applyVoucherAndUpdateSummary();
-  };
-
-  /* === auto-apply voucher on input (multi-event for mobile compatibility) === */
-function initVoucherInput(){
-  const voucherInput = document.getElementById('voucherInput');
-  const voucherMessage = document.getElementById('voucherMessage');
-  if (!voucherInput || !voucherMessage) return;
-
-  const apply = ()=>{
-    const code = voucherInput.value.trim();
-    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-    if (voucher && code.toUpperCase() === (voucher.code||'').toUpperCase()) {
-      activeVoucherCode = voucher.code;
-      activeVoucherData = voucher; // ✅ simpan data voucher
-      voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
-      voucherMessage.style.color = 'green';
-    } else if (code.length > 0) {
-      activeVoucherCode = null;
-      activeVoucherData = null;
-      voucherMessage.textContent = '❌ Invalid voucher code';
-      voucherMessage.style.color = 'red';
-    } else {
-      activeVoucherCode = null;
-      activeVoucherData = null;
-      voucherMessage.textContent = '';
-    }
-  };
-
-  // tambahin event listener biar langsung apply saat input berubah
-  voucherInput.addEventListener("input", apply);
-}
-
-  /* ------------------ THEME (dark toggle) ------------------ */
-  function initTheme(){
-    const btn = document.getElementById('darkToggle');
-    const saved = localStorage.getItem('darkMode') || 'disabled';
-    if (saved === 'enabled') { document.body.classList.add('dark-mode'); btn.textContent = '☀️'; }
-    else btn.textContent = '🌙';
-    btn.addEventListener('click', ()=> {
-      document.body.classList.toggle('dark-mode');
-      if (document.body.classList.contains('dark-mode')) {
-        btn.textContent = '☀️'; localStorage.setItem('darkMode','enabled');
-      } else { btn.textContent = '🌙'; localStorage.setItem('darkMode','disabled'); }
-    });
-  }
-
   /* ------------------ TABS ------------------ */
   function switchTab(tabName){
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -969,12 +883,16 @@ function initVoucherInput(){
     if (activeTab) activeTab.classList.add('active');
   }
 
+  /* expose to window */
+  window.sendOrder = sendOrder;
+  window.switchTab = switchTab;
+
   /* ------------------ INIT (on DOM ready) ---------------- */
   window.addEventListener('DOMContentLoaded', async ()=>{
-    try{ initTheme(); } catch(e){console.warn(e);}
     initLocaleSelect();
+    initVoucherInput();
 
-    // init DB & load data
+    // init DB & load data (best-effort: resolve null if no db)
     try{
       await initDB();
       const restoId = getQueryRestoId();
@@ -982,9 +900,9 @@ function initVoucherInput(){
       restoData = data || {};
       menuData = Array.isArray(data?.menu) ? data.menu : [];
       menuPromo = Array.isArray(data?.menuPromo) ? data.menuPromo : [];
-    }catch(e){ console.warn('DB init error',e) }
+    }catch(e){ console.warn('DB init error',e); }
 
-    // header info
+    // header info (defensive)
     const logoEl = document.getElementById('restoLogo'); if (logoEl) { logoEl.src = restoData?.logo || ''; logoEl.style.display = restoData?.logo ? 'block' : 'none'; }
     const nameEl = document.getElementById('restoName'); if (nameEl) nameEl.innerText = restoData?.namaRestoran || 'Nama Restoran';
     const alamatEl = document.getElementById('alamatRestoranDisplay'); if (alamatEl) alamatEl.innerText = restoData?.restoAddress || '';
@@ -998,136 +916,21 @@ function initVoucherInput(){
     const dateInput = document.getElementById('custDate'); if (dateInput) dateInput.value = dateStr;
     const timeInput = document.getElementById('custTime'); if (timeInput) timeInput.value = timeStr;
 
-    // render UI
+    // initial render
     renderMenu();
     renderPromo();
     renderCart();
     applyVoucherAndUpdateSummary();
 
-    // voucher UI show logic
-    const plan = localStorage.getItem('user_plan');
-    const voucherEnabled = localStorage.getItem('page_voucher') === 'true';
-    if (plan !== 'monthly' && voucherEnabled) {
-      const vs = document.getElementById('voucherSection'); if (vs) vs.style.display = 'block';
-    }
-    initVoucherInput();
+    // wire up any header locale select default (safe)
+    const sel = document.getElementById('localeSelect');
+    if (sel) sel.value = localStorage.getItem(LOCALE_KEY) || 'auto';
 
-    // expose for debug
-    window._menuva = { getActiveLocaleCurrency, formatWithActive, refreshAllPriceDisplays, addToCart, loadDataFromDB };
-
-    console.log('book.html initialized. restoId param=', getQueryRestoId(), 'loaded:', !!restoData);
+    console.log('menuva JS initialized');
   });
 
-  </script>
-<script>
-// Helper aman parse angka
-function cleanNumber(val) {
-  if (val == null) return 0;
-  return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
-}
-
-let activeLocale = "id-ID";
-let activeCurrency = "IDR";
-
-// Listener dropdown
-document.getElementById("localeSelect").addEventListener("change", (e) => {
-  const val = e.target.value;
-  if (val === "auto") {
-    activeLocale = navigator.language || "id-ID";
-    activeCurrency = "IDR";
-  } else {
-    const [loc, cur] = val.split("|");
-    activeLocale = loc;
-    activeCurrency = cur;
-  }
-  rerenderPrices(); // refresh harga setelah ganti
-});
-
-// Format currency fleksibel
-function formatCurrency(num) {
-  return Number(num).toLocaleString(activeLocale, {
-    style: "currency",
-    currency: activeCurrency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  });
-}
-
-// === Apply Voucher otomatis ===
-function autoApplyVoucher() {
-  const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-  const input = document.getElementById("voucherInput")?.value.trim();
-  const msg = document.getElementById("voucherMessage");
-
-  const totalEl = document.getElementById("cartTotal");
-  const discountEl = document.getElementById("voucherDiscount");
-  const grandEl = document.getElementById("grandTotal");
-
-  if (!totalEl || !msg || !grandEl) return;
-
-  if (!totalEl.dataset.rawOriginal) {
-    totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
-  }
-
-  const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
-
-  if (!input) {
-    totalEl.innerText = formatCurrency(originalTotal);
-    totalEl.dataset.raw = String(originalTotal);
-    if (discountEl) { discountEl.parentElement.style.display = "none"; discountEl.innerText = ""; }
-    msg.innerText = "";
-    grandEl.innerText = formatCurrency(originalTotal);
-    return;
-  }
-
-  const today = new Date().toISOString().split("T")[0];
-
-  if (voucher && input.toUpperCase() === (voucher.code || "").toUpperCase() && today <= voucher.expiry) {
-    const discountPercent = parseFloat(voucher.discount) || 0;
-    const potongan = originalTotal * (discountPercent / 100);
-    const discounted = originalTotal - potongan;
-
-    totalEl.innerText = formatCurrency(originalTotal);
-    totalEl.dataset.raw = String(discounted);
-
-    msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-    msg.style.color = "green";
-
-    if (discountEl) {
-      discountEl.parentElement.style.display = "flex";
-      discountEl.innerText = `${formatCurrency(potongan)}`;
-    }
-
-    grandEl.innerText = formatCurrency(discounted);
-  } else {
-    totalEl.innerText = formatCurrency(originalTotal);
-    totalEl.dataset.raw = String(originalTotal);
-
-    msg.innerText = "❌ Voucher Code is invalid or expired";
-    msg.style.color = "red";
-
-    if (discountEl) {
-      discountEl.parentElement.style.display = "none";
-      discountEl.innerText = "";
-    }
-
-    grandEl.innerText = formatCurrency(originalTotal);
-  }
-}
-
-// === Attach event multiple biar aman di HP/desktop ===
-document.addEventListener("DOMContentLoaded", () => {
-  const voucherInput = document.getElementById("voucherInput");
-  if (voucherInput) {
-    ["input", "keyup", "change", "blur"].forEach(evt => {
-      voucherInput.addEventListener(evt, autoApplyVoucher);
-    });
-  }
-});
+})();
 </script>
+
 </body>
 </html>
-
-
-
-
