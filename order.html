@@ -477,18 +477,24 @@ body.dark .qty-controls span {
 .cart-items {
   margin: 10px 0;
   padding: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fafafa;
+  background: var(--surface);
   font-size: 0.9em;
+  color: var(--text);
 }
+
 .cart-row {
   display: flex;
   justify-content: space-between;
   padding: 4px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
-.cart-row:last-child { border-bottom: none; }
+
+.cart-row:last-child {
+  border-bottom: none;
+}
+
 .cart-name { flex: 1; }
 .cart-qty { margin: 0 10px; }
 .cart-price { font-weight: bold; }
@@ -1185,3 +1191,4 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
