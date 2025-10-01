@@ -467,6 +467,13 @@ body.dark .qty-controls span {
   margin: 24px 0 16px;
   color: var(--text);
 }
+#voucherInput {
+  width: 100%;
+  max-width: 250px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
 
 </style>
 </head>
@@ -1100,6 +1107,7 @@ function autoApplyVoucher() {
     totalEl.dataset.raw = String(discounted);
 
     msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+    msg.style.color = "green";
 
     if (discountEl) {
       discountEl.style.display = "block";
@@ -1111,6 +1119,7 @@ function autoApplyVoucher() {
     totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
     msg.innerText = "❌ Voucher Code is invalid or expired";
+    msg.style.color = "red";
     if (discountEl) {
       discountEl.style.display = "none";
       discountEl.innerText = "";
@@ -1132,5 +1141,6 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
