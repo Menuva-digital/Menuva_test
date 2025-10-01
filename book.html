@@ -595,19 +595,25 @@ body {
 
       const row = document.createElement('div');
       row.className = 'cart-row';
-      row.innerHTML = `
-        <div>
-          <strong>${escapeHtml(c.nama)}</strong>
-          <div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div>
-        </div>
-        <div class="qty-wrap">
-          <button type="button" onclick="window._menuva.updateQty(${i}, -1)">-</button>
-          <input type="text" value="${c.qty}" readonly />
-          <button type="button" onclick="window._menuva.updateQty(${i}, 1)">+</button>
-        </div>
-        <div class="price-right">${formatWithActive(subtotal)}</div>
-        <button class="remove-btn" title="Remove" onclick="window._menuva.removeFromCart(${i})">✕</button>
-      `;
+     row.innerHTML = `
+  <div>
+    <strong>${escapeHtml(c.nama)}</strong>
+    <div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div>
+  </div>
+  <div class="qty-wrap">
+    <button type="button" onclick="window._menuva.updateQty(${i}, -1)">-</button>
+    <input 
+      type="text" 
+      id="cart-qty-${i}" 
+      name="cart-qty-${i}" 
+      value="${c.qty}" 
+      readonly 
+    />
+    <button type="button" onclick="window._menuva.updateQty(${i}, 1)">+</button>
+  </div>
+  <div class="price-right">${formatWithActive(subtotal)}</div>
+  <button class="remove-btn" title="Remove" onclick="window._menuva.removeFromCart(${i})">✕</button>
+`;
       rows.appendChild(row);
     });
 
@@ -934,3 +940,4 @@ body {
 
 </body>
 </html>
+
