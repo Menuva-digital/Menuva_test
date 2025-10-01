@@ -474,6 +474,24 @@ body.dark .qty-controls span {
   border: 1px solid #ccc;
   border-radius: 6px;
 }
+.cart-items {
+  margin: 10px 0;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fafafa;
+  font-size: 0.9em;
+}
+.cart-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+.cart-row:last-child { border-bottom: none; }
+.cart-name { flex: 1; }
+.cart-qty { margin: 0 10px; }
+.cart-price { font-weight: bold; }
 
 </style>
 </head>
@@ -520,42 +538,56 @@ body.dark .qty-controls span {
 
   <div id="menu-list" class="menu-grid"></div>
 
-  <div class="order-summary">
-    <h2>🧾 Order Summary</h2>
-      <div class="reservasi-container">
-  <div id="voucherSection" style="display:none; margin:15px 0;">
-    <div class="voucher-box">
-      <input 
-        type="text" 
-        id="voucherInput" 
-        placeholder="Use Voucher Code"
-      >
+<div class="order-summary">
+  <h2>🧾 Order Summary</h2>
+
+  <!-- Cart Items List -->
+  <div id="cartContainer" style="margin-bottom:15px;">
+    <h3>🛒 Items in Cart</h3>
+    <ul id="cartList" style="list-style:none; padding-left:0; font-size:0.9em; line-height:1.5;">
+      <!-- Item dari JS akan muncul di sini -->
+      <!-- contoh nanti: <li>Nasi Goreng x2 = Rp 50.000</li> -->
+    </ul>
+  </div>
+    
+  <div id="cartItems" class="cart-items"></div>
+
+  <div class="reservasi-container">
+    <div id="voucherSection" style="display:none; margin:15px 0;">
+      <div class="voucher-box">
+        <input 
+          type="text" 
+          id="voucherInput" 
+          placeholder="Use Voucher Code"
+        >
+      </div>
+      <p id="voucherMessage"></p>
     </div>
-    <p id="voucherMessage"></p>
   </div>
-</div>
-   <div id="priceSummary" style="margin-top:10px; font-size:0.9em;">
-  <p id="totalPrice" data-raw="0">Total Price = 0</p>
-  <p id="voucherDiscount" style="display:none; color:green;">Discount = 0</p>
-  <p id="grandTotal" style="font-weight:bold;">Grand Total = 0</p>
-</div>
 
-    <label>Orderer Name</label>
-    <input id="nama" type="text" placeholder="Example: John">
-
-    <label>Delivery Address</label>
-    <textarea id="alamat" placeholder="Example: Road. Memories No. 123"></textarea>
-
-    <label>Delivery Time</label>
-    <input type="datetime-local" id="waktuAntar">
-
-    <label>Additional Notes</label>
-    <textarea id="catatan" placeholder="Example: No chili, please hurry up!"></textarea>
-
-    <label>Rooms (opsional)</label>
-    <input type="text" id="ruangan" placeholder="Example:Smooking Room,Privat Room .Etc">
+  <div id="priceSummary" style="margin-top:10px; font-size:0.9em;">
+    <p id="totalPrice" data-raw="0">Total Price = 0</p>
+    <p id="voucherDiscount" style="display:none; color:green;">Discount = 0</p>
+    <p id="grandTotal" style="font-weight:bold;">Grand Total = 0</p>
   </div>
+
+  <!-- lanjut data customer -->
+  <label>Orderer Name</label>
+  <input id="nama" type="text" placeholder="Example: John">
+
+  <label>Delivery Address</label>
+  <textarea id="alamat" placeholder="Example: Road. Memories No. 123"></textarea>
+
+  <label>Delivery Time</label>
+  <input type="datetime-local" id="waktuAntar">
+
+  <label>Additional Notes</label>
+  <textarea id="catatan" placeholder="Example: No chili, please hurry up!"></textarea>
+
+  <label>Rooms (opsional)</label>
+  <input type="text" id="ruangan" placeholder="Example:Smooking Room,Privat Room .Etc">
 </div>
+
 
 <div class="bottom-buttons">
   <button onclick="kirimPesanan()" class="btn-wa">📤 Send Order List</button>
@@ -940,45 +972,57 @@ function ubahJumlah(index, delta) {
 function updateRingkasan() {
   let totalQty = 0;
   let totalHargaValue = 0;
+  const cartEl = document.getElementById("cartItems");
+  if (cartEl) cartEl.innerHTML = ""; // reset isi cart
+
   Object.entries(pesanan).forEach(([key, jumlah]) => {
     if (!jumlah || jumlah <= 0) return;
-    if (String(key).startsWith('promo-')) {
-      const idx = parseInt(String(key).split('-')[1], 10);
-      const item = (data.menuPromo || [])[idx];
-      const harga = Number(item && item.harga) || 0;
-      totalQty += jumlah;
-      totalHargaValue += jumlah * harga;
+
+    let item, harga, nama;
+    if (String(key).startsWith("promo-")) {
+      const idx = parseInt(String(key).split("-")[1], 10);
+      item = (data.menuPromo || [])[idx];
+      harga = Number(item && item.harga) || 0;
+      nama = item?.namaPromo || item?.namaMenu || "Promo";
     } else {
       const idx = Number(key);
-      const item = (data.menu || [])[idx];
-      const harga = Number(item && item.harga) || 0;
-      totalQty += jumlah;
-      totalHargaValue += jumlah * harga;
+      item = (data.menu || [])[idx];
+      harga = Number(item && item.harga) || 0;
+      nama = item?.nama || "Item";
+    }
+
+    totalQty += jumlah;
+    totalHargaValue += jumlah * harga;
+
+    // bikin row cart
+    if (cartEl) {
+      const row = document.createElement("div");
+      row.className = "cart-row";
+      row.innerHTML = `
+        <span class="cart-name">${escapeHtml(nama)}</span>
+        <span class="cart-qty">x${jumlah}</span>
+        <span class="cart-price">${formatHarga(harga * jumlah)}</span>
+      `;
+      cartEl.appendChild(row);
     }
   });
 
-  // update elemen lama
-  const totalItemEl = document.getElementById('total-item');
-  const totalHargaEl = document.getElementById('total-harga');
-  if (totalItemEl) totalItemEl.textContent = totalQty;
-  if (totalHargaEl) totalHargaEl.textContent = formatHarga(totalHargaValue);
-
-  // update elemen baru (voucher)
+  // update summary total
   const totalEl = document.getElementById("totalPrice");
   const grandEl = document.getElementById("grandTotal");
   if (totalEl) {
     totalEl.innerText = `Total Price = ${formatHarga(totalHargaValue)}`;
     totalEl.dataset.raw = String(totalHargaValue);
-    // simpan juga original untuk voucher
     totalEl.dataset.rawOriginal = String(totalHargaValue);
   }
   if (grandEl) {
     grandEl.innerText = `Grand Total = ${formatHarga(totalHargaValue)}`;
   }
 
-  // re-apply voucher otomatis setiap update ringkasan
+  // re-apply voucher otomatis
   autoApplyVoucher();
 }
+
 
 /* =================== KIRIM PESAN (WhatsApp) =================== */
 function kirimPesanan() {
@@ -1141,6 +1185,3 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
-
-
-
