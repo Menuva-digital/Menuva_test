@@ -305,54 +305,54 @@ body {
   </style>
 </head>
 <body>
-  <header>
-    <div class="header-inner container">
-      <div class="header-left">
-        <img id="restoLogo" alt="Logo" />
-        <div class="resto-info">
-          <h1 id="restoName">Nama Restoran</h1>
-          <div class="contact-info">
-            <div id="alamatRestoranDisplay"></div>
-            <div id="teleponRestoranDisplay"></div>
-          </div>
+<header>
+  <div class="header-inner container">
+    <div class="header-left">
+      <img id="restoLogo" alt="Logo" />
+      <div class="resto-info">
+        <h1 id="restoName">Nama Restoran</h1>
+        <div class="contact-info">
+          <div id="alamatRestoranDisplay"></div>
+          <div id="teleponRestoranDisplay"></div>
         </div>
       </div>
-
-      <div class="header-right">
-        <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
-        <select id="localeSelect" class="locale-select" title="Change locale / currency">
-          <option value="auto">Auto (browser)</option>
-          <option value="en-US|USD">US — USD</option>
-          <option value="id-ID|IDR">INA — IDR</option>
-          <option value="en-GB|GBP">UK — GBP</option>
-          <option value="de-DE|EUR">Germany — EUR</option>
-          <option value="ja-JP|JPY">Japan — JPY</option>
-          <option value="zh-CN|CNY">China — CNY</option>
-          <option value="fr-FR|EUR">France — EUR</option>
-        </select>
-      </div>
     </div>
-  </header>
 
-  <div class="tabs-wrap">
-    <div class="container">
-      <div class="tabs">
-        <div class="tab active" onclick="switchTab('food')">Food</div>
-        <div class="tab" onclick="switchTab('snack')">Snack & Dessert</div>
-        <div class="tab" onclick="switchTab('drink')">Drink</div>
-        <div class="tab" onclick="switchTab('special')">Special</div>
-        <div class="tab" onclick="switchTab('promo')">Promo</div>
-      </div>
+    <div class="header-right">
+      <button class="dark-toggle" id="darkToggle" title="Toggle theme">🌙</button>
+      <select id="localeSelect" class="locale-select" title="Change locale / currency">
+        <option value="auto">Auto (browser)</option>
+        <option value="en-US|USD">US — USD</option>
+        <option value="id-ID|IDR">INA — IDR</option>
+        <option value="en-GB|GBP">UK — GBP</option>
+        <option value="de-DE|EUR">Germany — EUR</option>
+        <option value="ja-JP|JPY">Japan — JPY</option>
+        <option value="zh-CN|CNY">China — CNY</option>
+        <option value="fr-FR|EUR">France — EUR</option>
+      </select>
     </div>
   </div>
+</header>
 
-  <main class="container" style="padding-top:12px">
-    <section id="food" class="tab-content active"><div class="grid" id="foodGrid"></div></section>
-    <section id="snack" class="tab-content"><div class="grid" id="snackGrid"></div></section>
-    <section id="drink" class="tab-content"><div class="grid" id="drinkGrid"></div></section>
-    <section id="special" class="tab-content"><div class="grid" id="specialGrid"></div></section>
-    <section id="promo" class="tab-content"><div class="grid" id="promoGrid"></div></section>
-  </main>
+<div class="tabs-wrap">
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('food')">Food</div>
+      <div class="tab" onclick="switchTab('snack')">Snack & Dessert</div>
+      <div class="tab" onclick="switchTab('drink')">Drink</div>
+      <div class="tab" onclick="switchTab('special')">Special</div>
+      <div class="tab" onclick="switchTab('promo')">Promo</div>
+    </div>
+  </div>
+</div>
+
+<main class="container" style="padding-top:12px">
+  <section id="food" class="tab-content active"><div class="grid" id="foodGrid"></div></section>
+  <section id="snack" class="tab-content"><div class="grid" id="snackGrid"></div></section>
+  <section id="drink" class="tab-content"><div class="grid" id="drinkGrid"></div></section>
+  <section id="special" class="tab-content"><div class="grid" id="specialGrid"></div></section>
+  <section id="promo" class="tab-content"><div class="grid" id="promoGrid"></div></section>
+</main>
 
 <footer>
   <div class="container footer-inner">
@@ -365,6 +365,7 @@ body {
           <input 
             type="text" 
             id="voucherInput" 
+            name="voucherInput"
             placeholder="Use Voucher Code"
           >
         </div>
@@ -394,23 +395,23 @@ body {
     <div class="form" style="margin-top:12px">
       <div>
         <label for="custName">Customer Name</label>
-        <input type="text" id="custName" placeholder="e.g. John Doe">
+        <input type="text" id="custName" name="custName" placeholder="e.g. John Doe">
       </div>
       <div>
         <label for="custTable">Table No</label>
-        <input type="text" id="custTable" placeholder="e.g. A12">
+        <input type="text" id="custTable" name="custTable" placeholder="e.g. A12">
       </div>
       <div>
         <label for="custDate">Date</label>
-        <input type="text" id="custDate" readonly>
+        <input type="text" id="custDate" name="custDate" readonly>
       </div>
       <div>
         <label for="custTime">Time</label>
-        <input type="text" id="custTime" readonly>
+        <input type="text" id="custTime" name="custTime" readonly>
       </div>
       <div style="grid-column:1/-1">
         <label for="custNote">Special Request / Notes</label>
-        <textarea id="custNote" placeholder="e.g. no spicy, extra sauce"></textarea>
+        <textarea id="custNote" name="custNote" placeholder="e.g. no spicy, extra sauce"></textarea>
       </div>
     </div>
 
@@ -420,7 +421,6 @@ body {
     </div>
   </div> <!-- tutup container -->
 </footer>
-
 
   <!-- ========================= FULL JS (self-contained) ========================= -->
   <script>
@@ -1121,4 +1121,5 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
