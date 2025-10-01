@@ -906,27 +906,33 @@ function formatWithActive(num) {
   };
 
   /* === auto-apply voucher on input (multi-event for mobile compatibility) === */
-  function initVoucherInput(){
-    const voucherInput = document.getElementById('voucherInput');
-    const voucherMessage = document.getElementById('voucherMessage');
-    if (!voucherInput || !voucherMessage) return;
-    const apply = ()=>{
-      const code = voucherInput.value.trim();
-      const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-     if (voucher && code.toUpperCase() === (voucher.code||'').toUpperCase()) {
-  activeVoucherCode = voucher.code;
-  activeVoucherData = voucher; // ✅ simpan data voucher
-  voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
-  voucherMessage.style.color = 'green';
-} else if (code.length > 0) {
-  activeVoucherCode = null;
-  activeVoucherData = null; // reset
-  voucherMessage.textContent = '❌ Invalid voucher code';
-  voucherMessage.style.color = 'red';
-} else {
-  activeVoucherCode = null;
-  activeVoucherData = null; // reset
-  voucherMessage.textContent = '';
+function initVoucherInput(){
+  const voucherInput = document.getElementById('voucherInput');
+  const voucherMessage = document.getElementById('voucherMessage');
+  if (!voucherInput || !voucherMessage) return;
+
+  const apply = ()=>{
+    const code = voucherInput.value.trim();
+    const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+    if (voucher && code.toUpperCase() === (voucher.code||'').toUpperCase()) {
+      activeVoucherCode = voucher.code;
+      activeVoucherData = voucher; // ✅ simpan data voucher
+      voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
+      voucherMessage.style.color = 'green';
+    } else if (code.length > 0) {
+      activeVoucherCode = null;
+      activeVoucherData = null;
+      voucherMessage.textContent = '❌ Invalid voucher code';
+      voucherMessage.style.color = 'red';
+    } else {
+      activeVoucherCode = null;
+      activeVoucherData = null;
+      voucherMessage.textContent = '';
+    }
+  };
+
+  // tambahin event listener biar langsung apply saat input berubah
+  voucherInput.addEventListener("input", apply);
 }
 
   /* ------------------ THEME (dark toggle) ------------------ */
@@ -1111,4 +1117,5 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
