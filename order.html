@@ -667,18 +667,19 @@ function formatHarga(amount) {
   const ac = getActiveLocaleCurrency();
   const locale = ac.locale || undefined;
   const currency = ac.currency || 'IDR';
-  const zeroFrac = ['IDR','JPY','KRW'].includes((currency||'').toUpperCase());
   const opts = {
-    style: 'currency', currency,
-    minimumFractionDigits: zeroFrac ? 0 : 2,
-    maximumFractionDigits: zeroFrac ? 0 : 2
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0, // selalu tanpa desimal
+    maximumFractionDigits: 0
   };
   try {
     return new Intl.NumberFormat(locale, opts).format(Number(amount || 0));
-  } catch(e) {
-    return (currency ? currency+' ' : '') + (Number(amount)||0).toLocaleString();
+  } catch (e) {
+    return (currency ? currency + ' ' : '') + (Number(amount) || 0).toLocaleString();
   }
 }
+
 function initLocaleSelect() {
   const sel = document.getElementById('localeSelect');
   if (!sel) return;
@@ -1191,4 +1192,5 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
