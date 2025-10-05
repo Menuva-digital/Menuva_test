@@ -828,57 +828,85 @@ body {
     try { applyVoucherAndUpdateSummary(); } catch(e){}
   }
 
-  /* ------------------ SEND ORDER (WhatsApp) ------------- */
-  function sendOrder(){
-    const adminNos = restoData.nomorWaAdmin || restoData.nomor_admin || restoData.nomor || [];
-    if (!adminNos || (Array.isArray(adminNos) && adminNos.length === 0)) {
-      alert("WhatsApp admin number not configured.");
-      return;
-    }
-    const name = (document.getElementById('custName')?.value || '').trim();
-    const table = (document.getElementById('custTable')?.value || '').trim();
-    if (!name || !table) { alert('Please fill customer name and table number!'); return; }
-    if (!cart || cart.length === 0) { alert('Cart is empty!'); return; }
+ /* ------------------ SAVE ORDER  ------------- */
+function sendOrder(){
+  const name = (document.getElementById('custName')?.value || '').trim();
+  const table = (document.getElementById('custTable')?.value || '').trim();
+  const date = document.getElementById('custDate')?.value || '';
+  const time = document.getElementById('custTime')?.value || '';
+  const note = document.getElementById('custNote')?.value.trim() || '';
 
-    const adminNoRaw = Array.isArray(adminNos) ? adminNos[0] : adminNos;
-    const adminNo = String(adminNoRaw).replace(/[^0-9]/g,'');
-    const date = document.getElementById('custDate')?.value || '';
-    const time = document.getElementById('custTime')?.value || '';
-    const note = document.getElementById('custNote')?.value.trim() || '';
-
-    let msg = `🍽️ New Dine-in Order - ${restoData.namaRestoran || ''}\n\n`;
-    msg += `Name: ${name}\nTable: ${table}\nDate: ${date}\nTime: ${time}\n\n📝 Order:\n`;
-
-    let subtotal = 0;
-    cart.forEach((c,i)=>{
-      const itemTotal = (Number(c.harga)||0) * (Number(c.qty)||0);
-      subtotal += itemTotal;
-      msg += `${i+1}. ${c.nama} x${c.qty} - ${formatWithActive(itemTotal)}\n`;
-    });
-
-    let discount = 0;
-    let voucherCode = null;
-    let discountPercent = 0;
-    if (activeVoucherData) {
-      discountPercent = parseFloat(activeVoucherData.discount) || 0;
-      discount = subtotal * (discountPercent / 100);
-      voucherCode = activeVoucherData.code;
-    }
-
-    if (discount > 0) {
-      const finalTotal = subtotal - discount;
-      msg += `\nSubtotal: ${formatWithActive(subtotal)}`;
-      msg += `\nDiscount (${voucherCode} - ${discountPercent}%): -${formatWithActive(discount)}`;
-      msg += `\nGrand Total: ${formatWithActive(finalTotal)}`;
-    } else {
-      msg += `\nGrand Total: ${formatWithActive(subtotal)}`;
-    }
-
-    if (note) msg += `\n\nNotes: ${note}`;
-
-    const url = `https://wa.me/${adminNo}?text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank');
+  if (!name || !table) { 
+    alert('Please fill customer name and table number!'); 
+    return; 
   }
+  if (!cart || cart.length === 0) { 
+    alert('Cart is empty!'); 
+    return; 
+  }
+
+  // Hitung subtotal
+  let subtotal = 0;
+  cart.forEach(c=>{
+    subtotal += (Number(c.harga)||0) * (Number(c.qty)||0);
+  });
+
+  // Hitung discount & grand total
+  let discount = 0;
+  let voucherCode = null;
+  let discountPercent = 0;
+  if (activeVoucherData) {
+    discountPercent = parseFloat(activeVoucherData.discount) || 0;
+    discount = subtotal * (discountPercent / 100);
+    voucherCode = activeVoucherData.code;
+  }
+  const grandTotal = subtotal - discount;
+
+  // Data order
+  const orderData = {
+    id: Date.now(), // unique ID
+    resto: restoData?.namaRestoran || '',
+    customer: name,
+    table: table,
+    date: date,
+    time: time,
+    note: note,
+    items: cart.map(c=>({
+      nama: c.nama,
+      qty: c.qty,
+      harga: c.harga,
+      total: (Number(c.harga)||0) * (Number(c.qty)||0)
+    })),
+    subtotal,
+    discount,
+    discountPercent,
+    voucherCode,
+    grandTotal,
+    status: "active" // untuk keperluan void nanti
+  };
+
+  // Simpan ke IndexedDB
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.objectStore(STORE_NAME);
+  store.add(orderData);
+
+  tx.oncomplete = () => {
+    alert("✅ Order saved successfully!");
+    cart = []; // kosongkan cart setelah simpan
+    // opsional reset form
+    document.getElementById('custName').value = "";
+    document.getElementById('custTable').value = "";
+    document.getElementById('custDate').value = "";
+    document.getElementById('custTime').value = "";
+    document.getElementById('custNote').value = "";
+  };
+
+  tx.onerror = (e) => {
+    console.error("❌ Failed saving order:", e.target.error);
+    alert("❌ Failed to save order.");
+  };
+}
+
 
   /* ------------------ TABS ------------------ */
   function switchTab(tabName){
@@ -941,6 +969,7 @@ body {
 
 </body>
 </html>
+
 
 
 
