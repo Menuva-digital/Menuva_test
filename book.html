@@ -865,27 +865,30 @@ function sendOrder(){
   const time = document.getElementById('custTime')?.value || '';
   const note = document.getElementById('custNote')?.value.trim() || '';
 
-  // Validasi input
+  // ✅ Validasi input
   if (!name) { 
-    alert('⚠️ Please fill in customer name!');
+    showToast('⚠️ Please fill in customer name!', "error");
+    playSound("error");
     return; 
   }
   if (!table) { 
-    alert('⚠️ Please fill in table number!');
+    showToast('⚠️ Please fill in table number!', "error");
+    playSound("error");
     return; 
   }
   if (!cart || cart.length === 0) { 
-    alert('⚠️ Please add items to cart before submitting!');
+    showToast('⚠️ Please add items to cart before submitting!', "error");
+    playSound("error");
     return; 
   }
 
-  // Hitung subtotal
+  // ✅ Hitung subtotal
   let subtotal = 0;
   cart.forEach(c=>{
     subtotal += (Number(c.harga)||0) * (Number(c.qty)||0);
   });
 
-  // Hitung discount & grand total
+  // ✅ Hitung discount & grand total
   let discount = 0;
   let voucherCode = null;
   let discountPercent = 0;
@@ -896,7 +899,7 @@ function sendOrder(){
   }
   const grandTotal = subtotal - discount;
 
-  // Data order
+  // ✅ Data order
   const orderData = {
     id: Date.now(),
     resto: restoData?.namaRestoran || '',
@@ -919,35 +922,31 @@ function sendOrder(){
     status: "active"
   };
 
-  // Simpan ke IndexedDB
+  // ✅ Simpan ke IndexedDB
   const tx = db.transaction(STORE_NAME, "readwrite");
   const store = tx.objectStore(STORE_NAME);
   const request = store.add(orderData);
 
   request.onsuccess = () => {
-    // ✅ FEEDBACK JELAS
-    alert("✅ Order submitted successfully!");
-    playSound("success"); 
+    // FEEDBACK jelas
     showToast("✅ Order submitted successfully!", "success");
+    playSound("success"); 
+    console.log("✅ Order stored:", orderData);
 
-    cart = []; // kosongkan cart setelah simpan
-
-    // Reset form
+    // Reset cart & form
+    cart = []; 
+    renderCart?.(); 
     document.getElementById('custName').value = "";
     document.getElementById('custTable').value = "";
     document.getElementById('custDate').value = "";
     document.getElementById('custTime').value = "";
     document.getElementById('custNote').value = "";
-
-    console.log("✅ Order stored:", orderData);
   };
 
   request.onerror = (e) => {
-    // ❌ FEEDBACK JELAS
     console.error("❌ Failed saving order:", e.target.error);
-    alert("❌ Failed to save order, please try again.");
-    playSound("error");
     showToast("❌ Failed to save order, please try again.", "error");
+    playSound("error");
   };
 }
 
@@ -1038,6 +1037,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
