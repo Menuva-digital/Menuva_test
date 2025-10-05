@@ -302,6 +302,23 @@ body {
       .cart-row{grid-template-columns:1fr 84px 84px 28px}
       #restoLogo{height:44px;width:44px}
     }
+
+    .toast {
+  position: fixed;
+  bottom: 20px;
+  right: -300px;
+  padding: 12px 18px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  opacity: 0.9;
+  transition: all 0.3s ease;
+  z-index: 9999;
+}
+.toast.show { right: 20px; }
+.toast.success { background: #28a745; }
+.toast.error { background: #dc3545; }
+
   </style>
 </head>
 <body>
@@ -420,6 +437,18 @@ body {
         <textarea id="custNote" name="custNote" placeholder="e.g. no spicy, extra sauce"></textarea>
       </div>
     </div>
+
+    <!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Suara -->
+<audio id="sound-success" preload="auto">
+  <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg">
+</audio>
+<audio id="sound-error" preload="auto">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
+
 
     <div class="fixed-bar">
       <button class="btn btn-wa" id="btnSend" onclick="sendOrder()">📤 Submit Order</button>
@@ -838,15 +867,18 @@ function sendOrder(){
 
   // Validasi input
   if (!name) { 
-    alert('⚠️ Please fill in customer name!');
+    playSound("error"); 
+    showToast("⚠️ Please fill in customer name!", "error");
     return; 
   }
   if (!table) { 
-    alert('⚠️ Please fill in table number!');
+    playSound("error"); 
+    showToast("⚠️ Please fill in table number!", "error");
     return; 
   }
   if (!cart || cart.length === 0) { 
-    alert('⚠️ Please add items to cart before submitting!');
+    playSound("error"); 
+    showToast("⚠️ Please add items to cart before submitting!", "error");
     return; 
   }
 
@@ -869,7 +901,7 @@ function sendOrder(){
 
   // Data order
   const orderData = {
-    id: Date.now(), // unique ID
+    id: Date.now(), 
     resto: restoData?.namaRestoran || '',
     customer: name,
     table: table,
@@ -887,7 +919,7 @@ function sendOrder(){
     discountPercent,
     voucherCode,
     grandTotal,
-    status: "active" // untuk keperluan void nanti
+    status: "active"
   };
 
   // Simpan ke IndexedDB
@@ -896,7 +928,9 @@ function sendOrder(){
   const request = store.add(orderData);
 
   request.onsuccess = () => {
-    alert("✅ Order submitted successfully!");
+    playSound("success");
+    showToast("✅ Order submitted successfully!", "success");
+
     cart = []; // kosongkan cart setelah simpan
 
     // Reset form
@@ -911,10 +945,36 @@ function sendOrder(){
 
   request.onerror = (e) => {
     console.error("❌ Failed saving order:", e.target.error);
-    alert("❌ Failed to save order, please try again.");
+    playSound("error");
+    showToast("❌ Failed to save order, please try again.", "error");
   };
 }
 
+/* ---------------- SOUND EFFECT ---------------- */
+function playSound(type){
+  let src = "";
+  if(type === "success") src = "success.mp3";
+  if(type === "error") src = "error.mp3";
+  if(src){
+    const audio = new Audio(src);
+    audio.volume = 0.4;
+    audio.play();
+  }
+}
+
+/* ---------------- TOAST ---------------- */
+function showToast(msg, type="info"){
+  const toast = document.createElement("div");
+  toast.className = "toast " + type;
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(()=> toast.classList.add("show"), 50);
+  setTimeout(()=> {
+    toast.classList.remove("show");
+    setTimeout(()=> toast.remove(), 300);
+  }, 3000);
+}
 
   /* ------------------ TABS ------------------ */
   function switchTab(tabName){
@@ -977,6 +1037,7 @@ function sendOrder(){
 
 </body>
 </html>
+
 
 
 
