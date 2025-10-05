@@ -828,7 +828,7 @@ body {
     try { applyVoucherAndUpdateSummary(); } catch(e){}
   }
 
- /* ------------------ SAVE ORDER  ------------- */
+/* ------------------ SAVE ORDER ------------- */
 function sendOrder(){
   const name = (document.getElementById('custName')?.value || '').trim();
   const table = (document.getElementById('custTable')?.value || '').trim();
@@ -836,12 +836,17 @@ function sendOrder(){
   const time = document.getElementById('custTime')?.value || '';
   const note = document.getElementById('custNote')?.value.trim() || '';
 
-  if (!name || !table) { 
-    alert('Please fill customer name and table number!'); 
+  // Validasi input
+  if (!name) { 
+    alert('⚠️ Please fill in customer name!');
+    return; 
+  }
+  if (!table) { 
+    alert('⚠️ Please fill in table number!');
     return; 
   }
   if (!cart || cart.length === 0) { 
-    alert('Cart is empty!'); 
+    alert('⚠️ Please add items to cart before submitting!');
     return; 
   }
 
@@ -888,22 +893,25 @@ function sendOrder(){
   // Simpan ke IndexedDB
   const tx = db.transaction(STORE_NAME, "readwrite");
   const store = tx.objectStore(STORE_NAME);
-  store.add(orderData);
+  const request = store.add(orderData);
 
-  tx.oncomplete = () => {
-    alert("✅ Order saved successfully!");
+  request.onsuccess = () => {
+    alert("✅ Order submitted successfully!");
     cart = []; // kosongkan cart setelah simpan
-    // opsional reset form
+
+    // Reset form
     document.getElementById('custName').value = "";
     document.getElementById('custTable').value = "";
     document.getElementById('custDate').value = "";
     document.getElementById('custTime').value = "";
     document.getElementById('custNote').value = "";
+
+    console.log("✅ Order stored:", orderData);
   };
 
-  tx.onerror = (e) => {
+  request.onerror = (e) => {
     console.error("❌ Failed saving order:", e.target.error);
-    alert("❌ Failed to save order.");
+    alert("❌ Failed to save order, please try again.");
   };
 }
 
@@ -969,6 +977,7 @@ function sendOrder(){
 
 </body>
 </html>
+
 
 
 
