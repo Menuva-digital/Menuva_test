@@ -867,18 +867,15 @@ function sendOrder(){
 
   // Validasi input
   if (!name) { 
-    playSound("error"); 
-    showToast("⚠️ Please fill in customer name!", "error");
+    alert('⚠️ Please fill in customer name!');
     return; 
   }
   if (!table) { 
-    playSound("error"); 
-    showToast("⚠️ Please fill in table number!", "error");
+    alert('⚠️ Please fill in table number!');
     return; 
   }
   if (!cart || cart.length === 0) { 
-    playSound("error"); 
-    showToast("⚠️ Please add items to cart before submitting!", "error");
+    alert('⚠️ Please add items to cart before submitting!');
     return; 
   }
 
@@ -901,7 +898,7 @@ function sendOrder(){
 
   // Data order
   const orderData = {
-    id: Date.now(), 
+    id: Date.now(),
     resto: restoData?.namaRestoran || '',
     customer: name,
     table: table,
@@ -928,7 +925,9 @@ function sendOrder(){
   const request = store.add(orderData);
 
   request.onsuccess = () => {
-    playSound("success");
+    // ✅ FEEDBACK JELAS
+    alert("✅ Order submitted successfully!");
+    playSound("success"); 
     showToast("✅ Order submitted successfully!", "success");
 
     cart = []; // kosongkan cart setelah simpan
@@ -944,7 +943,9 @@ function sendOrder(){
   };
 
   request.onerror = (e) => {
+    // ❌ FEEDBACK JELAS
     console.error("❌ Failed saving order:", e.target.error);
+    alert("❌ Failed to save order, please try again.");
     playSound("error");
     showToast("❌ Failed to save order, please try again.", "error");
   };
@@ -1037,6 +1038,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
