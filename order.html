@@ -1074,7 +1074,17 @@ function kirimPesanan() {
   if (ruangan) pesan += `🏨 Room: ${ruangan}\n`;
   pesan += `\n📍 Address:\n${alamatCust}\n\n`;
   pesan += `🛒 List order:\n${lines.join('\n')}\n\n`;
+
+  // subtotal (sebelum diskon)
   pesan += `💰 Total: ${formatHarga(totalHargaAll)}\n`;
+
+  // ambil diskon & grand total dari DOM
+  const discountText = document.getElementById("voucherDiscount")?.innerText || "";
+  const grandText = document.getElementById("grandTotal")?.innerText || "";
+
+  if (discountText) pesan += `${discountText}\n`;
+  if (grandText) pesan += `${grandText}\n`;
+
   if (catatan) pesan += `\n📌 Notes:\n${catatan}`;
 
   const nomorAdminList = data.nomorWaAdmin || [];
@@ -1082,6 +1092,7 @@ function kirimPesanan() {
     alert('⚠️ Tidak ada nomor admin yang tersedia.');
     return;
   }
+
   nomorAdminList.forEach(nomor => {
     const cleaned = String(nomor).replace(/[^0-9]/g,'');
     const waLink = `https://wa.me/${cleaned}?text=${encodeURIComponent(pesan)}`;
@@ -1192,5 +1203,6 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
