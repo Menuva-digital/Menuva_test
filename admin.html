@@ -467,14 +467,14 @@ button {
     background: linear-gradient(135deg, #ffd700, #ffcc33);
     transform: translateY(-2px);
   }
-    .fixed-bar {
+  .fixed-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
   justify-content: space-around;
-  background: #f8f9fa;
+  background: linear-gradient(135deg, #003366, #003366);
   padding: 6px 0;
   border-top: 1px solid #ddd;
   z-index: 1000;
@@ -490,19 +490,33 @@ button {
   align-items: center;
   padding: 4px 0;
   font-size: 14px;
+  transition: color 0.3s ease;
 }
 
 .nav-btn .icon {
   font-size: 20px;
   line-height: 1;
+  transition: color 0.3s ease;
 }
 
 .nav-btn .label {
   font-size: 11px;
   margin-top: 2px;
   color: #333;
+  transition: color 0.3s ease;
 }
 
+/* Efek hover */
+.nav-btn:hover .icon,
+.nav-btn:hover .label {
+  color: #f8f9fa;
+}
+
+/* Efek saat tombol ditekan (active) */
+.nav-btn:active .icon,
+.nav-btn:active .label {
+  color: #0056b3; /* biru lebih gelap */
+}
   </style>
 </head>
 <body>
@@ -1786,5 +1800,6 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
 
