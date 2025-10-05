@@ -1627,22 +1627,38 @@ function hideLoader() {
     roomContainerBox.style.display = enabled ? "block" : "none";
   });
 </script>
-
-<!-- FIXED BAR -->
+<!-- Fixed Button Bar -->
 <div class="fixed-bar">
-  <!-- Logout -->
-  <button onclick="window.location.href='index.html'" class="btn-success">
-    <div>🔒</div>
-    <small>Logout</small>
+  <!-- Tombol Dine-in -->
+  <button class="nav-btn" onclick="window.location.href='book.html'">
+    <span class="icon">📖</span>
+    <span class="label">Dine-in Book</span>
   </button>
 
-  <!-- Recieves (Admin Only) -->
-  <button onclick="window.location.href='recieves.html'" class="btn-primary">
-    <div>📥</div>
-    <small>Recieves</small>
+  <!-- Tombol Reserve & Delivery -->
+  <button class="nav-btn" onclick="window.location.href='order.html'">
+    <span class="icon">🛒</span>
+    <span class="label">Reserve & Delivery</span>
+  </button>
+
+  <!-- Tombol Room & Package -->
+  <button class="nav-btn" onclick="window.location.href='room.html'">
+    <span class="icon">🏢</span>
+    <span class="label">Room & Package</span>
+  </button>
+
+  <!-- Tombol Recieves (Admin Only) -->
+  <button class="nav-btn" onclick="window.location.href='recieves.html'">
+    <span class="icon">📥</span>
+    <span class="label">Recieves</span>
+  </button>
+
+  <!-- Tombol Logout -->
+  <button class="nav-btn" onclick="window.location.href='index.html'">
+    <span class="icon">🔒</span>
+    <span class="label">Logout</span>
   </button>
 </div>
-
 
 </body>
 <script>
@@ -1746,3 +1762,4 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
