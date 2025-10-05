@@ -658,6 +658,7 @@ button {
       ⚠️ The restore process will replace all existing data and cannot be undone.<br>
       💡 Use this feature before switching devices or clearing your browser data.
     </div>
+    <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
   </div>
 
 </body>
@@ -1627,10 +1628,21 @@ function hideLoader() {
   });
 </script>
 
+<!-- FIXED BAR -->
 <div class="fixed-bar">
-  <button onclick="window.location.href='index.html'" class="btn-success">🔒 Logout</button>
-  <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
+  <!-- Logout -->
+  <button onclick="window.location.href='index.html'" class="btn-success">
+    <div>🔒</div>
+    <small>Logout</small>
+  </button>
+
+  <!-- Recieves (Admin Only) -->
+  <button onclick="window.location.href='recieves.html'" class="btn-primary">
+    <div>📥</div>
+    <small>Recieves</small>
+  </button>
 </div>
+
 
 </body>
 <script>
@@ -1734,10 +1746,3 @@ async function saveVoucher() {
   });
 </script>
 </html>
-
-
-
-
-
-
-
