@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receives - Admin</title>
+
+<style>
+/* copy root theme & base dari template lo */
+:root{
+  --bg: #f4f8ff;
+  --surface: #ffffff;
+  --text: #1f2a44;
+  --muted: #6b7a99;
+  --border: #d8e1ff;
+  --brand: #1f70ff;
+  --brand-2: #2a5298;
+  --brand-3: #1e3c72;
+  --chip: #eef4ff;
+  --danger: #e54646;
+  --success: #25d366;
+  --shadow: 0 6px 24px rgba(0,0,0,.08);
+  --qty-btn-bg: #eef4ff;
+  --qty-btn-text: #1f2a44;
+  --container-max: 1200px;
+}
+body.dark-mode{
+  --bg: #0e1116;
+  --surface: #141922;
+  --text: #e6ebff;
+  --muted: #aab6db;
+  --border: #263148;
+  --brand: #4da3ff;
+  --chip: #0f1a2a;
+  --shadow: 0 8px 28px rgba(0,0,0,.5);
+  --qty-btn-bg: #263148;
+  --qty-btn-text: #e6ebff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: background .25s, color .25s;
+}
+
+/* header */
+header{
+  background: linear-gradient(90deg,var(--brand-2),var(--brand-3));
+  color:#fff;
+  padding:16px;
+  box-shadow:var(--shadow);
+}
+.header-inner{display:flex;align-items:center;justify-content:space-between}
+#restoLogo{height:50px;width:50px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,.15)}
+#restoName{margin:0;font-size:18px;font-weight:800}
+.dark-toggle{
+  background:rgba(255,255,255,0.12);
+  border:none;
+  font-size:1.2rem;
+  cursor:pointer;
+  color:#fff;
+  padding:6px 8px;
+  border-radius:6px;
+}
+
+/* order list */
+.container{max-width:var(--container-max);margin:20px auto;padding:0 16px}
+.order-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  padding:16px;
+  margin-bottom:20px;
+}
+.order-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.order-header h3{margin:0;font-size:16px;font-weight:800}
+.order-meta{font-size:13px;color:var(--muted);margin-bottom:8px}
+.order-items{margin-top:10px;border-top:1px dashed var(--border);padding-top:10px}
+.order-item{display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px}
+.order-summary{margin-top:10px;font-weight:700;font-size:14px}
+.order-actions{margin-top:12px;display:flex;gap:8px}
+.btn{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:0}
+.btn-print{background:var(--brand);color:#fff}
+.btn-void{background:var(--danger);color:#fff}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img id="restoLogo" alt="Logo">
+      <h1 id="restoName">Loading...</h1>
+    </div>
+    <button id="darkToggle" class="dark-toggle">🌙</button>
+  </div>
+</header>
+
+<main class="container">
+  <h2 style="margin-bottom:16px">📥 Incoming Orders</h2>
+  <div id="ordersBox"></div>
+</main>
+
+<script>
+/* ================== DB CONFIG =================== */
+const DB_NAME = 'MenuvaDB';
+const STORE_NAME = 'menuvaData';
+let db;
+
+/* buka db */
+function initDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME,1);
+    req.onerror = ()=>reject(req.error);
+    req.onsuccess = ()=>{db=req.result;resolve()};
+  });
+}
+
+/* ambil semua order */
+function loadOrders(){
+  const tx = db.transaction(STORE_NAME,'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  const req = store.getAll();
+  req.onsuccess = ()=>{
+    renderOrders(req.result || []);
+  };
+}
+
+/* render order list */
+function renderOrders(data){
+  const box = document.getElementById('ordersBox');
+  box.innerHTML = '';
+  if(!data.length){
+    box.innerHTML = `<p style="color:var(--muted)">No orders yet.</p>`;
+    return;
+  }
+  data.sort((a,b)=>b.id-a.id); // terbaru di atas
+  data.forEach(order=>{
+    const div = document.createElement('div');
+    div.className = 'order-card';
+    div.innerHTML = `
+      <div class="order-header">
+        <h3>Table ${order.table} - ${order.customer}</h3>
+        <span>${order.date} ${order.time}</span>
+      </div>
+      <div class="order-meta">
+        Order ID: ${order.id} | Status: ${order.status}
+      </div>
+      <div class="order-items">
+        ${order.items.map(i=>`
+          <div class="order-item">
+            <span>${i.nama} x${i.qty}</span>
+            <span>${formatHarga(i.total)}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="order-summary">
+        Subtotal: ${formatHarga(order.subtotal)}<br>
+        ${order.discount>0?`Discount (${order.voucherCode||''} - ${order.discountPercent}%): -${formatHarga(order.discount)}<br>`:''}
+        Grand Total: ${formatHarga(order.grandTotal)}
+      </div>
+      <div class="order-actions">
+        <button class="btn btn-print" onclick="printOrder(${order.id})">🖨 Print</button>
+        <button class="btn btn-void" onclick="voidOrder(${order.id})">❌ Void</button>
+      </div>
+    `;
+    box.appendChild(div);
+  });
+}
+
+/* formatter harga */
+function formatHarga(amount){
+  return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(amount);
+}
+
+/* aksi print */
+function printOrder(id){
+  window.print(); // versi awal simple
+}
+
+/* aksi void */
+function voidOrder(id){
+  const tx = db.transaction(STORE_NAME,'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  const req = store.get(id);
+  req.onsuccess=()=>{
+    const order=req.result;
+    if(order){
+      order.status='void';
+      store.put(order);
+      loadOrders();
+    }
+  };
+}
+
+/* dark mode */
+document.getElementById('darkToggle').addEventListener('click',()=>{
+  document.body.classList.toggle('dark-mode');
+});
+
+/* start */
+initDB().then(loadOrders);
+</script>
+</body>
+</html>
