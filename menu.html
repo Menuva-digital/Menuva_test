@@ -491,42 +491,61 @@ async function watchDBChanges(restoId){
   await checkUpdates();
   setInterval(checkUpdates,5000);
 }
-
 /* =======================
    ONLOAD
 ======================= */
-window.onload = async ()=>{
+window.onload = async () => {
   const restoId = getRestoId();
-  if(!restoId){
+  if (!restoId) {
     alert("❌ Resto ID tidak ditemukan. Gunakan ?resto=0877xxxx");
     return;
   }
-  try{
+
+  try {
+    // pastikan DB ready
+    await initDB();
+
+    // load data
     const data = await loadDataFromDB(restoId);
-    if(!data){ console.warn("⚠️ Tidak ada data ditemukan untuk:",restoId); return; }
+    if (!data) {
+      console.warn("⚠️ Tidak ada data ditemukan untuk:", restoId);
+      return;
+    }
 
-    console.log("✅ Data berhasil di-load:",data);
+    console.log("✅ Data berhasil di-load:", data);
 
+    // render logo
     const logoElem = document.getElementById("logoResto");
-    if(data.logo){ logoElem.src=data.logo; logoElem.style.display="block"; } 
-    else { logoElem.style.display="none"; }
+    if (data.logo) {
+      logoElem.src = data.logo;
+      logoElem.style.display = "block";
+    } else {
+      logoElem.style.display = "none";
+    }
 
+    // render detail resto
     document.getElementById("namaRestoDisplay").textContent = data.namaRestoran || "Menu Restoran";
     document.getElementById("alamatResto").innerText = `📍 Address: ${data.restoAddress || '-'}`;
     document.getElementById("teleponResto").innerText = `📞 Telephone: ${data.restoPhone || '-'}`;
 
+    // render konten
     renderPromo(data.menuPromo);
-    renderFlipbookGallery("flipbookRuanganGallery",data.flipbookRuanganImages,"ruanganWarning");
-    renderFlipbookGallery("flipbookMenuGallery",data.flipbookMenuImages,"menuWarning");
+    renderFlipbookGallery("flipbookRuanganGallery", data.flipbookRuanganImages, "ruanganWarning");
+    renderFlipbookGallery("flipbookMenuGallery", data.flipbookMenuImages, "menuWarning");
 
+    // monitor perubahan DB
     watchDBChanges(restoId);
 
-  } catch(err){ console.error("❌ Gagal load data menu:",err); }
+  } catch (err) {
+    console.error("❌ Gagal load data menu:", err);
+  }
 };
+
 </script>
 
 </body>
 </html>
+
 
 
 
