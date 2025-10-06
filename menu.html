@@ -283,6 +283,30 @@ const DB_NAME     = "MenuvaDB";
 const STORE_NAME  = "menuvaData";
 const DB_VERSION  = 2; // harus sama dengan admin.html
 
+  let db;
+function initDB() {
+  return new Promise((resolve, reject) => {
+    if (db) return resolve(db);
+
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+
+    request.onupgradeneeded = (e) => {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, { keyPath: "restoId" });
+      }
+    };
+
+    request.onsuccess = (e) => {
+      db = e.target.result;
+      resolve(db);
+    };
+  });
+}
+
+
 /* =======================
    RESTO ID HANDLER
 ======================= */
@@ -545,6 +569,7 @@ window.onload = async () => {
 
 </body>
 </html>
+
 
 
 
