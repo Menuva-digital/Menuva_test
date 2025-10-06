@@ -547,7 +547,7 @@ function initDB() {
   return new Promise((resolve, reject) => {
     if (db) return resolve(db);
 
-    const req = indexedDB.open(DB_NAME, 1); // kasih versi
+    const req = indexedDB.open(DB_NAME, 2); // kasih versi
     req.onerror = () => reject(req.error);
 
     req.onsuccess = (e) => {
@@ -1051,6 +1051,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
