@@ -547,7 +547,7 @@ function initDB() {
   return new Promise((resolve, reject) => {
     if (db) return resolve(db);
 
-    const req = indexedDB.open(DB_NAME, 2); // kasih versi
+    const req = indexedDB.open(DB_NAME, 2); // versi DB
     req.onerror = () => reject(req.error);
 
     req.onsuccess = (e) => {
@@ -555,12 +555,16 @@ function initDB() {
       resolve(db);
     };
 
+    req.onblocked = () => {
+      console.warn("⚠️ DB upgrade blocked. Tutup tab lain yang masih pakai DB ini.");
+    };
+
     req.onupgradeneeded = (e) => {
       db = e.target.result;
 
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        // kalau mau auto increment bisa: { keyPath: "id", autoIncrement: true }
+        // ✅ AutoIncrement supaya aman meskipun orderData.id ada/ga ada
+        db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
       }
     };
   });
@@ -965,15 +969,14 @@ function sendOrder(){
 }
 
 /* ---------------- SOUND EFFECT ---------------- */
-function playSound(type){
-  let src = "";
-  if(type === "success") src = "success.mp3";
-  if(type === "error") src = "error.mp3";
-  if(src){
-    const audio = new Audio(src);
-    audio.volume = 0.4;
-    audio.play();
-  }
+function playSound(type) {
+  let file = "";
+  if (type === "success") file = "clik.mp3";
+  else if (type === "error") file = "beep.mp3";
+
+  if (!file) return;
+  const audio = new Audio(`./${file}`);
+  audio.play().catch(err => console.warn("Sound error:", err));
 }
 
 /* ---------------- TOAST ---------------- */
@@ -1051,6 +1054,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
