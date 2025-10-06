@@ -338,37 +338,16 @@ function getRestoId() {
 ======================= */
 function loadDataFromDB(restoId) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    if (!db) return reject("DB belum siap, panggil initDB dulu");
 
-    req.onerror = () => reject(req.error);
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const getReq = store.get(restoId);
 
-    // kalau DB baru atau versi beda, buat object store
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME); // tanpa keyPath → pakai restoId sebagai key
-      }
-    };
-
-    req.onsuccess = (e) => {
-      const db = e.target.result;
-
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        console.warn("⚠️ ObjectStore belum ada.");
-        resolve(null);
-        return;
-      }
-
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const getReq = store.get(restoId);
-
-      getReq.onsuccess = () => resolve(getReq.result || null);
-      getReq.onerror   = () => resolve(null);
-    };
+    getReq.onsuccess = () => resolve(getReq.result || null);
+    getReq.onerror   = () => reject(getReq.error);
   });
 }
-
 
 /* =======================
    FLIPBOOK GALLERY
@@ -569,6 +548,7 @@ window.onload = async () => {
 
 </body>
 </html>
+
 
 
 
