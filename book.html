@@ -876,7 +876,7 @@ function initDB() {
   }
 
 /* ------------------ SAVE ORDER ------------- */
-function sendOrder(){
+function sendOrder() {
   const name = (document.getElementById('custName')?.value || '').trim();
   const table = (document.getElementById('custTable')?.value || '').trim();
   const date = document.getElementById('custDate')?.value || '';
@@ -917,9 +917,12 @@ function sendOrder(){
   }
   const grandTotal = subtotal - discount;
 
+  // ✅ Waktu order otomatis
+  const now = new Date();
+
   // ✅ Data order
   const orderData = {
-    id: Date.now(),
+    // id akan dibuat otomatis oleh IndexedDB (autoIncrement)
     resto: restoData?.namaRestoran || '',
     customer: name,
     table: table,
@@ -937,7 +940,8 @@ function sendOrder(){
     discountPercent,
     voucherCode,
     grandTotal,
-    status: "active"
+    status: "active",
+    orderTime: now.toLocaleString("id-ID", { dateStyle: "short", timeStyle: "medium" })
   };
 
   // ✅ Simpan ke IndexedDB
@@ -946,7 +950,6 @@ function sendOrder(){
   const request = store.add(orderData);
 
   request.onsuccess = () => {
-    // FEEDBACK jelas
     showToast("✅ Order submitted successfully!", "success");
     playSound("success"); 
     console.log("✅ Order stored:", orderData);
@@ -1054,6 +1057,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
