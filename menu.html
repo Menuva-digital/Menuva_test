@@ -348,6 +348,11 @@ function loadDataFromDB(restoId) {
     getReq.onerror   = () => reject(getReq.error);
   });
 }
+  getReq.onsuccess = () => {
+  console.log("📦 Hasil get DB:", getReq.result);
+  resolve(getReq.result || null);
+};
+
 
 /* =======================
    FLIPBOOK GALLERY
@@ -548,6 +553,7 @@ window.onload = async () => {
 
 </body>
 </html>
+
 
 
 
