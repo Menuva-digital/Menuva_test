@@ -317,6 +317,15 @@ function loadDataFromDB(restoId) {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onerror = () => reject(req.error);
+
+    // kalau DB baru atau versi beda, buat object store
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME); // tanpa keyPath → pakai restoId sebagai key
+      }
+    };
+
     req.onsuccess = (e) => {
       const db = e.target.result;
 
@@ -335,6 +344,7 @@ function loadDataFromDB(restoId) {
     };
   });
 }
+
 
 /* =======================
    FLIPBOOK GALLERY
@@ -517,6 +527,7 @@ window.onload = async ()=>{
 
 </body>
 </html>
+
 
 
 
