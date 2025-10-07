@@ -571,41 +571,26 @@ function initDB() {
 }
 
   function loadDataFromDB(restoId) {
-    return new Promise((resolve,reject)=>{
-      if (!db) return resolve(null);
-      if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    if (!db) return resolve(null);
+    if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
 
-      const getByKey = (k) => new Promise(res=>{
-        try{
-          const r = store.get(k);
-          r.onsuccess = ()=>res(r.result||null);
-          r.onerror = ()=>res(null);
-        }catch(e){res(null)}
-      });
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
 
-      (async ()=>{
-        try{
-          if (restoId) {
-            const byKey = await getByKey(restoId);
-            if (byKey) return resolve(byKey);
-          }
-          const allReq = store.getAll();
-          allReq.onsuccess = ()=>{
-            const all = allReq.result || [];
-            if (restoId) {
-              const found = all.find(r => r && (r.restoId === restoId || r.restoPhone === restoId));
-              if (found) return resolve(found);
-            }
-            if (all.length === 1) return resolve(all[0]);
-            return resolve(null);
-          };
-          allReq.onerror = ()=> resolve(null);
-        }catch(err){ console.error(err); resolve(null); }
-      })();
-    });
-  }
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const all = req.result || [];
+      // cari berdasarkan restoId atau restoPhone
+      const found = all.find(
+        r => r && (r.restoId === restoId || r.restoPhone === restoId)
+      );
+      resolve(found || null);
+    };
+    req.onerror = () => resolve(null);
+  });
+}
+
 
   /* ------------------ CART ------------------- */
   function updateCartCount() {
@@ -1057,6 +1042,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
