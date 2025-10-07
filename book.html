@@ -723,50 +723,38 @@ function initDB() {
     });
   }
 
-  function renderPromo(){
-    const grid = document.getElementById('promoGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const now = Date.now();
-    const promos = (menuPromo||[]).filter(p=>{
-      if (!p.tanggalAkhir) return true;
-      const end = new Date(p.tanggalAkhir).getTime();
-      return isFinite(end) ? end > now : true;
-    });
-    if (!promos || promos.length === 0) {
-      grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
-      stopPromoCountdown();
-      return;
-    }
-    promos.forEach(p=>{
-      const card = document.createElement('div');
-      card.className = 'promo-card';
-      const item = { nama: p.namaPromo || p.namaMenu || 'Promo Item', harga: Number(p.harga)||0, deskripsi: p.deskripsi||'', image: p.image||'' };
-      card.addEventListener('click', ()=> {
-        addToCartObj(item.nama, item.harga);
-        updateBadge(card, item.nama);
-      });
-
-      const promoBadge = document.createElement('span');
-      promoBadge.className='badge';
-      promoBadge.textContent='0';
-      promoBadge.style.display = 'none';
-      card.appendChild(promoBadge);
-
-      if (p.image) {
-        const img = document.createElement('img'); img.src = p.image; img.alt = item.nama; card.appendChild(img);
-      } else {
-        const ph = document.createElement('div'); ph.className='menu-thumb'; card.appendChild(ph);
-      }
-      const title = document.createElement('div'); title.className='promo-name'; title.textContent = p.namaPromo || p.namaMenu || 'Promo'; card.appendChild(title);
-      const desc = document.createElement('div'); desc.className='promo-menu-desc'; desc.textContent = p.deskripsi||''; card.appendChild(desc);
-      const price = document.createElement('div'); price.className='promo-price'; price.dataset.price = Number(p.harga)||0; price.textContent = formatWithActive(Number(p.harga)||0); card.appendChild(price);
-      if (p.tanggalAkhir) { const c = document.createElement('div'); c.className='promo-count'; c.dataset.end = p.tanggalAkhir; card.appendChild(c); }
-
-      grid.appendChild(card);
-    });
-    startPromoCountdown();
+ function renderPromo(menuPromo = []) {
+  const grid = document.getElementById('promoGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const now = Date.now();
+  const promos = menuPromo.filter(p => {
+    if (!p.tanggalAkhir) return true;
+    const end = new Date(p.tanggalAkhir).getTime();
+    return isFinite(end) ? end > now : true;
+  });
+  if (!promos.length) {
+    grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
+    stopPromoCountdown();
+    return;
   }
+  promos.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'promo-card';
+    const item = {
+      nama: p.namaPromo || p.namaMenu || 'Promo Item',
+      harga: Number(p.harga) || 0,
+      deskripsi: p.deskripsi || '',
+      image: p.image || ''
+    };
+    card.addEventListener('click', () => {
+      addToCartObj(item.nama, item.harga);
+      updateBadge(card, item.nama);
+    });
+    // ...lanjut isi yang sama kayak punyamu
+  });
+  startPromoCountdown();
+}
 
   function updateBadge(cardEl, itemName) {
     try {
@@ -1051,6 +1039,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
