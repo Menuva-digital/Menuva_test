@@ -1516,15 +1516,38 @@ function updateShareUI() {
   }
 }
 
-// ====================== Loader ======================
-function showLoader() {
-  const el = document.getElementById("loader");
-  if (el) el.style.display = "block";
+// ====================== LOADING SCREEN ======================
+function showLoading() {
+  let loader = document.getElementById("loader");
+  if (!loader) {
+    loader = document.createElement("div");
+    loader.id = "loader";
+    loader.innerHTML = `<div class="loading">⏳ Memuat data...</div>`;
+    document.body.appendChild(loader);
+  }
+  loader.style.display = "flex";
 }
-function hideLoader() {
-  const el = document.getElementById("loader");
-  if (el) el.style.display = "none";
+
+function hideLoading() {
+  const loader = document.getElementById("loader");
+  if (loader) loader.style.display = "none";
 }
+
+// ====================== STYLE LOADING ======================
+const style = document.createElement("style");
+style.textContent = `
+  #loader {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.4);
+    color: #fff;
+    font-size: 18px;
+    z-index: 9999;
+  }
+`;
+document.head.appendChild(style);
 
   // ====================== CLEAR DB (fix) ======================
 async function clearDataDB() {
@@ -1545,20 +1568,23 @@ async function clearDataDB() {
   });
 }
 
-  document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 Init mulai...");
-  showLoading(true);
-
+ // ====================== INIT ======================
+document.addEventListener("DOMContentLoaded", async () => {
   try {
+    showLoading();
+    console.log("🚀 Init mulai...");
+
     await initDB();
     const data = await loadDataFromDB();
-    if (data) await loadData(data);
-    else console.warn("⚠️ Tidak ada data tersimpan");
-  } catch (err) {
-    console.error("❌ Gagal init:", err);
-  } finally {
-    showLoading(false);
+    if (data) {
+      await loadData(data.restoPhone);
+    }
+
     console.log("✅ Admin siap digunakan");
+  } catch (err) {
+    console.error("❌ Error saat init:", err);
+  } finally {
+    hideLoading();
   }
 });
 
@@ -1750,6 +1776,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
