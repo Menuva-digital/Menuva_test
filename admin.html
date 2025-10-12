@@ -1571,7 +1571,7 @@ async function clearDataDB() {
  // ====================== INIT ======================
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    showLoading();
+    showLoader();
     console.log("🚀 Init mulai...");
 
     await initDB();
@@ -1584,7 +1584,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (err) {
     console.error("❌ Error saat init:", err);
   } finally {
-    hideLoading();
+    hideLoader();
   }
 });
 
@@ -1776,6 +1776,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
