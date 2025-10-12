@@ -1767,21 +1767,21 @@ async function saveVoucher() {
     }
   });
 
-  // ====================== AUTO-LOAD saat halaman dibuka ======================
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     console.log("🚀 Auto-load aktif...");
     await initDB();
 
-    // cari ID resto yang tersimpan
     const allData = await loadDataFromDB();
     if (allData) {
       console.log("📥 Auto-load: data ditemukan di DB lokal, memuat...");
-      if (!document.getElementById("restoPhone")?.value && allData.restoPhone) {
-        const phoneInput = document.getElementById("restoPhone");
-        if (phoneInput) phoneInput.value = allData.restoPhone;
-      }
-      await loadData();
+
+      // isi field utama dulu
+      const phoneInput = document.getElementById("restoPhone");
+      if (phoneInput && !phoneInput.value) phoneInput.value = allData.restoPhone;
+
+      // loadData dengan restoId agar tidak null
+      await loadData(allData.restoId);
     } else {
       console.log("⚠️ Tidak ada data tersimpan di IndexedDB, form kosong.");
     }
@@ -1792,6 +1792,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 </script>
 </html>
+
 
 
 
