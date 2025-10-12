@@ -712,7 +712,7 @@ console.log("Admin Script Version: 2025-09-15-FINAL");
 
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
-const DB_VERSION = 2; // naikin kalau perlu perubahan schema lagi
+const DB_VERSION = 4; // naikin kalau perlu perubahan schema lagi
 
 // ====================== INIT DB (versi stabil) ======================
 let db;
@@ -746,62 +746,67 @@ async function initDB() {
     };
   });
 }
-// ====================== SAVE (versi fix transaksi) ======================
+
+  // ====================== SAVE (versi stabil & cepat) ======================
 async function saveDataToDB(data) {
-  const database = await initDB();
+  if (!data || typeof data !== "object") throw new Error("Invalid data");
+
+  // Cache DB biar gak delay terus
+  const database = window._cachedDB || (window._cachedDB = await initDB());
+  const restoId = data.restoId || data.restoPhone || null;
+  if (!restoId) throw new Error("❌ restoId kosong saat save");
+
+  // Pastikan record tetap punya id tunggal (1)
+  const payload = { id: 1, ...data, restoId };
 
   return new Promise((resolve, reject) => {
-    if (!data || typeof data !== "object") {
-      return reject(new Error("Invalid data"));
-    }
-
-    const restoId = data.restoId || data.restoPhone || null;
-    if (!restoId) return reject(new Error("❌ restoId kosong saat save"));
-
-    const payload = { ...data, restoId };
-
     const tx = database.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    store.put(payload);
+    const req = store.put(payload);
+
+    req.onsuccess = () => {
+      console.log("✅ Data tersimpan di IndexedDB:", payload);
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ Gagal save:", e.target.error);
+      reject(e.target.error);
+    };
 
     tx.oncomplete = () => {
-      console.log("✅ Data commit ke IndexedDB:", payload);
+      console.log("💾 Transaksi selesai, data commit");
       resolve(payload);
     };
-    tx.onerror = () => {
-      console.error("❌ Gagal save:", tx.error);
-      reject(tx.error);
+
+    tx.onerror = (e) => {
+      console.error("❌ Transaksi gagal:", e.target.error);
+      reject(e.target.error);
     };
   });
 }
-// ====================== LOAD (versi fix cepat dan aman) ======================
-async function loadDataFromDB(restoId = null) {
-  const database = await initDB();
 
+async function loadDataFromDB(restoId = null) {
+  await initDB();
   return new Promise((resolve, reject) => {
-    const tx = database.transaction(STORE_NAME, "readonly");
+    const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
 
-    const request = restoId ? store.get(restoId) : store.getAll();
-
-    request.onsuccess = () => {
-      if (restoId) {
-        resolve(request.result || null);
-      } else {
-        const all = request.result || [];
-        if (all.length === 0) return resolve(null);
-        const first = all.find(r => r?.restoId) || all[0];
-        resolve(first);
-      }
-    };
-
-    request.onerror = () => {
-      console.error("❌ loadDataFromDB error:", request.error);
-      resolve(null);
-    };
+    if (restoId) {
+      const req = store.get(restoId);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } else {
+      const allReq = store.getAll();
+      allReq.onsuccess = () => {
+        const all = allReq.result || [];
+        resolve(all.length ? all[0] : null);
+      };
+      allReq.onerror = () => resolve(null);
+    }
   });
 }
+
 // ====================== CLEAR DB ======================
 function clearDataDB() {
   return new Promise(async (resolve, reject) => {
@@ -1767,38 +1772,19 @@ async function saveVoucher() {
     }
   });
 
-// ====================== AUTO-LOAD STABIL ======================
 document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    console.log("🚀 Auto-load mulai...");
-    await initDB();
-
-    // Ambil data pertama yang tersimpan di IndexedDB
-    const savedData = await loadDataFromDB();
-
-    if (!savedData) {
-      console.warn("⚠️ Tidak ada data tersimpan di IndexedDB. Form masih kosong.");
-      return;
-    }
-
-    console.log("📦 Data ditemukan di DB lokal:", savedData);
-
-    // Pastikan form utama terisi sebelum render ulang
-    const phoneInput = document.getElementById("restoPhone");
-    if (phoneInput && !phoneInput.value) phoneInput.value = savedData.restoPhone || "";
-
-    // Jalankan loadData langsung pakai restoId biar akurat
-    await loadData(savedData.restoId);
-
-    console.log("✅ Auto-load selesai tanpa duplikasi.");
-  } catch (err) {
-    console.error("❌ Auto-load gagal:", err);
+  console.log("🚀 Init mulai...");
+  await initDB();
+  const data = await loadDataFromDB();
+  if (data) {
+    await loadData(data.restoPhone);
   }
+  console.log("✅ Admin siap digunakan");
 });
-
 
 </script>
 </html>
+
 
 
 
