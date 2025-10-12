@@ -714,111 +714,94 @@ const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 4; // naikin kalau perlu perubahan schema lagi
 
-// ====================== Init DB ======================
+// ====================== INIT DB (versi stabil) ======================
 let db;
-function initDB() {
+async function initDB() {
+  if (db) return db;
+
   return new Promise((resolve, reject) => {
-    if (db) return resolve(db);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onerror = () => {
-      console.error("IndexedDB open error:", req.error);
-      reject(req.error);
+    request.onerror = () => {
+      console.error("❌ IndexedDB open error:", request.error);
+      reject(request.error);
     };
 
-    req.onupgradeneeded = (e) => {
-      db = e.target.result;
-      // buat objectStore baru jika belum ada
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
-        console.log("🆕 ObjectStore dibuat dengan keyPath 'restoId'");
-      } else {
-        console.log("ℹ️ ObjectStore already exists:", STORE_NAME);
+    request.onupgradeneeded = (e) => {
+      const database = e.target.result;
+
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, { keyPath: "restoId" });
+        console.log("🆕 ObjectStore dibuat:", STORE_NAME);
       }
     };
 
-    req.onsuccess = (e) => {
+    request.onsuccess = (e) => {
       db = e.target.result;
+      db.onversionchange = () => {
+        console.warn("⚠️ Versi DB berubah, menutup koneksi lama...");
+        db.close();
+      };
       resolve(db);
     };
   });
 }
-
-// ================== SAVE ==================
+// ====================== SAVE (versi fix transaksi) ======================
 async function saveDataToDB(data) {
-  await initDB();
-  return new Promise((resolve, reject) => {
-    if (!data || typeof data !== "object") return reject(new Error("Invalid data"));
+  const database = await initDB();
 
-    // pastikan restoId ada (safety)
+  return new Promise((resolve, reject) => {
+    if (!data || typeof data !== "object") {
+      return reject(new Error("Invalid data"));
+    }
+
     const restoId = data.restoId || data.restoPhone || null;
     if (!restoId) return reject(new Error("❌ restoId kosong saat save"));
 
-    // pastikan properti restoId secara eksplisit ada pada object yang disimpan
     const payload = { ...data, restoId };
 
-    const tx = db.transaction(STORE_NAME, "readwrite");
+    const tx = database.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    const req = store.put(payload);
 
-    req.onsuccess = () => {
-      console.log("✅ Data saved", payload);
+    store.put(payload);
+
+    tx.oncomplete = () => {
+      console.log("✅ Data commit ke IndexedDB:", payload);
       resolve(payload);
     };
-    req.onerror = () => {
-      console.error("❌ Gagal save:", req.error);
-      reject(req.error);
+    tx.onerror = () => {
+      console.error("❌ Gagal save:", tx.error);
+      reject(tx.error);
     };
   });
 }
-
-// ================== LOAD ==================
-// Jika restoId diberikan -> ambil dengan key.
-// Jika restoId null -> kembalikan first record (useful for single-tenant installs / migration).
+// ====================== LOAD (versi fix cepat dan aman) ======================
 async function loadDataFromDB(restoId = null) {
-  await initDB();
+  const database = await initDB();
+
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
+    const tx = database.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
 
-    // jika restoId valid, langsung get by key
-    if (restoId) {
-      try {
-        const req = store.get(restoId);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => {
-          console.warn("get by key error:", req.error);
-          resolve(null);
-        };
-      } catch (err) {
-        console.error("get by key exception:", err);
-        resolve(null);
-      }
-      return;
-    }
+    const request = restoId ? store.get(restoId) : store.getAll();
 
-    // restoId tidak diberikan -> fallback: ambil semua dan return first record (jika ada)
-    try {
-      const allReq = store.getAll();
-      allReq.onsuccess = () => {
-        const all = allReq.result || [];
+    request.onsuccess = () => {
+      if (restoId) {
+        resolve(request.result || null);
+      } else {
+        const all = request.result || [];
         if (all.length === 0) return resolve(null);
-        // prefer record that has restoId, else just return first
-        const firstWithKey = all.find(r => r && (r.restoId || r.restoPhone));
-        resolve(firstWithKey || all[0]);
-      };
-      allReq.onerror = () => {
-        console.warn("getAll error:", allReq.error);
-        resolve(null);
-      };
-    } catch (err) {
-      console.error("getAll exception:", err);
+        const first = all.find(r => r?.restoId) || all[0];
+        resolve(first);
+      }
+    };
+
+    request.onerror = () => {
+      console.error("❌ loadDataFromDB error:", request.error);
       resolve(null);
-    }
+    };
   });
 }
-
 // ====================== CLEAR DB ======================
 function clearDataDB() {
   return new Promise(async (resolve, reject) => {
@@ -1330,43 +1313,25 @@ async function simpanData() {
   }
 }
 
-// ====================== LOAD (DB -> form) ======================
+// ====================== LOAD (DB → form, versi ringan & aman) ======================
 async function loadData() {
   try {
     showLoader();
 
-    await initDB();
-
-    // prioritas: hidden restoId (dari simpan), lalu input restoPhone
-    const restoIdCandidate = document.getElementById("restoId")?.value
-      || document.getElementById("restoPhone")?.value
-      || null;
+    const restoIdCandidate =
+      document.getElementById("restoId")?.value ||
+      document.getElementById("restoPhone")?.value ||
+      null;
 
     const data = await loadDataFromDB(restoIdCandidate);
     if (!data) {
       console.warn("⚠️ Tidak ada data tersimpan di DB");
       return;
     }
-    console.log("📦 Data berhasil di-load dari DB:", data);
 
-    // clear UI containers to avoid duplicates
-    const clearIds = [
-      "promoContainer","menuFoodContainer","menuSnackContainer",
-      "menuDrinkContainer","menuSpecialContainer","roomHotelContainer",
-      "meetingRoomContainer","packageContainer","flipbookRuanganPreview",
-      "flipbookMenuPreview","listRuangan"
-    ];
-    clearIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = "";
-    });
+    console.log("📦 Data di-load dari IndexedDB:", data);
 
-    // reset arrays
-    menuPromo = [];
-    flipbookRuanganImages = [];
-    flipbookMenuImages = [];
-
-    // isi form admin
+    // ==== isi form ====
     document.getElementById("namaRestoran").value = data.namaRestoran || "";
     document.getElementById("restoAddress").value = data.restoAddress || "";
     document.getElementById("restoPhone").value = data.restoPhone || "";
@@ -1374,43 +1339,41 @@ async function loadData() {
     if (data.logo) {
       const preview = document.getElementById("previewLogo");
       if (preview) preview.src = data.logo;
-      console.log("🖼️ Logo berhasil di-load");
     }
 
-    // nomor WA
+    // ==== nomor WA ====
     if (Array.isArray(data.nomorWaAdmin)) {
       const container = document.getElementById("nomorWaContainer");
       if (container) {
         container.innerHTML = "";
         data.nomorWaAdmin.forEach(() => tambahNomorWa());
         const inputs = container.querySelectorAll(".nomor-wa");
-        data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+        data.nomorWaAdmin.forEach((v, i) => (inputs[i].value = v));
       }
     }
 
-    // promo
-    if (Array.isArray(data.menuPromo)) {
-      menuPromo = data.menuPromo.slice();
-      renderPromoUI();
-    }
+    // ==== promo, menu, rooms, flipbook ====
+    menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
+    renderPromoUI();
 
-    // menu
     if (Array.isArray(data.menu)) {
-      data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
+      data.menu.forEach((m) =>
+        tambahMenu(m.kategori, m.nama, m.harga, m.image)
+      );
     }
 
-    // rooms
     if (Array.isArray(data.rooms)) {
       restoreRoomFromData(data.rooms);
     }
 
-    // flipbook
     flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
-    flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
+    flipbookRuanganImages.forEach((src) =>
+      renderImagePreview("ruangan", src)
+    );
     flipbookMenuImages = (data.flipbookMenuImages || []).slice();
-    flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
+    flipbookMenuImages.forEach((src) => renderImagePreview("menu", src));
 
-    // sinkron hidden restoId
+    // ==== sinkron restoId ====
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
       restoIdEl = document.createElement("input");
@@ -1420,9 +1383,9 @@ async function loadData() {
     }
     restoIdEl.value = data.restoId || data.restoPhone || "";
 
-    console.log("✅ loadData Done");
+    console.log("✅ loadData selesai dan stabil");
   } catch (err) {
-    console.error("❌ loadData Failed:", err);
+    console.error("❌ loadData gagal:", err);
   } finally {
     hideLoader();
   }
@@ -1803,7 +1766,32 @@ async function saveVoucher() {
       // +20 biar ada ruang ekstra
     }
   });
+
+  // ====================== AUTO-LOAD saat halaman dibuka ======================
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    console.log("🚀 Auto-load aktif...");
+    await initDB();
+
+    // cari ID resto yang tersimpan
+    const allData = await loadDataFromDB();
+    if (allData) {
+      console.log("📥 Auto-load: data ditemukan di DB lokal, memuat...");
+      if (!document.getElementById("restoPhone")?.value && allData.restoPhone) {
+        const phoneInput = document.getElementById("restoPhone");
+        if (phoneInput) phoneInput.value = allData.restoPhone;
+      }
+      await loadData();
+    } else {
+      console.log("⚠️ Tidak ada data tersimpan di IndexedDB, form kosong.");
+    }
+  } catch (err) {
+    console.error("❌ Auto-load gagal:", err);
+  }
+});
+
 </script>
 </html>
+
 
 
