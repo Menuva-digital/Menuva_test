@@ -1314,7 +1314,7 @@ async function simpanData() {
 }
 
 // ====================== LOAD (DB → form, versi ringan & aman) ======================
-async function loadData() {
+async function loadData(restoId = null) {
   try {
     showLoader();
 
@@ -1767,31 +1767,39 @@ async function saveVoucher() {
     }
   });
 
+// ====================== AUTO-LOAD STABIL ======================
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    console.log("🚀 Auto-load aktif...");
+    console.log("🚀 Auto-load mulai...");
     await initDB();
 
-    const allData = await loadDataFromDB();
-    if (allData) {
-      console.log("📥 Auto-load: data ditemukan di DB lokal, memuat...");
+    // Ambil data pertama yang tersimpan di IndexedDB
+    const savedData = await loadDataFromDB();
 
-      // isi field utama dulu
-      const phoneInput = document.getElementById("restoPhone");
-      if (phoneInput && !phoneInput.value) phoneInput.value = allData.restoPhone;
-
-      // loadData dengan restoId agar tidak null
-      await loadData(allData.restoId);
-    } else {
-      console.log("⚠️ Tidak ada data tersimpan di IndexedDB, form kosong.");
+    if (!savedData) {
+      console.warn("⚠️ Tidak ada data tersimpan di IndexedDB. Form masih kosong.");
+      return;
     }
+
+    console.log("📦 Data ditemukan di DB lokal:", savedData);
+
+    // Pastikan form utama terisi sebelum render ulang
+    const phoneInput = document.getElementById("restoPhone");
+    if (phoneInput && !phoneInput.value) phoneInput.value = savedData.restoPhone || "";
+
+    // Jalankan loadData langsung pakai restoId biar akurat
+    await loadData(savedData.restoId);
+
+    console.log("✅ Auto-load selesai tanpa duplikasi.");
   } catch (err) {
     console.error("❌ Auto-load gagal:", err);
   }
 });
 
+
 </script>
 </html>
+
 
 
 
