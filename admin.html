@@ -815,7 +815,7 @@ async function saveDataToDB(data) {
   }
 }
 
-// ====================== LOAD (DB → data) SAFE VERSION ======================
+// ====================== LOAD (DB → data) FINAL STABIL ======================
 async function loadDataFromDB(restoId = null) {
   try {
     const db = await initDB();
@@ -825,36 +825,62 @@ async function loadDataFromDB(restoId = null) {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
 
-      // Pilih metode ambil data
       const req = restoId !== null ? store.get(restoId) : store.openCursor();
       const results = [];
 
-      req.onsuccess = (event) => {
+      req.onsuccess = async (event) => {
         const res = event.target.result;
 
-        // Jika pakai openCursor (tanpa restoId)
         if (!restoId) {
+          // mode openCursor → ambil semua data
           if (res) {
             results.push(res.value);
             res.continue();
           } else {
-            // Cursor selesai
             if (results.length > 0) {
               console.log("📥 Semua data ditemukan:", results.length, "item");
-              resolve(results);
+              // ambil item pertama karena cuma 1 data utama
+              resolve(results[0]);
             } else {
-              console.warn("⚠️ Tidak ada data di DB");
-              resolve(null);
+              console.info("ℹ️ DB kosong — membuat data default...");
+              const defaultData = {
+                id: 1,
+                namaRestoran: "",
+                restoAddress: "",
+                restoPhone: "",
+                menuPromo: [],
+                menu: [],
+                rooms: [],
+                nomorWaAdmin: [],
+                flipbookRuanganImages: [],
+                flipbookMenuImages: []
+              };
+              // auto simpan default data
+              await saveDataToDB(defaultData);
+              resolve(defaultData);
             }
           }
         } else {
-          // Jika pakai get(restoId)
+          // mode get(restoId)
           if (res) {
-            console.log("📥 Data ditemukan:", res);
+            console.log("📥 Data ditemukan (ID match):", res);
             resolve(res);
           } else {
-            console.warn("⚠️ Data dengan ID", restoId, "tidak ditemukan");
-            resolve(null);
+            console.info("ℹ️ Data dengan ID", restoId, "tidak ditemukan — membuat default data...");
+            const defaultData = {
+              id: restoId,
+              namaRestoran: "",
+              restoAddress: "",
+              restoPhone: "",
+              menuPromo: [],
+              menu: [],
+              rooms: [],
+              nomorWaAdmin: [],
+              flipbookRuanganImages: [],
+              flipbookMenuImages: []
+            };
+            await saveDataToDB(defaultData);
+            resolve(defaultData);
           }
         }
       };
@@ -864,13 +890,15 @@ async function loadDataFromDB(restoId = null) {
         reject(e.target.error);
       };
 
-      tx.oncomplete = () => db.close?.();
+      // ❌ Jangan tutup db di sini — biar koneksi tetap aktif
+      // tx.oncomplete = () => db.close?.();
     });
   } catch (err) {
     console.error("🔥 loadDataFromDB() error:", err);
     return null;
   }
 }
+
 
 // ====================== Variabel Global ======================
 let menuPromo = [];
@@ -1874,6 +1902,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
