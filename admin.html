@@ -525,90 +525,96 @@ button {
   </style>
 </head>
 <body>
+<div class="menuva-logo">
+  <img src="menuva-logo.png" alt="Logo Menuva">
+  <br>
+  <p style="color: white;">Digital Solution For Restaurant, Hotel, & Cafe's</p>
+</div>
 
-  <div class="menuva-logo">
-    <img src="menuva-logo.png" alt="Logo Menuva">
-    <br>
-    <p style="color: white;">Digital Solution For Restaurant, Hotel, & Cafe's</p>
+<div class="section">
+  <h2>📇 Business Identity</h2>
+  
+  <label for="logoInput">Your Business Logo</label>
+  <input type="file" id="logoInput" name="logoInput" accept="image/*" />
+
+  <img id="previewLogo" src="" alt="Logo Restoran" style="max-height: 80px; margin-top: 10px;" />
+
+  <label for="namaRestoran">Your Business Name</label>
+  <input type="text" id="namaRestoran" name="namaRestoran" placeholder="Your Business Name" />
+
+  <label for="restoAddress">Your Business Address</label>
+  <input id="restoAddress" name="restoAddress" type="text" placeholder="Jl. Sudirman No. 10, Jakarta" />
+
+  <label for="restoPhone">Phone Number</label>
+  <input id="restoPhone" name="restoPhone" type="text" placeholder="08xx-xxxx-xxxx" />
+</div>
+
+<div class="section">
+  <h2>🔥 Menu Promo</h2>
+  <div id="promoContainer"></div>
+  <button class="btn-orange" onclick="tambahPromo()">+ Add Promo Menu</button>
+</div>
+
+<div class="section">
+  <h2>📋 SPECIAL MENU</h2>
+  <div id="menuSpecialContainer"></div>
+  <button class="btn-success" onclick="tambahMenu('special')">+ Add Special Menu</button>
+</div>
+
+<div class="section">
+  <h2>📋 FOOD MENU</h2>
+  <div id="menuFoodContainer"></div>
+  <button class="btn-success" onclick="tambahMenu('food')">+ Add Menu</button>
+</div>
+
+<div class="section">
+  <h2>📋 SNACK & DESSERT</h2>
+  <div id="menuSnackContainer"></div>
+  <button class="btn-success" onclick="tambahMenu('snack')">+ Add Menu</button>
+</div>
+
+<div class="section">
+  <h2>📋 DRINK</h2>
+  <div id="menuDrinkContainer"></div>
+  <button class="btn-success" onclick="tambahMenu('drink')">+ Add Menu</button>
+</div>
+
+<div class="section-box" id="waContainerBox">
+  <h3>📱 Admin WhatsApp Number (Order/Reservation Recipient)</h3>
+  <div id="nomorWaContainer">
+    <label for="waNumber1" class="sr-only">WhatsApp Number</label>
+    <input type="text" id="waNumber1" name="waNumber[]" class="nomor-wa" placeholder="Example: 6281234567890">
   </div>
+  <button onclick="tambahNomorWa()">+ Add WA Number</button>
+</div>
 
-  <div class="section">
-    <h2>📇 Business Identity</h2>
-    <label for="logoInput">Your Business Logo</label>
-    <input type="file" id="logoInput" accept="image/*" />
-    <img id="previewLogo" src="" alt="Logo Restoran" style="max-height: 80px; margin-top: 10px;" />
-    <input type="text" id="namaRestoran" placeholder="Your Business Name" />
-    <label for="restoAddress">Your Business Address</label>
-    <input id="restoAddress" type="text" placeholder="Jl. Sudirman No. 10, Jakarta" />
-    <label for="restoPhone">Phone Number</label>
-    <input id="restoPhone" type="text" placeholder="08xx-xxxx-xxxx" />
-  </div>
+<div class="section">
+  <h2>📸 Room Gallery</h2>
+  <button onclick="tambahGambar('ruangan')">+ Add Room Image</button>
+  <input type="file" id="flipbookRuanganUpload" name="flipbookRuanganUpload" accept="image/*" multiple style="display:none;" />
+  <div id="flipbookRuanganPreview"></div>
+</div>
 
-  <div class="section">
-    <h2>🔥 Menu Promo</h2>
-    <div id="promoContainer"></div>
-    <button class="btn-orange" onclick="tambahPromo()">+ Add Promo Menu</button>
-  </div>
+<div class="section">
+  <h2>📖 Restaurant Menu</h2>
+  <button onclick="tambahGambar('menu')">+ Add Menu Image</button>
+  <input type="file" id="flipbookMenuUpload" name="flipbookMenuUpload" accept="image/*" multiple style="display:none;" />
+  <div id="flipbookMenuPreview"></div>
+</div>
 
-  <div class="section">
-    <h2>📋 SPECIAL MENU</h2>
-    <div id="menuSpecialContainer"></div>
-    <button class="btn-success" onclick="tambahMenu('special')">+ Add Special Menu</button>
-  </div>
-
-  <div class="section">
-    <h2>📋 FOOD MENU</h2>
-    <div id="menuFoodContainer"></div>
-    <button class="btn-success" onclick="tambahMenu('food')">+ Add Menu</button>
-  </div>
-
-  <div class="section">
-    <h2>📋 SNACK & DESSERT</h2>
-    <div id="menuSnackContainer"></div>
-    <button class="btn-success" onclick="tambahMenu('snack')">+ Add Menu</button>
-  </div>
-
-  <div class="section">
-    <h2>📋 DRINK</h2>
-    <div id="menuDrinkContainer"></div>
-    <button class="btn-success" onclick="tambahMenu('drink')">+ Add Menu</button>
-  </div>
-
-  <div class="section-box" id="waContainerBox">
-    <h3>📱 Admin WhatsApp Number (Order/Reservation Recipient)</h3>
-    <div id="nomorWaContainer">
-      <input type="text" class="nomor-wa" placeholder="Example: 6281234567890">
-    </div>
-    <button onclick="tambahNomorWa()">+ Add WA Number</button>
-  </div>
-
-  <div class="section">
-    <h2>📸 Room Gallery</h2>
-    <button onclick="tambahGambar('ruangan')">+ Add Room Image</button>
-    <input type="file" id="flipbookRuanganUpload" accept="image/*" multiple style="display:none;" />
-    <div id="flipbookRuanganPreview"></div>
-  </div>
-
-  <div class="section">
-    <h2>📖 Restaurant Menu</h2>
-    <button onclick="tambahGambar('menu')">+ Add Menu Image</button>
-    <input type="file" id="flipbookMenuUpload" accept="image/*" multiple style="display:none;" />
-    <div id="flipbookMenuPreview"></div>
-  </div>
-
-  <div class="setting-card" id="orderToggleBox">
+<div class="setting-card" id="orderToggleBox">
   <h2>⚙️ Reservation & Delivery Setting</h2>
   <label class="switch">
-    <input type="checkbox" id="toggleOrderPage">
+    <input type="checkbox" id="toggleOrderPage" name="toggleOrderPage">
     <span class="slider"></span>
   </label>
   <span class="setting-label">Enable/Disable Reservation & Delivery Page</span>
 </div>
 
- <div class="setting-card" id="roomToggleBox">
+<div class="setting-card" id="roomToggleBox">
   <h2>⚙️ Room Page Setting</h2>
   <label class="switch">
-    <input type="checkbox" id="toggleRoomPage">
+    <input type="checkbox" id="toggleRoomPage" name="toggleRoomPage">
     <span class="slider"></span>
   </label>
   <span class="setting-label">Enable/Disable Room Page.</span>
@@ -633,76 +639,79 @@ button {
   </div>
 </div>
 
- <div class="section-box" id="voucherContainerBox">
+<div class="section-box" id="voucherContainerBox">
   <h2>🎟️ Voucher Diskon</h2>
   <label class="switch">
-    <input type="checkbox" id="toggleVoucherPage">
+    <input type="checkbox" id="toggleVoucherPage" name="toggleVoucherPage">
     <span class="slider round"></span>
   </label>
-  
+
   <div id="voucherForm" style="margin-top:15px; display:none;">
-    <input type="text" id="voucherCode" placeholder="Kode Voucher">
-    <input type="number" id="voucherDiscount" placeholder="Diskon (%)">
-    <input type="date" id="voucherExpiry">
-   <button id="saveVoucherBtn" onclick="saveVoucher()">💾 Save Voucher Code</button>
+    <label for="voucherCode">Voucher Code</label>
+    <input type="text" id="voucherCode" name="voucherCode" placeholder="Kode Voucher">
+
+    <label for="voucherDiscount">Discount (%)</label>
+    <input type="number" id="voucherDiscount" name="voucherDiscount" placeholder="Diskon (%)">
+
+    <label for="voucherExpiry">Expiry Date</label>
+    <input type="date" id="voucherExpiry" name="voucherExpiry">
+
+    <button id="saveVoucherBtn" onclick="saveVoucher()">💾 Save Voucher Code</button>
   </div>
-  
+
   <div id="voucherPreview"></div>
 </div>
 
-  <hr>
+<hr>
 
-  <div class="section">
-    <button class="btn-simpan" onclick="simpanData()">💾 Save All</button>
-   
-   <input type="hidden" id="restoId" />
+<div class="section">
+  <button class="btn-simpan" onclick="simpanData()">💾 Save All</button>
+  <input type="hidden" id="restoId" name="restoId" />
 
   <button id="btnOpenCustomer" class="btn-orange" onclick="openCustomerPage()">👁️ See Customer Page</button>
-
   <button id="btnSalinLink" class="btn-teal" style="display:none;">📋 Copy Link to Share with Customers</button>
 
   <div id="qrcodePreview" style="margin-top:10px;"></div>
 
   <button id="btnDownloadQR" class="btn-purple" style="margin-top:10px; display:none;">⬇️ Download QR Code</button>
-
   <button id="btnPrintQR" class="btn-red" style="margin-top:5px; display:none;">🖨️ Print QR Code</button>
 
+  <div class="section">
+    <h2>🔁 Backup & Restore Data</h2>
+    <button id="btnBackup" class="btn-blue" onclick="backupData()">📦 Backup Data</button>
+    <div id="backupDownloadLink" style="margin-top:10px;"></div>
 
-    <div class="section">
-      <h2>🔁 Backup & Restore Data</h2>
-     <button id="btnBackup" class="btn-blue" onclick="backupData()">📦 Backup Data</button>
-      <div id="backupDownloadLink" style="margin-top:10px;"></div>
-      <label for="restoreInput" style="margin-top: 20px; display: block;">
-        📂 Select JSON File to Restore:
-      </label>
-      <input type="file" id="restoreInput" accept=".json" onchange="restoreDataFromFile(event)" />
-    </div>
-<!-- Tambahin loader di HTML -->
-<div id="loader" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
-  background:rgba(255,255,255,0.7); z-index:9999; text-align:center; padding-top:20%;">
-  <div style="font-size:20px; font-weight:bold; color:#007bff;">⏳ Loading...</div>
-</div>
-
-    <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
-      <strong>Panduan Penggunaan:</strong><br>
-      PENTING!!<br>
-      🔹 Klik <strong>⬇️ Backup Data</strong> untuk menyimpan semua data restoran ke file berformat <strong>.json</strong>.<br>
-      🔹 Simpan file tersebut dengan baik dan aman di perangkat Anda.<br>
-      🔹 Klik <strong>📂 Pilih File</strong> untuk me-restore data dari file <strong>.json</strong> hasil backup.<br>
-      ⚠️ Proses restore akan menggantikan seluruh data yang ada saat ini dan tidak bisa dibatalkan.<br>
-      💡 Gunakan fitur ini sebelum mengganti perangkat atau membersihkan data browser.
-    </div>
-    <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
-      <strong>User Guide:</strong><br>
-      IMPORTANT!!<br>
-      🔹 Click <strong>⬇️ Backup Data</strong> to save all restaurant data into a <strong>.json</strong> file.<br>
-      🔹 Keep the file safe and secure on your device.<br>
-      🔹 Click <strong>📂 Choose File</strong> to restore data from the backup <strong>.json</strong> file.<br>
-      ⚠️ The restore process will replace all existing data and cannot be undone.<br>
-      💡 Use this feature before switching devices or clearing your browser data.
-    </div>
-    <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
+    <label for="restoreInput" style="margin-top: 20px; display: block;">📂 Select JSON File to Restore:</label>
+    <input type="file" id="restoreInput" name="restoreInput" accept=".json" onchange="restoreDataFromFile(event)" />
   </div>
+
+  <!-- Loader -->
+  <div id="loader" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+    background:rgba(255,255,255,0.7); z-index:9999; text-align:center; padding-top:20%;">
+    <div style="font-size:20px; font-weight:bold; color:#007bff;">⏳ Loading...</div>
+  </div>
+
+  <!-- Panduan -->
+  <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
+    <strong>Panduan Penggunaan:</strong><br>
+    PENTING!!<br>
+    🔹 Klik <strong>⬇️ Backup Data</strong> untuk menyimpan semua data restoran ke file <strong>.json</strong>.<br>
+    🔹 Simpan file tersebut dengan baik.<br>
+    🔹 Klik <strong>📂 Pilih File</strong> untuk me-restore data.<br>
+    ⚠️ Proses restore menggantikan seluruh data saat ini.<br>
+  </div>
+
+  <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
+    <strong>User Guide:</strong><br>
+    IMPORTANT!!<br>
+    🔹 Click <strong>⬇️ Backup Data</strong> to save all data.<br>
+    🔹 Keep the file safe.<br>
+    🔹 Click <strong>📂 Choose File</strong> to restore data.<br>
+    ⚠️ The restore process replaces all existing data.<br>
+  </div>
+
+  <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
+</div>
 
 </body>
 </html>
@@ -1896,6 +1905,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
