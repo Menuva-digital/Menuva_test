@@ -815,7 +815,7 @@ async function saveDataToDB(data) {
   }
 }
 
-// ====================== LOAD (DB → data) FINAL STABIL ======================
+// ====================== LOAD (DB → data) FINAL FIXED ======================
 async function loadDataFromDB(restoId = null) {
   try {
     const db = await initDB();
@@ -824,51 +824,20 @@ async function loadDataFromDB(restoId = null) {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
-
-      const req = restoId !== null ? store.get(restoId) : store.openCursor();
-      const results = [];
+      const req = restoId !== null ? store.get(restoId) : store.getAll();
 
       req.onsuccess = async (event) => {
-        const res = event.target.result;
+        const result = event.target.result;
 
-        if (!restoId) {
-          // mode openCursor → ambil semua data
-          if (res) {
-            results.push(res.value);
-            res.continue();
+        if (Array.isArray(result)) {
+          // hasil dari getAll()
+          if (result.length > 0) {
+            console.log("📥 Semua data ditemukan:", result.length, "item");
+            resolve(result[0]); // ambil record utama
           } else {
-            if (results.length > 0) {
-              console.log("📥 Semua data ditemukan:", results.length, "item");
-              // ambil item pertama karena cuma 1 data utama
-              resolve(results[0]);
-            } else {
-              console.info("ℹ️ DB kosong — membuat data default...");
-              const defaultData = {
-                id: 1,
-                namaRestoran: "",
-                restoAddress: "",
-                restoPhone: "",
-                menuPromo: [],
-                menu: [],
-                rooms: [],
-                nomorWaAdmin: [],
-                flipbookRuanganImages: [],
-                flipbookMenuImages: []
-              };
-              // auto simpan default data
-              await saveDataToDB(defaultData);
-              resolve(defaultData);
-            }
-          }
-        } else {
-          // mode get(restoId)
-          if (res) {
-            console.log("📥 Data ditemukan (ID match):", res);
-            resolve(res);
-          } else {
-            console.info("ℹ️ Data dengan ID", restoId, "tidak ditemukan — membuat default data...");
+            console.info("ℹ️ DB kosong — membuat data default (pertama kali)");
             const defaultData = {
-              id: restoId,
+              id: 1,
               namaRestoran: "",
               restoAddress: "",
               restoPhone: "",
@@ -877,7 +846,29 @@ async function loadDataFromDB(restoId = null) {
               rooms: [],
               nomorWaAdmin: [],
               flipbookRuanganImages: [],
-              flipbookMenuImages: []
+              flipbookMenuImages: [],
+            };
+            await saveDataToDB(defaultData);
+            resolve(defaultData);
+          }
+        } else {
+          // hasil dari get(restoId)
+          if (result) {
+            console.log("📥 Data ditemukan:", result);
+            resolve(result);
+          } else {
+            console.info("ℹ️ Data dengan ID", restoId, "tidak ditemukan — membuat data default...");
+            const defaultData = {
+              id: restoId || 1,
+              namaRestoran: "",
+              restoAddress: "",
+              restoPhone: "",
+              menuPromo: [],
+              menu: [],
+              rooms: [],
+              nomorWaAdmin: [],
+              flipbookRuanganImages: [],
+              flipbookMenuImages: [],
             };
             await saveDataToDB(defaultData);
             resolve(defaultData);
@@ -890,7 +881,7 @@ async function loadDataFromDB(restoId = null) {
         reject(e.target.error);
       };
 
-      // ❌ Jangan tutup db di sini — biar koneksi tetap aktif
+      // ❌ Jangan close db di sini, biar koneksi reusable
       // tx.oncomplete = () => db.close?.();
     });
   } catch (err) {
@@ -1902,6 +1893,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
