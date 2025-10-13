@@ -1316,14 +1316,27 @@ async function simpanData() {
   }
 }
 
-// ====================== LOAD (data → form) FIX ======================
 async function loadData(data) {
   try {
     showLoader();
-    if (!data) return console.warn("⚠️ Data kosong di loadData");
+
+    // 🔧 Perbaikan: kalau array, ambil elemen pertama
+    if (Array.isArray(data)) {
+      if (data.length === 0) {
+        console.warn("⚠️ Data kosong di loadData (array kosong)");
+        return;
+      }
+      data = data[0];
+    }
+
+    if (!data || typeof data !== "object") {
+      console.warn("⚠️ Data kosong atau bukan object di loadData");
+      return;
+    }
 
     console.log("📦 Data di-load:", data);
 
+    // --- sisanya tetap sama ---
     document.getElementById("namaRestoran").value = data.namaRestoran || "";
     document.getElementById("restoAddress").value = data.restoAddress || "";
     document.getElementById("restoPhone").value = data.restoPhone || "";
@@ -1333,7 +1346,6 @@ async function loadData(data) {
       if (preview) preview.src = data.logo;
     }
 
-    // Nomor WA
     if (Array.isArray(data.nomorWaAdmin)) {
       const container = document.getElementById("nomorWaContainer");
       container.innerHTML = "";
@@ -1342,22 +1354,24 @@ async function loadData(data) {
       data.nomorWaAdmin.forEach((v, i) => (inputs[i].value = v));
     }
 
-    // Promo, menu, room
     menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
     renderPromoUI();
 
     if (Array.isArray(data.menu))
-      data.menu.forEach((m) => tambahMenu(m.kategori, m.nama, m.harga, m.image));
+      data.menu.forEach((m) =>
+        tambahMenu(m.kategori, m.nama, m.harga, m.image)
+      );
 
     if (Array.isArray(data.rooms)) restoreRoomFromData(data.rooms);
 
     flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
-    flipbookRuanganImages.forEach((src) => renderImagePreview("ruangan", src));
+    flipbookRuanganImages.forEach((src) =>
+      renderImagePreview("ruangan", src)
+    );
 
     flipbookMenuImages = (data.flipbookMenuImages || []).slice();
     flipbookMenuImages.forEach((src) => renderImagePreview("menu", src));
 
-    // restoId sinkron
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
       restoIdEl = document.createElement("input");
@@ -1374,6 +1388,7 @@ async function loadData(data) {
     hideLoader();
   }
 }
+
 // ====================== RESET & BACKUP ======================
 async function resetData() {
   if (!confirm("Are you sure you want to delete all data?")) return;
@@ -1807,6 +1822,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
