@@ -714,28 +714,51 @@ const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 4; // naikin kalau perlu perubahan schema lagi
 
-let dbCache = null;
+// ====================== INIT DB (versi stabil & reusable) ======================
+let _dbPromise = null;
 
 async function initDB() {
-  if (dbCache) return dbCache;
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION); // ✅ pakai variabel versi yang benar
+  // Kalau sudah pernah diinit, pakai yang sama
+  if (_dbPromise) return _dbPromise;
 
-    req.onupgradeneeded = (e) => {
+  _dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open("RestoDB", 1);
+
+    request.onupgradeneeded = (e) => {
       const db = e.target.result;
+      console.log("⚙️ Upgrade / Init DB...");
+
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
     };
 
-    req.onsuccess = (e) => {
-      dbCache = e.target.result;
-      resolve(dbCache);
+    request.onsuccess = (e) => {
+      const db = e.target.result;
+
+      // Tambahkan handler supaya koneksi tetap sehat
+      db.onversionchange = () => {
+        console.warn("⚠️ DB version change detected, closing connection...");
+        db.close();
+        _dbPromise = null; // reset supaya bisa reinit lagi nanti
+      };
+
+      db.onerror = (err) => {
+        console.error("❌ DB error:", err);
+      };
+
+      resolve(db);
     };
 
-    req.onerror = (e) => reject(e.target.error);
+    request.onerror = (e) => {
+      console.error("❌ Gagal open DB:", e.target.error);
+      reject(e.target.error);
+    };
   });
+
+  return _dbPromise;
 }
+
 
 // ====================== SAVE (versi stabil anti "db closing") ======================
 async function saveDataToDB(data) {
@@ -1851,6 +1874,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
