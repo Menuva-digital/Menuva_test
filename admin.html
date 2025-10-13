@@ -759,69 +759,65 @@ async function initDB() {
   return _dbPromise;
 }
 
-
-// ====================== SAVE (versi stabil anti "db closing") ======================
+  // ====================== SAVE (versi stabil & hemat memori) ======================
 async function saveDataToDB(data) {
   if (!data || typeof data !== "object") throw new Error("Invalid data");
 
-  // Payload minimal wajib punya ID unik (gunakan 1 kalau cuma 1 data)
   const payload = { id: 1, ...data };
 
-  // Helper untuk buat transaksi aman
-  async function runTransaction() {
-    const db = await initDB();
-
-    return new Promise((resolve, reject) => {
-      try {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.put(payload);
-
-        req.onsuccess = () => {
-          console.log("💾 Data tersimpan:", payload);
-        };
-
-        req.onerror = (e) => {
-          console.error("❌ Gagal simpan:", e.target.error);
-          reject(e.target.error);
-        };
-
-        tx.oncomplete = () => {
-          console.log("✅ Commit berhasil");
-          resolve(payload);
-        };
-
-        tx.onerror = (e) => {
-          console.error("❌ Transaksi gagal:", e.target.error);
-          reject(e.target.error);
-        };
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-
-  // Jalankan transaksi, retry kalau gagal karena koneksi close
+  let db;
   try {
-    return await runTransaction();
+    db = await initDB();
+    if (!db) throw new Error("DB gagal diinisialisasi");
+
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.put(payload);
+
+      req.onsuccess = () => {
+        console.log("💾 Data tersimpan:", payload);
+      };
+
+      req.onerror = (e) => {
+        console.error("❌ Gagal simpan:", e.target.error);
+        reject(e.target.error);
+      };
+
+      tx.oncomplete = () => {
+        console.log("✅ Commit berhasil");
+        resolve(payload);
+      };
+
+      tx.onerror = (e) => {
+        console.error("❌ Transaksi gagal:", e.target.error);
+        reject(e.target.error);
+      };
+
+      // Tutup koneksi begitu transaksi selesai agar tidak menumpuk
+      tx.oncomplete = () => {
+        console.log("✅ Commit berhasil & DB ditutup");
+        db.close();
+        resolve(payload);
+      };
+    });
   } catch (err) {
-    if (err.name === "InvalidStateError" || /closing/i.test(err.message)) {
-      console.warn("⚠️ DB closing, coba ulang simpan setelah reinit...");
-      // tunggu sedikit lalu reinit ulang dan retry
-      await new Promise((r) => setTimeout(r, 300));
-      return await runTransaction();
-    }
-    throw err; // error lain dilempar ke atas
+    console.error("🔥 saveDataToDB() error:", err);
+    throw err;
+  } finally {
+    // Safety close (kalau belum tertutup)
+    try { db?.close(); } catch {}
   }
 }
-
-// ====================== LOAD (DB → data) FINAL FIXED ======================
+  
+// ====================== LOAD (DB → data) FINAL STABIL & EFISIEN ======================
 async function loadDataFromDB(restoId = null) {
+  let db;
   try {
-    const db = await initDB();
+    db = await initDB();
     if (!db) throw new Error("Database belum diinisialisasi");
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
       const req = restoId !== null ? store.get(restoId) : store.getAll();
@@ -829,48 +825,34 @@ async function loadDataFromDB(restoId = null) {
       req.onsuccess = async (event) => {
         const result = event.target.result;
 
+        // Jika hasil berupa array (getAll)
         if (Array.isArray(result)) {
-          // hasil dari getAll()
           if (result.length > 0) {
             console.log("📥 Semua data ditemukan:", result.length, "item");
-            resolve(result[0]); // ambil record utama
+            resolve(result[0]);
           } else {
-            console.info("ℹ️ DB kosong — membuat data default (pertama kali)");
-            const defaultData = {
-              id: 1,
-              namaRestoran: "",
-              restoAddress: "",
-              restoPhone: "",
-              menuPromo: [],
-              menu: [],
-              rooms: [],
-              nomorWaAdmin: [],
-              flipbookRuanganImages: [],
-              flipbookMenuImages: [],
-            };
-            await saveDataToDB(defaultData);
+            console.warn("⚠️ DB kosong — membuat data default...");
+            const defaultData = buatDataDefault();
+            try {
+              await saveDataToDB(defaultData);
+            } catch (e) {
+              console.error("❌ Gagal auto-create data:", e);
+            }
             resolve(defaultData);
           }
         } else {
-          // hasil dari get(restoId)
+          // Jika hasil berupa object tunggal (get)
           if (result) {
             console.log("📥 Data ditemukan:", result);
             resolve(result);
           } else {
-            console.info("ℹ️ Data dengan ID", restoId, "tidak ditemukan — membuat data default...");
-            const defaultData = {
-              id: restoId || 1,
-              namaRestoran: "",
-              restoAddress: "",
-              restoPhone: "",
-              menuPromo: [],
-              menu: [],
-              rooms: [],
-              nomorWaAdmin: [],
-              flipbookRuanganImages: [],
-              flipbookMenuImages: [],
-            };
-            await saveDataToDB(defaultData);
+            console.warn("⚠️ Data dengan ID", restoId, "tidak ditemukan — membuat data default...");
+            const defaultData = buatDataDefault(restoId);
+            try {
+              await saveDataToDB(defaultData);
+            } catch (e) {
+              console.error("❌ Gagal auto-create data:", e);
+            }
             resolve(defaultData);
           }
         }
@@ -881,15 +863,36 @@ async function loadDataFromDB(restoId = null) {
         reject(e.target.error);
       };
 
-      // ❌ Jangan close db di sini, biar koneksi reusable
-      // tx.oncomplete = () => db.close?.();
+      tx.onerror = (e) => reject(e.target.error);
+
+      tx.oncomplete = () => {
+        // Tutup koneksi setelah transaksi selesai
+        db.close?.();
+      };
     });
   } catch (err) {
     console.error("🔥 loadDataFromDB() error:", err);
     return null;
+  } finally {
+    try { db?.close(); } catch {}
+  }
+
+  // ===== Helper internal: bikin struktur default =====
+  function buatDataDefault(id = 1) {
+    return {
+      id,
+      namaRestoran: "",
+      restoAddress: "",
+      restoPhone: "",
+      menuPromo: [],
+      menu: [],
+      rooms: [],
+      nomorWaAdmin: [],
+      flipbookRuanganImages: [],
+      flipbookMenuImages: [],
+    };
   }
 }
-
 
 // ====================== Variabel Global ======================
 let menuPromo = [];
@@ -1893,6 +1896,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
