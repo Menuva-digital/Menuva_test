@@ -1622,9 +1622,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await initDB();
     const data = await loadDataFromDB();
-    if (data) {
-      await loadData(data.restoPhone);
-    }
+   if (data) {
+  await loadData(data);
+}
+
 
     console.log("✅ Admin siap digunakan");
   } catch (err) {
@@ -1822,6 +1823,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
