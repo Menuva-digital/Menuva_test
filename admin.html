@@ -764,30 +764,61 @@ async function saveDataToDB(data) {
     tx.onerror = (e) => reject(e.target.error);
   });
 }
-// ====================== LOAD (DB → data) FIX ======================
+// ====================== LOAD (DB → data) SAFE VERSION ======================
 async function loadDataFromDB(restoId = null) {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
+  try {
+    const db = await initDB();
+    if (!db) throw new Error("Database belum diinisialisasi");
 
-    // kalau ada restoId, cari berdasarkan itu
-    const req = restoId ? store.get(restoId) : store.getAll();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
 
-    req.onsuccess = () => {
-      const result = req.result;
-      const data = Array.isArray(result) ? result[0] : result;
-      if (data) {
-        console.log("📥 Data ditemukan:", data);
-        resolve(data);
-      } else {
-        console.warn("⚠️ Tidak ada data di DB");
-        resolve(null);
-      }
-    };
+      // Pilih metode ambil data
+      const req = restoId !== null ? store.get(restoId) : store.openCursor();
+      const results = [];
 
-    req.onerror = (e) => reject(e.target.error);
-  });
+      req.onsuccess = (event) => {
+        const res = event.target.result;
+
+        // Jika pakai openCursor (tanpa restoId)
+        if (!restoId) {
+          if (res) {
+            results.push(res.value);
+            res.continue();
+          } else {
+            // Cursor selesai
+            if (results.length > 0) {
+              console.log("📥 Semua data ditemukan:", results.length, "item");
+              resolve(results);
+            } else {
+              console.warn("⚠️ Tidak ada data di DB");
+              resolve(null);
+            }
+          }
+        } else {
+          // Jika pakai get(restoId)
+          if (res) {
+            console.log("📥 Data ditemukan:", res);
+            resolve(res);
+          } else {
+            console.warn("⚠️ Data dengan ID", restoId, "tidak ditemukan");
+            resolve(null);
+          }
+        }
+      };
+
+      req.onerror = (e) => {
+        console.error("❌ Gagal membaca DB:", e.target.error);
+        reject(e.target.error);
+      };
+
+      tx.oncomplete = () => db.close?.();
+    });
+  } catch (err) {
+    console.error("🔥 loadDataFromDB() error:", err);
+    return null;
+  }
 }
 
 // ====================== Variabel Global ======================
@@ -1776,6 +1807,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
