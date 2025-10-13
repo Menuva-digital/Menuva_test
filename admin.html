@@ -1280,12 +1280,30 @@ async function tampilkanListRoom() {
 function tambahNomorWa() {
   const container = document.getElementById("nomorWaContainer");
   if (!container) return;
+
+  // Hitung berapa input yang sudah ada untuk bikin id unik
+  const count = container.querySelectorAll(".nomor-wa").length;
+  const uniqueId = `nomorWa${count + 1}`;
+
   const input = document.createElement("input");
   input.type = "text";
+  input.id = uniqueId;
+  input.name = uniqueId;
   input.className = "nomor-wa";
   input.placeholder = "Example: 6281234567890";
+  input.inputMode = "numeric";
+  input.autocomplete = "off";
+  input.pattern = "62[0-9]{8,}";
+  input.title = "Gunakan format: 6281234567890";
+
+  // Opsional: validasi langsung saat user mengetik
+  input.addEventListener("input", () => {
+    input.value = input.value.replace(/[^0-9]/g, ""); // hanya angka
+  });
+
   container.appendChild(input);
 }
+
 
 // ====================== IMAGE helper (resize) ======================
 async function resizeIfNeeded(file, targetSizeKB = 100, maxWidth = 1280) {
@@ -1980,6 +1998,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
