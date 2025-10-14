@@ -722,37 +722,37 @@ function initDB() {
       });
     });
   }
-
- function renderPromo(menuPromo = []) {
+function renderPromo(list) {
   const grid = document.getElementById('promoGrid');
   if (!grid) return;
   grid.innerHTML = '';
-  const now = Date.now();
-  const promos = menuPromo.filter(p => {
+
+  const promos = (list && list.length ? list : menuPromo || []).filter(p => {
+    const now = Date.now();
     if (!p.tanggalAkhir) return true;
     const end = new Date(p.tanggalAkhir).getTime();
     return isFinite(end) ? end > now : true;
   });
+
   if (!promos.length) {
     grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
     stopPromoCountdown();
     return;
   }
+
   promos.forEach(p => {
     const card = document.createElement('div');
     card.className = 'promo-card';
-    const item = {
-      nama: p.namaPromo || p.namaMenu || 'Promo Item',
-      harga: Number(p.harga) || 0,
-      deskripsi: p.deskripsi || '',
-      image: p.image || ''
-    };
-    card.addEventListener('click', () => {
-      addToCartObj(item.nama, item.harga);
-      updateBadge(card, item.nama);
-    });
-    // ...lanjut isi yang sama kayak punyamu
+    card.innerHTML = `
+      <img src="${p.image || ''}" class="promo-thumb">
+      <div class="promo-title">${escapeHtml(p.namaPromo || p.namaMenu)}</div>
+      <div class="promo-desc">${escapeHtml(p.deskripsi || '')}</div>
+      <div class="promo-price">${formatWithActive(p.harga || 0)}</div>
+    `;
+    card.onclick = () => addToCartObj(p.namaPromo || p.namaMenu, p.harga);
+    grid.appendChild(card);
   });
+
   startPromoCountdown();
 }
 
@@ -1022,10 +1022,10 @@ function showToast(msg, type="info"){
     const timeInput = document.getElementById('custTime'); if (timeInput) timeInput.value = timeStr;
 
     // initial render
-    renderMenu();
-    renderPromo();
-    renderCart();
-    applyVoucherAndUpdateSummary();
+renderMenu();
+renderPromo(menuPromo);
+renderCart();
+applyVoucherAndUpdateSummary();
 
     // wire up any header locale select default (safe)
     const sel = document.getElementById('localeSelect');
@@ -1039,6 +1039,7 @@ function showToast(msg, type="info"){
 
 </body>
 </html>
+
 
 
 
