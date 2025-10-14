@@ -1506,28 +1506,44 @@ async function resetData() {
 
 async function backupData() {
   try {
-    const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
-    const data = await loadDataFromDB(restoId);
-    if (!data) {
-      alert("No data to backup!");
-      return;
+    // pastikan db sudah siap
+    if (!window.db) {
+      window.db = await initDB();
     }
 
-    const filename = `menuva-backup-${Date.now()}.json`;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    req.onsuccess = () => {
+      const allData = req.result || [];
+      if (allData.length === 0) {
+        alert("⚠️ Tidak ada data di database untuk di-backup!");
+        return;
+      }
 
-    alert(`✅ Backup successful! File ${filename} ready to-download.`);
+      const filename = `menuva-backup-${Date.now()}.json`;
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(url);
+      alert(`✅ Backup berhasil! File ${filename} siap diunduh.`);
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ Gagal membaca data dari IndexedDB:", e);
+      alert("❌ Backup gagal: tidak bisa membaca data.");
+    };
   } catch (err) {
-    alert("❌ Backup failed: " + err.message);
-    console.error(err);
+    console.error("❌ Backup fatal error:", err);
+    alert("❌ Terjadi kesalahan: " + err.message);
   }
 }
 
@@ -1927,6 +1943,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
