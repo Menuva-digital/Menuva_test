@@ -723,95 +723,62 @@ const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 4; // naikin kalau perlu perubahan schema lagi
 
-let _dbPromise = null;
-let _dbInstance = null;
+// ====================== INIT DB (Versi stabil) ======================
+let dbPromise = null;
 
 function initDB() {
-  if (_dbInstance) return Promise.resolve(_dbInstance);
-  if (_dbPromise) return _dbPromise;
+  if (dbPromise) return dbPromise; // pakai koneksi lama
+  dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open("RestoDB", 1);
 
-  _dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      console.log("⚙️ Upgrade / Init DB...");
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains("resto")) {
+        db.createObjectStore("resto", { keyPath: "id" });
       }
     };
 
-    req.onsuccess = (e) => {
-      const db = e.target.result;
-      // simpan instance dan handlers
-      _dbInstance = db;
-
-      db.onversionchange = () => {
-        console.warn("⚠️ DB version change detected, closing connection...");
-        try { db.close(); } catch (e) {}
-        _dbInstance = null;
-        _dbPromise = null;
-      };
-
-      db.onerror = (err) => {
-        console.error("❌ DB runtime error:", err);
-      };
-
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      db.onclose = () => console.warn("⚠️ DB connection closed unexpectedly");
       resolve(db);
     };
 
-    req.onerror = (e) => {
-      console.error("❌ Gagal open DB:", e.target.error);
-      _dbPromise = null;
-      reject(e.target.error);
+    request.onerror = (event) => {
+      console.error("❌ Gagal buka DB:", event.target.error);
+      reject(event.target.error);
     };
   });
-
-  return _dbPromise;
+  return dbPromise;
 }
 
-// Optional helper to explicitly close DB (call on unload if you want)
-function closeDB() {
-  if (_dbInstance) {
-    try { _dbInstance.close(); } catch (e) {}
-    _dbInstance = null;
-    _dbPromise = null;
-  }
-}
-
-// ====================== SAVE (versi aman dan sinkron) ======================
+// ====================== SAVE DATA (Versi aman) ======================
 async function saveDataToDB(data) {
-  if (!data || typeof data !== "object") throw new Error("Invalid data");
-
-  const payload = { id: 1, ...data };
-
   const db = await initDB();
-  if (!db) throw new Error("Database belum diinisialisasi");
+  if (!db) throw new Error("Database belum siap");
 
   return new Promise((resolve, reject) => {
     try {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.put(payload);
+      const tx = db.transaction("resto", "readwrite");
+      const store = tx.objectStore("resto");
+      const req = store.put(data);
 
-      req.onsuccess = () => console.log("💾 Data tersimpan sementara (menunggu commit)...");
-
-      tx.oncomplete = () => {
-        console.log("✅ Commit berhasil, data tersimpan permanen:", payload);
-        db.close?.(); // pastikan koneksi ditutup agar load berikutnya baca versi terbaru
-        resolve(payload);
-      };
-
-      tx.onerror = (e) => {
-        console.error("❌ Transaksi gagal:", e.target.error);
-        reject(e.target.error);
+      req.onsuccess = () => {
+        console.log("✅ Data berhasil disimpan ke DB:", data);
+        resolve(true);
       };
 
       req.onerror = (e) => {
-        console.error("❌ Gagal simpan:", e.target.error);
+        console.error("❌ Gagal menyimpan data:", e.target.error);
+        reject(e.target.error);
+      };
+
+      tx.onerror = (e) => {
+        console.error("🔥 Transaksi gagal:", e.target.error);
         reject(e.target.error);
       };
     } catch (err) {
+      console.error("🔥 saveDataToDB() error:", err);
       reject(err);
     }
   });
@@ -1993,6 +1960,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
