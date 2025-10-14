@@ -723,12 +723,9 @@ const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 4; // naikin kalau perlu perubahan schema lagi
 
-// ====================== INIT DB (Versi stabil) ======================
-let dbPromise = null;
-
-function initDB() {
-  if (dbPromise) return dbPromise; // pakai koneksi lama
-  dbPromise = new Promise((resolve, reject) => {
+// ====================== INIT DB (auto-reconnect) ======================
+async function initDB() {
+  return await new Promise((resolve, reject) => {
     const request = indexedDB.open("RestoDB", 1);
 
     request.onupgradeneeded = (event) => {
@@ -740,7 +737,6 @@ function initDB() {
 
     request.onsuccess = (event) => {
       const db = event.target.result;
-      db.onclose = () => console.warn("⚠️ DB connection closed unexpectedly");
       resolve(db);
     };
 
@@ -749,10 +745,9 @@ function initDB() {
       reject(event.target.error);
     };
   });
-  return dbPromise;
 }
 
-// ====================== SAVE DATA (Versi aman) ======================
+// ====================== SAVE DATA (pakai koneksi fresh tiap kali) ======================
 async function saveDataToDB(data) {
   const db = await initDB();
   if (!db) throw new Error("Database belum siap");
@@ -773,9 +768,14 @@ async function saveDataToDB(data) {
         reject(e.target.error);
       };
 
+      tx.oncomplete = () => {
+        db.close(); // tutup koneksi setelah transaksi benar-benar selesai
+      };
+
       tx.onerror = (e) => {
         console.error("🔥 Transaksi gagal:", e.target.error);
         reject(e.target.error);
+        db.close();
       };
     } catch (err) {
       console.error("🔥 saveDataToDB() error:", err);
@@ -783,6 +783,7 @@ async function saveDataToDB(data) {
     }
   });
 }
+
 
  // ====================== LOAD (DB → data) FINAL SAFE (sync dengan save) ======================
 async function loadDataFromDB(restoId = null) {
@@ -1960,6 +1961,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
