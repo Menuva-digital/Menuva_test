@@ -836,30 +836,53 @@ function renderPromoUI() {
   const container = document.getElementById("promoContainer");
   if (!container) return;
   container.innerHTML = "";
+
+  // daftar kategori promo (bisa disesuaikan)
+  const promoCategories = ["PROMO", "DISKON", "SPECIAL", "EVENT"];
+
   menuPromo.forEach((promo, index) => {
     const div = document.createElement("div");
     div.className = "menu-item";
-   div.innerHTML = `
-  <input type="text" id="promoName_${index}" name="promoName[]" placeholder="Promo Name" value="${promo.namaPromo || ""}" onchange="updatePromo(${index}, 'namaPromo', this.value)">
-  <input type="file" id="promoImage_${index}" name="promoImage[]" accept="image/*" onchange="uploadPromoImage(event, ${index})">
-  <img id="promoImgPreview${index}" src="${promo.image || ""}" style="max-height:80px; margin:5px 0">
-  <input type="text" id="promoDesc_${index}" name="promoDesc[]" placeholder="Description Promo" value="${promo.deskripsi || ""}" onchange="updatePromo(${index}, 'deskripsi', this.value)">
-  <input type="number" id="promoPrice_${index}" name="promoPrice[]" placeholder="Promo Price" value="${promo.harga || ""}" onchange="updatePromo(${index}, 'harga', this.value)">
-  <input type="text" id="promoCat_${index}" name="promoCat[]" placeholder="Kategori Promo" value="${promo.kategori || ""}" onchange="updatePromo(${index}, 'kategori', this.value)">
-  <input type="date" id="promoDate_${index}" name="promoDate[]" value="${promo.tanggalAkhir || ""}" onchange="updatePromo(${index}, 'tanggalAkhir', this.value)">
-  <button class="btn-danger" onclick="hapusPromo(${index})">Delete Promo List</button>
-`;
+
+    const optionsHTML = promoCategories
+      .map(cat => `<option value="${cat}" ${promo.kategori === cat ? "selected" : ""}>${cat}</option>`)
+      .join("");
+
+    div.innerHTML = `
+      <input type="text" id="promoName_${index}" name="promoName[]" placeholder="Promo Name"
+        value="${promo.namaPromo || ""}" onchange="updatePromo(${index}, 'namaPromo', this.value)">
+      
+      <input type="file" id="promoImage_${index}" name="promoImage[]" accept="image/*"
+        onchange="uploadPromoImage(event, ${index})">
+      <img id="promoImgPreview${index}" src="${promo.image || ""}" style="max-height:80px; margin:5px 0">
+      
+      <input type="text" id="promoDesc_${index}" name="promoDesc[]" placeholder="Description Promo"
+        value="${promo.deskripsi || ""}" onchange="updatePromo(${index}, 'deskripsi', this.value)">
+      
+      <input type="number" id="promoPrice_${index}" name="promoPrice[]" placeholder="Promo Price"
+        value="${promo.harga || ""}" onchange="updatePromo(${index}, 'harga', this.value)">
+      
+      <select id="promoCat_${index}" name="promoCat[]" onchange="updatePromo(${index}, 'kategori', this.value)">
+        ${optionsHTML}
+      </select>
+      
+      <input type="date" id="promoDate_${index}" name="promoDate[]"
+        value="${promo.tanggalAkhir || ""}" onchange="updatePromo(${index}, 'tanggalAkhir', this.value)">
+      
+      <button class="btn-danger" onclick="hapusPromo(${index})">Delete Promo List</button>
+    `;
+
     container.appendChild(div);
   });
 }
 
-function tambahPromo(promo = {}) {
+  function tambahPromo(promo = {}) {
   menuPromo.push({
     namaPromo: promo.namaPromo || "",
     image: promo.image || "",
     deskripsi: promo.deskripsi || "",
     harga: promo.harga || "",
-    kategori: promo.kategori || "",
+    kategori: promo.kategori || "PROMO", // default category
     tanggalAkhir: promo.tanggalAkhir || ""
   });
   renderPromoUI();
@@ -1983,4 +2006,5 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
