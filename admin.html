@@ -838,7 +838,7 @@ async function actualSave(payload) {
   throw new Error("Gagal menyimpan setelah retry");
 }
 
-// ====================== LOAD (DB → data) FINAL FIXED (no close here) ======================
+  // ====================== LOAD (DB → data) FINAL SAFE ======================
 async function loadDataFromDB(restoId = null) {
   try {
     const db = await initDB();
@@ -847,62 +847,43 @@ async function loadDataFromDB(restoId = null) {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
-      const req = restoId !== null ? store.get(restoId) : store.getAll();
+
+      // Tentukan apakah ambil semua data atau satu berdasarkan restoId
+      const req = restoId ? store.get(restoId) : store.getAll();
 
       req.onsuccess = async (event) => {
         const result = event.target.result;
 
-        if (Array.isArray(result)) {
-          if (result.length > 0) {
+        // CASE 1: getAll() → result = Array
+        if (!restoId) {
+          if (Array.isArray(result) && result.length > 0) {
             console.log("📥 Semua data ditemukan:", result.length, "item");
-            resolve(result[0]);
-          } else {
-            console.info("ℹ️ DB kosong — membuat data default (pertama kali)");
-            const defaultData = {
-              id: 1,
-              namaRestoran: "",
-              restoAddress: "",
-              restoPhone: "",
-              menuPromo: [],
-              menu: [],
-              rooms: [],
-              nomorWaAdmin: [],
-              flipbookRuanganImages: [],
-              flipbookMenuImages: []
-            };
-            try {
-              await saveDataToDB(defaultData); // ini akan queue-save
-            } catch (e) {
-              console.error("❌ Gagal auto-create default data:", e);
-            }
-            resolve(defaultData);
+            return resolve(result[0]); // ambil yang pertama
           }
-        } else {
-          if (result) {
-            console.log("📥 Data ditemukan:", result);
-            resolve(result);
-          } else {
-            console.info("ℹ️ Data dengan ID", restoId, "tidak ditemukan — membuat data default...");
-            const defaultData = {
-              id: restoId || 1,
-              namaRestoran: "",
-              restoAddress: "",
-              restoPhone: "",
-              menuPromo: [],
-              menu: [],
-              rooms: [],
-              nomorWaAdmin: [],
-              flipbookRuanganImages: [],
-              flipbookMenuImages: []
-            };
-            try {
-              await saveDataToDB(defaultData);
-            } catch (e) {
-              console.error("❌ Gagal auto-create default data:", e);
-            }
-            resolve(defaultData);
+          console.info("ℹ️ DB kosong — membuat data default (pertama kali)");
+          const defaultData = buatDataDefault(1);
+          try {
+            await saveDataToDB(defaultData);
+          } catch (e) {
+            console.error("❌ Gagal auto-create default data:", e);
           }
+          return resolve(defaultData);
         }
+
+        // CASE 2: get(restoId) → result = Object tunggal
+        if (result && typeof result === "object") {
+          console.log("📥 Data ditemukan:", result);
+          return resolve(result);
+        }
+
+        console.info("ℹ️ Data dengan ID", restoId, "tidak ditemukan — membuat data default...");
+        const defaultData = buatDataDefault(restoId);
+        try {
+          await saveDataToDB(defaultData);
+        } catch (e) {
+          console.error("❌ Gagal auto-create default data:", e);
+        }
+        resolve(defaultData);
       };
 
       req.onerror = (e) => {
@@ -911,8 +892,6 @@ async function loadDataFromDB(restoId = null) {
       };
 
       tx.onerror = (e) => reject(e.target.error);
-
-      // jangan close db di sini; initDB() yang pegang lifecycle
     });
   } catch (err) {
     console.error("🔥 loadDataFromDB() error:", err);
@@ -920,21 +899,22 @@ async function loadDataFromDB(restoId = null) {
   }
 }
 
-  // ===== Helper internal: bikin struktur default =====
-  function buatDataDefault(id = 1) {
-    return {
-      id,
-      namaRestoran: "",
-      restoAddress: "",
-      restoPhone: "",
-      menuPromo: [],
-      menu: [],
-      rooms: [],
-      nomorWaAdmin: [],
-      flipbookRuanganImages: [],
-      flipbookMenuImages: [],
-    };
-  }
+// ===== Helper internal: bikin struktur default =====
+function buatDataDefault(id = 1) {
+  return {
+    id,
+    namaRestoran: "",
+    restoAddress: "",
+    restoPhone: "",
+    menuPromo: [],
+    menu: [],
+    rooms: [],
+    nomorWaAdmin: [],
+    flipbookRuanganImages: [],
+    flipbookMenuImages: [],
+  };
+}
+
 // ====================== Variabel Global ======================
 let menuPromo = [];
 let flipbookRuanganImages = [];
@@ -2030,6 +2010,7 @@ async function saveVoucher() {
 
 </script>
 </html>
+
 
 
 
