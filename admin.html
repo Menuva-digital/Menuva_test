@@ -1682,38 +1682,86 @@ function updateShareUI() {
     qrContainer.textContent = link;
   }
 }
-
-// ====================== LOADER HANDLER ======================
+// ====================== LOADER HANDLER (Modern & Center) ======================
 function showLoader() {
   let loader = document.getElementById("loader");
   if (!loader) {
     loader = document.createElement("div");
     loader.id = "loader";
-    loader.textContent = "⏳ Memuat data...";
-    Object.assign(loader.style, {
-      position: "fixed",
-      top: "0",
-      left: "0",
-      width: "100%",
-      height: "100%",
-      background: "rgba(0,0,0,0.5)",
-      color: "#fff",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: "1.2rem",
-      zIndex: "9999"
-    });
+    loader.innerHTML = `
+      <div class="loader-overlay">
+        <div class="loader-content">
+          <div class="spinner"></div>
+          <p>Memuat data...</p>
+        </div>
+      </div>
+    `;
     document.body.appendChild(loader);
+
+    // Tambahkan gaya modern (langsung di JS biar portable)
+    const style = document.createElement("style");
+    style.id = "loader-style";
+    style.textContent = `
+      #loader {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.45);
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      #loader.show {
+        opacity: 1;
+      }
+
+      .loader-content {
+        text-align: center;
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 1.1rem;
+        animation: fadeUp 0.6s ease;
+      }
+
+      .spinner {
+        width: 64px;
+        height: 64px;
+        border: 6px solid rgba(255,255,255,0.3);
+        border-top-color: #00d4ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px auto;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(style);
   }
+
   loader.style.display = "flex";
+  requestAnimationFrame(() => loader.classList.add("show"));
 }
 
 function hideLoader() {
   const loader = document.getElementById("loader");
-  if (loader) loader.style.display = "none";
+  if (loader) {
+    loader.classList.remove("show");
+    setTimeout(() => {
+      loader.style.display = "none";
+    }, 300);
+  }
 }
-
 
   // ====================== CLEAR DB (fix) ======================
 async function clearDataDB() {
@@ -1939,39 +1987,5 @@ async function saveVoucher() {
       // +20 biar ada ruang ekstra
     }
   });
-
-
 </script>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
