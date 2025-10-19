@@ -536,12 +536,12 @@ body {
     return p.get('resto') || null;
   }
 
-  /* ------------------ IndexedDB (init & load) ------------------- */
+/* ------------------ IndexedDB (init & load) ------------------- */
 function initDB() {
   return new Promise((resolve, reject) => {
     if (db) return resolve(db);
 
-    const req = indexedDB.open(DB_NAME, 5); // versi DB
+    const req = indexedDB.open(DB_NAME, 6); // 🔼 naik versi
     req.onerror = () => reject(req.error);
 
     req.onsuccess = (e) => {
@@ -556,9 +556,16 @@ function initDB() {
     req.onupgradeneeded = (e) => {
       db = e.target.result;
 
+      // store utama untuk data resto/menu
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        // ✅ AutoIncrement supaya aman meskipun orderData.id ada/ga ada
         db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+      }
+
+      // ✅ store baru untuk order
+      if (!db.objectStoreNames.contains("ordersData")) {
+        const orders = db.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
+        orders.createIndex("status", "status", { unique: false });
+        orders.createIndex("orderTime", "orderTime", { unique: false });
       }
     };
   });
@@ -859,61 +866,38 @@ function renderPromo(list) {
     try { applyVoucherAndUpdateSummary(); } catch(e){}
   }
 
-/* ------------------ SAVE ORDER ------------- */
-function sendOrder() {
+/* ------------------ SAVE ORDER (NEW STORE) ------------- */
+async function sendOrder() {
   const name = (document.getElementById('custName')?.value || '').trim();
   const table = (document.getElementById('custTable')?.value || '').trim();
   const date = document.getElementById('custDate')?.value || '';
   const time = document.getElementById('custTime')?.value || '';
   const note = document.getElementById('custNote')?.value.trim() || '';
 
-  // ✅ Validasi input
-  if (!name) { 
-    showToast('⚠️ Please fill in customer name!', "error");
-    playSound("error");
-    return; 
-  }
-  if (!table) { 
-    showToast('⚠️ Please fill in table number!', "error");
-    playSound("error");
-    return; 
-  }
-  if (!cart || cart.length === 0) { 
-    showToast('⚠️ Please add items to cart before submitting!', "error");
-    playSound("error");
-    return; 
-  }
+  if (!name) return showToast('⚠️ Please fill in customer name!', "error"), playSound("error");
+  if (!table) return showToast('⚠️ Please fill in table number!', "error"), playSound("error");
+  if (!cart.length) return showToast('⚠️ Please add items to cart before submitting!', "error"), playSound("error");
 
-  // ✅ Hitung subtotal
+  // ✅ Hitung subtotal, discount, total
   let subtotal = 0;
-  cart.forEach(c=>{
-    subtotal += (Number(c.harga)||0) * (Number(c.qty)||0);
-  });
-
-  // ✅ Hitung discount & grand total
-  let discount = 0;
-  let voucherCode = null;
-  let discountPercent = 0;
+  cart.forEach(c => subtotal += (Number(c.harga)||0) * (Number(c.qty)||0));
+  let discount = 0, voucherCode = null, discountPercent = 0;
   if (activeVoucherData) {
     discountPercent = parseFloat(activeVoucherData.discount) || 0;
     discount = subtotal * (discountPercent / 100);
     voucherCode = activeVoucherData.code;
   }
   const grandTotal = subtotal - discount;
-
-  // ✅ Waktu order otomatis
   const now = new Date();
 
-  // ✅ Data order
   const orderData = {
-    // id akan dibuat otomatis oleh IndexedDB (autoIncrement)
     resto: restoData?.namaRestoran || '',
     customer: name,
-    table: table,
-    date: date,
-    time: time,
-    note: note,
-    items: cart.map(c=>({
+    table,
+    date,
+    time,
+    note,
+    items: cart.map(c => ({
       nama: c.nama,
       qty: c.qty,
       harga: c.harga,
@@ -928,31 +912,40 @@ function sendOrder() {
     orderTime: now.toLocaleString("id-ID", { dateStyle: "short", timeStyle: "medium" })
   };
 
-  // ✅ Simpan ke IndexedDB
-  const tx = db.transaction(STORE_NAME, "readwrite");
-  const store = tx.objectStore(STORE_NAME);
-  const request = store.add(orderData);
+  try {
+    await initDB();
+    const tx = db.transaction("ordersData", "readwrite");
+    const store = tx.objectStore("ordersData");
+    const req = store.add(orderData);
 
-  request.onsuccess = () => {
-    showToast("✅ Order submitted successfully!", "success");
-    playSound("success"); 
-    console.log("✅ Order stored:", orderData);
+    req.onsuccess = (e) => {
+      const newId = e.target.result;
+      showToast("✅ Order submitted successfully!", "success");
+      playSound("success");
+      console.log("✅ Order stored:", orderData);
 
-    // Reset cart & form
-    cart = []; 
-    renderCart?.(); 
-    document.getElementById('custName').value = "";
-    document.getElementById('custTable').value = "";
-    document.getElementById('custDate').value = "";
-    document.getElementById('custTime').value = "";
-    document.getElementById('custNote').value = "";
-  };
+      // kosongkan cart & form
+      cart = []; renderCart();
+      ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.value='';
+      });
 
-  request.onerror = (e) => {
-    console.error("❌ Failed saving order:", e.target.error);
-    showToast("❌ Failed to save order, please try again.", "error");
-    playSound("error");
-  };
+      // ✅ Redirect ke receives.html dengan ID order
+      setTimeout(()=>{
+        window.location.href = `receives.html?orderId=${newId}`;
+      }, 800);
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ Failed saving order:", e.target.error);
+      showToast("❌ Failed to save order, please try again.", "error");
+      playSound("error");
+    };
+
+  } catch(err) {
+    console.error("❌ DB Error:", err);
+    showToast("❌ DB not initialized", "error");
+  }
 }
 
 /* ---------------- SOUND EFFECT ---------------- */
@@ -1041,3 +1034,4 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
+
