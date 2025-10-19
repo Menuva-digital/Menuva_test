@@ -443,6 +443,9 @@ body {
   <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
 </audio>
 
+<button id="clearDataBtn" class="danger-btn" style="background:#c62828;color:#fff;border:none;padding:10px 16px;border-radius:8px;margin-top:8px;">
+  🗑️ Hapus Data
+</button>
 
     <div class="fixed-bar">
       <button class="btn btn-wa" id="btnSend" onclick="sendOrder()">📤 Submit Order</button>
@@ -903,12 +906,11 @@ async function sendOrder() {
   const time = document.getElementById('custTime')?.value || '';
   const note = (document.getElementById('custNote')?.value || '').trim();
 
-  // ✅ Validasi input
   if (!name) return showToast('⚠️ Please fill in customer name!', "error"), playSound("error");
   if (!table) return showToast('⚠️ Please fill in table number!', "error"), playSound("error");
   if (!cart || !cart.length) return showToast('⚠️ Please add items to cart before submitting!', "error"), playSound("error");
 
-  // ✅ Hitung subtotal, discount, grand total
+  // ✅ Hitung subtotal, discount, total
   let subtotal = 0;
   cart.forEach(c => subtotal += (Number(c.harga) || 0) * (Number(c.qty) || 0));
 
@@ -921,7 +923,6 @@ async function sendOrder() {
   const grandTotal = subtotal - discount;
   const now = new Date();
 
-  // ✅ Bentuk data order
   const orderData = {
     resto: restoData?.namaRestoran || '',
     customer: name,
@@ -945,44 +946,28 @@ async function sendOrder() {
   };
 
   try {
-    // pastikan DB siap
-    const dbReady = await initDB();
-    if (!dbReady) throw new Error("DB not ready");
-
+    await initDB();
     const tx = db.transaction("ordersData", "readwrite");
     const store = tx.objectStore("ordersData");
-    const request = store.add(orderData);
+    const req = store.add(orderData);
 
-    request.onsuccess = (e) => {
+    req.onsuccess = (e) => {
       const newId = e.target.result;
       console.log("✅ Order stored:", { ...orderData, id: newId });
       showToast("✅ Order submitted successfully!", "success");
       playSound("success");
 
-      // kosongkan cart & form
-      cart = [];
-      renderCart?.();
-      ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.value='';
-      });
-
-      // redirect aman setelah transaksi selesai
-      tx.oncomplete = () => {
-        setTimeout(() => {
-          window.location.href = `receives.html?orderId=${newId}`;
-        }, 800);
-      };
+      // ✅ Tidak clear form/cart
+      // ✅ Tidak redirect
+      setTimeout(() => {
+        showToast("🧾 Order sedang diproses oleh restoran.", "info");
+      }, 1200);
     };
 
-    request.onerror = (e) => {
+    req.onerror = (e) => {
       console.error("❌ Failed saving order:", e.target.error);
       showToast("❌ Failed to save order, please try again.", "error");
       playSound("error");
-    };
-
-    tx.onerror = (e) => {
-      console.error("❌ Transaction error:", e.target.error);
-      showToast("❌ Transaction failed!", "error");
     };
 
   } catch (err) {
@@ -1073,10 +1058,25 @@ applyVoucherAndUpdateSummary();
   });
 
 })();
+
+  
+  document.getElementById('clearDataBtn')?.addEventListener('click', ()=>{
+  if (!confirm("Yakin mau hapus semua data pesanan di halaman ini?")) return;
+
+  cart = [];
+  renderCart?.();
+  ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+
+  showToast("🧹 Semua data telah dihapus.", "info");
+  playSound("delete");
+});
 </script>
 
 </body>
 </html>
+
 
 
 
