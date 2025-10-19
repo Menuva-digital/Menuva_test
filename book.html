@@ -740,11 +740,12 @@ function renderPromo(list) {
     return;
   }
 
-  promos.forEach(p => {
+  promos.forEach((p, i) => {
     const card = document.createElement('div');
     card.className = 'promo-card';
     card.innerHTML = `
       <img src="${p.image || ''}" class="promo-thumb">
+      <div class="badge">${i + 1}</div>
       <div class="promo-title">${escapeHtml(p.namaPromo || p.namaMenu)}</div>
       <div class="promo-desc">${escapeHtml(p.deskripsi || '')}</div>
       <div class="promo-price">${formatWithActive(p.harga || 0)}</div>
@@ -1039,6 +1040,7 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
+
 
 
 
