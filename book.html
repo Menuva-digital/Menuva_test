@@ -149,18 +149,14 @@ body {
    .promo-card {
   position: relative; /* supaya anak absolute bisa nempel di dalam card */
 }
-    .promo-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  cursor: pointer;
-  transition: transform .12s;
-  position: relative; /* biar badge bisa nempel */
+  .promo-card {
+  position: relative;
+  background: #fff8e1;
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  padding: 16px;
+  text-align: center; /* ✨ Biar semua isi di tengah */
+  overflow: hidden;
 }
 .promo-card:hover { transform: translateY(-4px); }
 
@@ -178,10 +174,11 @@ body {
   text-align: center;
   margin: 2px 0 0 0;
 }
-.promo-menu-desc {
-  font-size: 12px;
-  color: var(--muted);
-  text-align: center;
+.promo-desc {
+  font-size: 14px;
+  color: #444;
+  text-align: center; /* 🧭 pastikan deskripsi center */
+  margin: 4px 0 10px;
 }
 .promo-price {
   font-size: 13px;
@@ -740,21 +737,25 @@ function renderPromo(list) {
   promos.forEach(p => {
     const card = document.createElement('div');
     card.className = 'promo-card';
-    card.style.position = 'relative'; // 🔥 penting biar badge nempel di card
+    card.style.position = 'relative'; // biar badge nempel ke card
+
+    const endAttr = p.tanggalAkhir ? `data-end="${p.tanggalAkhir}"` : '';
 
     card.innerHTML = `
       <div class="promo-badge">${(p.kategori || 'PROMO').toUpperCase()}</div>
-      <img src="${p.image || ''}" class="promo-thumb">
+      ${p.image ? `<img src="${p.image}" class="promo-thumb">` : ''}
       <div class="promo-title">${escapeHtml(p.namaPromo || p.namaMenu)}</div>
       <div class="promo-desc">${escapeHtml(p.deskripsi || '')}</div>
       <div class="promo-price">${formatWithActive(p.harga || 0)}</div>
+      <div class="promo-count" ${endAttr}></div>
     `;
 
+    // Klik = tambah ke cart
     card.onclick = () => addToCartObj(p.namaPromo || p.namaMenu, p.harga);
     grid.appendChild(card);
   });
 
-  startPromoCountdown();
+  startPromoCountdown(); // aktifkan countdown
 }
 
   function updateBadge(cardEl, itemName) {
@@ -1040,6 +1041,7 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
+
 
 
 
