@@ -536,45 +536,66 @@ body {
     return p.get('resto') || null;
   }
 
-/* ------------------ IndexedDB (init & load) ------------------- */
+/* ------------------ IndexedDB (auto fix store) ------------------- */
 function initDB() {
   return new Promise((resolve, reject) => {
     if (db) return resolve(db);
 
-    const req = indexedDB.open(DB_NAME, 6); // 🔼 naik versi (pastikan semua halaman pakai versi ini)
-    
-    req.onerror = () => {
-      console.error("❌ DB open error:", req.error);
-      reject(req.error);
+    const req = indexedDB.open(DB_NAME, 6);
+    req.onerror = () => reject(req.error);
+
+    req.onsuccess = (e) => {
+      db = e.target.result;
+
+      // 🧩 Cek apakah store 'ordersData' sudah ada
+      if (!db.objectStoreNames.contains("ordersData")) {
+        console.warn("⚠️ Store 'ordersData' belum ada. Membuat ulang DB internal...");
+
+        // Buat ulang DB tanpa hapus data lain
+        const newVersion = db.version + 1;
+        db.close();
+        const recreateReq = indexedDB.open(DB_NAME, newVersion);
+
+        recreateReq.onupgradeneeded = (ev) => {
+          const upgradedDB = ev.target.result;
+          if (!upgradedDB.objectStoreNames.contains("ordersData")) {
+            const orders = upgradedDB.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
+            orders.createIndex("status", "status", { unique: false });
+            orders.createIndex("orderTime", "orderTime", { unique: false });
+          }
+        };
+
+        recreateReq.onsuccess = (ev2) => {
+          db = ev2.target.result;
+          console.log("✅ Store 'ordersData' berhasil dibuat otomatis (runtime fix)");
+          resolve(db);
+        };
+
+        recreateReq.onerror = () => reject(recreateReq.error);
+        return;
+      }
+
+      resolve(db);
     };
 
     req.onblocked = () => {
-      console.warn("⚠️ DB upgrade blocked. Tutup semua tab lain yang masih memakai DB ini.");
+      console.warn("⚠️ DB upgrade blocked. Tutup tab lain yang masih pakai DB ini.");
     };
 
     req.onupgradeneeded = (e) => {
       db = e.target.result;
-      console.log("⚙️ Upgrading DB to version", db.version);
 
-      // ✅ store utama untuk data resto/menu
+      // Store utama tetap
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
-        console.log("✅ Store 'menuvaData' dibuat");
       }
 
-      // ✅ store baru khusus order
+      // Store order baru
       if (!db.objectStoreNames.contains("ordersData")) {
         const orders = db.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
         orders.createIndex("status", "status", { unique: false });
         orders.createIndex("orderTime", "orderTime", { unique: false });
-        console.log("✅ Store 'ordersData' dibuat");
       }
-    };
-
-    req.onsuccess = (e) => {
-      db = e.target.result;
-      console.log("✅ DB ready:", db.name, "v" + db.version);
-      resolve(db);
     };
   });
 }
@@ -1056,6 +1077,7 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
+
 
 
 
