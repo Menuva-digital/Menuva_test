@@ -717,7 +717,46 @@ function initDB() {
 
     refreshAllPriceDisplays();
     updateCartCount();
+
+    saveCartToStorage();
   }
+
+  /* ------------------ CART PERSISTENCE ------------------- */
+function saveCartToStorage() {
+  localStorage.setItem("menuva_cart", JSON.stringify(cart));
+}
+
+function loadCartFromStorage() {
+  try {
+    const data = JSON.parse(localStorage.getItem("menuva_cart") || "[]");
+    if (Array.isArray(data)) cart = data;
+  } catch(e) {
+    cart = [];
+  }
+}
+
+function saveCustomerForm() {
+  const formData = {
+    name: document.getElementById('custName')?.value || '',
+    table: document.getElementById('custTable')?.value || '',
+    date: document.getElementById('custDate')?.value || '',
+    time: document.getElementById('custTime')?.value || '',
+    note: document.getElementById('custNote')?.value || ''
+  };
+  localStorage.setItem("menuva_customer", JSON.stringify(formData));
+}
+
+function loadCustomerForm() {
+  try {
+    const data = JSON.parse(localStorage.getItem("menuva_customer") || "{}");
+    if (!data) return;
+    if (data.name) document.getElementById('custName').value = data.name;
+    if (data.table) document.getElementById('custTable').value = data.table;
+    if (data.date) document.getElementById('custDate').value = data.date;
+    if (data.time) document.getElementById('custTime').value = data.time;
+    if (data.note) document.getElementById('custNote').value = data.note;
+  } catch(e) {}
+}
 
   function addToCartObj(name, price) {
     const idx = cart.findIndex(i => i.key === name);
@@ -1063,6 +1102,12 @@ renderPromo(menuPromo);
 renderCart();
 applyVoucherAndUpdateSummary();
 
+    ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('input', saveCustomerForm);
+});
+
+
     // wire up any header locale select default (safe)
     const sel = document.getElementById('localeSelect');
     if (sel) sel.value = localStorage.getItem(LOCALE_KEY) || 'auto';
@@ -1089,10 +1134,3 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
-
-
-
-
-
-
-
