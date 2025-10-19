@@ -104,27 +104,34 @@ header{
 </main>
 
 <script>
-/* ================== DB CONFIG =================== */
+/* ================== DB CONFIG (v6) =================== */
 const DB_NAME = 'MenuvaDB';
-const STORE_NAME = 'menuvaData';
 let db;
 
-/* buka db */
+/* buka / upgrade db */
 function initDB(){
   return new Promise((resolve,reject)=>{
-    const req = indexedDB.open(DB_NAME,1);
+    const req = indexedDB.open(DB_NAME, 6);
     req.onerror = ()=>reject(req.error);
-    req.onsuccess = ()=>{db=req.result;resolve()};
+    req.onsuccess = (e)=>{
+      db = e.target.result;
+      resolve();
+    };
   });
 }
 
-/* ambil semua order */
+/* ambil semua order dari store ordersData */
 function loadOrders(){
-  const tx = db.transaction(STORE_NAME,'readonly');
-  const store = tx.objectStore(STORE_NAME);
+  const tx = db.transaction('ordersData', 'readonly');
+  const store = tx.objectStore('ordersData');
   const req = store.getAll();
   req.onsuccess = ()=>{
-    renderOrders(req.result || []);
+    const orders = req.result || [];
+    renderOrders(orders);
+  };
+  req.onerror = (e)=>{
+    console.error("❌ Gagal load orders:", e.target.error);
+    document.getElementById('ordersBox').innerHTML = "<p style='color:red'>❌ Error loading orders.</p>";
   };
 }
 
@@ -136,14 +143,15 @@ function renderOrders(data){
     box.innerHTML = `<p style="color:var(--muted)">No orders yet.</p>`;
     return;
   }
-  data.sort((a,b)=>b.id-a.id); // terbaru di atas
+  data.sort((a,b)=>b.id - a.id); // terbaru di atas
+
   data.forEach(order=>{
     const div = document.createElement('div');
     div.className = 'order-card';
     div.innerHTML = `
       <div class="order-header">
         <h3>Table ${order.table} - ${order.customer}</h3>
-        <span>${order.date} ${order.time}</span>
+        <span>${order.date || ''} ${order.time || ''}</span>
       </div>
       <div class="order-meta">
         Order ID: ${order.id} | Status: ${order.status}
@@ -151,7 +159,7 @@ function renderOrders(data){
       <div class="order-items">
         ${order.items.map(i=>`
           <div class="order-item">
-            <span>${i.nama} x${i.qty}</span>
+            <span>${i.nama} ×${i.qty}</span>
             <span>${formatHarga(i.total)}</span>
           </div>
         `).join('')}
@@ -159,7 +167,7 @@ function renderOrders(data){
       <div class="order-summary">
         Subtotal: ${formatHarga(order.subtotal)}<br>
         ${order.discount>0?`Discount (${order.voucherCode||''} - ${order.discountPercent}%): -${formatHarga(order.discount)}<br>`:''}
-        Grand Total: ${formatHarga(order.grandTotal)}
+        <strong>Grand Total: ${formatHarga(order.grandTotal)}</strong>
       </div>
       <div class="order-actions">
         <button class="btn btn-print" onclick="printOrder(${order.id})">🖨 Print</button>
@@ -170,38 +178,44 @@ function renderOrders(data){
   });
 }
 
-/* formatter harga */
+/* format harga */
 function formatHarga(amount){
-  return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(amount);
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+  }).format(amount || 0);
 }
 
 /* aksi print */
 function printOrder(id){
-  window.print(); // versi awal simple
+  window.print(); // masih simple versi awal
 }
 
 /* aksi void */
 function voidOrder(id){
-  const tx = db.transaction(STORE_NAME,'readwrite');
-  const store = tx.objectStore(STORE_NAME);
+  const tx = db.transaction('ordersData', 'readwrite');
+  const store = tx.objectStore('ordersData');
   const req = store.get(id);
-  req.onsuccess=()=>{
-    const order=req.result;
+  req.onsuccess = ()=>{
+    const order = req.result;
     if(order){
-      order.status='void';
+      order.status = 'void';
       store.put(order);
       loadOrders();
     }
   };
 }
 
-/* dark mode */
+/* dark mode toggle */
 document.getElementById('darkToggle').addEventListener('click',()=>{
   document.body.classList.toggle('dark-mode');
 });
 
 /* start */
-initDB().then(loadOrders);
+initDB().then(loadOrders).catch(err=>{
+  console.error("❌ DB Init Error:", err);
+});
 </script>
+
 </body>
 </html>
+
