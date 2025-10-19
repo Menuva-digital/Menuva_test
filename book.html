@@ -880,15 +880,17 @@ async function sendOrder() {
   const table = (document.getElementById('custTable')?.value || '').trim();
   const date = document.getElementById('custDate')?.value || '';
   const time = document.getElementById('custTime')?.value || '';
-  const note = document.getElementById('custNote')?.value.trim() || '';
+  const note = (document.getElementById('custNote')?.value || '').trim();
 
+  // ✅ Validasi input
   if (!name) return showToast('⚠️ Please fill in customer name!', "error"), playSound("error");
   if (!table) return showToast('⚠️ Please fill in table number!', "error"), playSound("error");
-  if (!cart.length) return showToast('⚠️ Please add items to cart before submitting!', "error"), playSound("error");
+  if (!cart || !cart.length) return showToast('⚠️ Please add items to cart before submitting!', "error"), playSound("error");
 
-  // ✅ Hitung subtotal, discount, total
+  // ✅ Hitung subtotal, discount, grand total
   let subtotal = 0;
-  cart.forEach(c => subtotal += (Number(c.harga)||0) * (Number(c.qty)||0));
+  cart.forEach(c => subtotal += (Number(c.harga) || 0) * (Number(c.qty) || 0));
+
   let discount = 0, voucherCode = null, discountPercent = 0;
   if (activeVoucherData) {
     discountPercent = parseFloat(activeVoucherData.discount) || 0;
@@ -898,6 +900,7 @@ async function sendOrder() {
   const grandTotal = subtotal - discount;
   const now = new Date();
 
+  // ✅ Bentuk data order
   const orderData = {
     resto: restoData?.namaRestoran || '',
     customer: name,
@@ -909,7 +912,7 @@ async function sendOrder() {
       nama: c.nama,
       qty: c.qty,
       harga: c.harga,
-      total: (Number(c.harga)||0) * (Number(c.qty)||0)
+      total: (Number(c.harga) || 0) * (Number(c.qty) || 0)
     })),
     subtotal,
     discount,
@@ -921,38 +924,49 @@ async function sendOrder() {
   };
 
   try {
-    await initDB();
+    // pastikan DB siap
+    const dbReady = await initDB();
+    if (!dbReady) throw new Error("DB not ready");
+
     const tx = db.transaction("ordersData", "readwrite");
     const store = tx.objectStore("ordersData");
-    const req = store.add(orderData);
+    const request = store.add(orderData);
 
-    req.onsuccess = (e) => {
+    request.onsuccess = (e) => {
       const newId = e.target.result;
+      console.log("✅ Order stored:", { ...orderData, id: newId });
       showToast("✅ Order submitted successfully!", "success");
       playSound("success");
-      console.log("✅ Order stored:", orderData);
 
       // kosongkan cart & form
-      cart = []; renderCart();
+      cart = [];
+      renderCart?.();
       ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
         const el=document.getElementById(id); if(el) el.value='';
       });
 
-      // ✅ Redirect ke receives.html dengan ID order
-      setTimeout(()=>{
-        window.location.href = `receives.html?orderId=${newId}`;
-      }, 800);
+      // redirect aman setelah transaksi selesai
+      tx.oncomplete = () => {
+        setTimeout(() => {
+          window.location.href = `receives.html?orderId=${newId}`;
+        }, 800);
+      };
     };
 
-    req.onerror = (e) => {
+    request.onerror = (e) => {
       console.error("❌ Failed saving order:", e.target.error);
       showToast("❌ Failed to save order, please try again.", "error");
       playSound("error");
     };
 
-  } catch(err) {
+    tx.onerror = (e) => {
+      console.error("❌ Transaction error:", e.target.error);
+      showToast("❌ Transaction failed!", "error");
+    };
+
+  } catch (err) {
     console.error("❌ DB Error:", err);
-    showToast("❌ DB not initialized", "error");
+    showToast("❌ Database not initialized", "error");
   }
 }
 
@@ -1042,5 +1056,6 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
+
 
 
