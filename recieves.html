@@ -286,10 +286,56 @@ function formatHarga(amount){
   }).format(amount || 0);
 }
 
-/* aksi print */
-function printOrder(id){
-  window.print(); // masih simple versi awal
+function printOrder(id) {
+  const card = document.querySelector(`.order-card:nth-child(${id})`);
+  if (!card) {
+    alert("⚠️ Order tidak ditemukan.");
+    return;
+  }
+
+  // buat clone elemen card
+  const printContent = card.cloneNode(true);
+
+  // gaya minimal khusus print
+  const printStyle = `
+    <style>
+      * { font-family: Inter, sans-serif; color: #000; }
+      body { background: #fff; margin: 20px; }
+      .order-card {
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 16px;
+        max-width: 500px;
+        margin: auto;
+      }
+      h3 { margin: 0 0 8px 0; }
+      .order-item { display:flex; justify-content:space-between; margin-bottom:4px; }
+      .order-summary { margin-top:12px; font-weight:bold; }
+      .order-actions { display:none; }
+    </style>
+  `;
+
+  // buka window print
+  const win = window.open('', '', 'width=600,height=800');
+  win.document.write(`
+    <html>
+      <head>
+        <title>Print Order #${id}</title>
+        ${printStyle}
+      </head>
+      <body>${printContent.outerHTML}</body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+
+  // tunggu sedikit supaya CSS kebaca, baru print
+  setTimeout(() => {
+    win.print();
+    win.close();
+  }, 500);
 }
+
 
 /* aksi void */
 function voidOrder(id){
@@ -350,6 +396,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
