@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dine-In Book</title>
+  
   <style>
     /* =====================
        THEME (Light / Dark) & ROOT VARS
@@ -335,6 +336,7 @@ body {
     100% { opacity: 0; transform: translate(-50%, 10px); }
   }
   </style>
+
 </head>
 <body>
 <header>
@@ -664,62 +666,67 @@ function initDB() {
     else el.style.display = 'none';
   }
 
-  function renderCart() {
-    const rows = document.getElementById('cartRows');
-    const empty = document.getElementById('cartEmpty');
-    if (!rows || !empty) return;
-    rows.innerHTML = '';
+function renderCart() {
+  const rows = document.getElementById('cartRows');
+  const empty = document.getElementById('cartEmpty');
+  if (!rows || !empty) return;
+  rows.innerHTML = '';
 
-    if (!cart || cart.length === 0) {
-      empty.style.display = 'block';
-      const cartTotalEl = document.getElementById('cartTotal');
-      const grandTotalEl = document.getElementById('grandTotal');
-      if (cartTotalEl) { cartTotalEl.dataset.raw = 0; cartTotalEl.textContent = formatWithActive(0); }
-      if (grandTotalEl) { grandTotalEl.dataset.raw = 0; grandTotalEl.textContent = formatWithActive(0); }
-      const discountRow = document.getElementById('discountRow');
-      if (discountRow) discountRow.style.display = 'none';
-      updateCartCount();
-      return;
-    }
-
-    empty.style.display = 'none';
-    let total = 0;
-    cart.forEach((c,i)=>{
-      const subtotal = (Number(c.harga)||0) * (Number(c.qty)||0);
-      total += subtotal;
-
-      const row = document.createElement('div');
-      row.className = 'cart-row';
-     row.innerHTML = `
-  <div>
-    <strong>${escapeHtml(c.nama)}</strong>
-    <div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div>
-  </div>
-  <div class="qty-wrap">
-    <button type="button" onclick="window._menuva.updateQty(${i}, -1)">-</button>
-    <input 
-      type="text" 
-      id="cart-qty-${i}" 
-      name="cart-qty-${i}" 
-      value="${c.qty}" 
-      readonly 
-    />
-    <button type="button" onclick="window._menuva.updateQty(${i}, 1)">+</button>
-  </div>
-  <div class="price-right">${formatWithActive(subtotal)}</div>
-  <button class="remove-btn" title="Remove" onclick="window._menuva.removeFromCart(${i})">✕</button>
-`;
-      rows.appendChild(row);
-    });
-
+  if (!cart || cart.length === 0) {
+    empty.style.display = 'block';
     const cartTotalEl = document.getElementById('cartTotal');
-    if (cartTotalEl) cartTotalEl.dataset.raw = String(total);
-
-    refreshAllPriceDisplays();
+    const grandTotalEl = document.getElementById('grandTotal');
+    if (cartTotalEl) { cartTotalEl.dataset.raw = 0; cartTotalEl.textContent = formatWithActive(0); }
+    if (grandTotalEl) { grandTotalEl.dataset.raw = 0; grandTotalEl.textContent = formatWithActive(0); }
+    const discountRow = document.getElementById('discountRow');
+    if (discountRow) discountRow.style.display = 'none';
     updateCartCount();
 
+    // simpan kondisi cart kosong ke storage
     saveCartToStorage();
+    return;
   }
+
+  empty.style.display = 'none';
+  let total = 0;
+  cart.forEach((c,i)=>{
+    const subtotal = (Number(c.harga)||0) * (Number(c.qty)||0);
+    total += subtotal;
+
+    const row = document.createElement('div');
+    row.className = 'cart-row';
+    row.innerHTML = `
+      <div>
+        <strong>${escapeHtml(c.nama)}</strong>
+        <div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div>
+      </div>
+      <div class="qty-wrap">
+        <button type="button" onclick="window._menuva.updateQty(${i}, -1)">-</button>
+        <input 
+          type="text" 
+          id="cart-qty-${i}" 
+          name="cart-qty-${i}" 
+          value="${c.qty}" 
+          readonly 
+        />
+        <button type="button" onclick="window._menuva.updateQty(${i}, 1)">+</button>
+      </div>
+      <div class="price-right">${formatWithActive(subtotal)}</div>
+      <button class="remove-btn" title="Remove" onclick="window._menuva.removeFromCart(${i})">✕</button>
+    `;
+    rows.appendChild(row);
+  });
+
+  const cartTotalEl = document.getElementById('cartTotal');
+  if (cartTotalEl) cartTotalEl.dataset.raw = String(total);
+
+  refreshAllPriceDisplays();
+  updateCartCount();
+
+  // ✅ simpan cart setiap kali render ulang
+  saveCartToStorage();
+}
+
 
   /* ------------------ CART PERSISTENCE ------------------- */
 function saveCartToStorage() {
@@ -1096,17 +1103,23 @@ function playSound(type) {
     const dateInput = document.getElementById('custDate'); if (dateInput) dateInput.value = dateStr;
     const timeInput = document.getElementById('custTime'); if (timeInput) timeInput.value = timeStr;
 
-    // initial render
+  // initial render
 renderMenu();
 renderPromo(menuPromo);
+
+// ✅ restore data dari localStorage dulu (PENTING)
+loadCartFromStorage();
+loadCustomerForm();
+
+// sekarang render berdasarkan data yang sudah di-restore
 renderCart();
 applyVoucherAndUpdateSummary();
 
-    ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
+// pasang listener agar form autosave
+['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
   const el=document.getElementById(id);
   if(el) el.addEventListener('input', saveCustomerForm);
 });
-
 
     // wire up any header locale select default (safe)
     const sel = document.getElementById('localeSelect');
@@ -1117,11 +1130,15 @@ applyVoucherAndUpdateSummary();
 
 })();
 
-  
   document.getElementById('clearDataBtn')?.addEventListener('click', ()=>{
   if (!confirm("Yakin mau hapus semua data pesanan di halaman ini?")) return;
 
   cart = [];
+  // hapus storage
+  localStorage.removeItem("menuva_cart");
+  localStorage.removeItem("menuva_customer");
+  // jika ada voucher yg di-save juga, optional: localStorage.removeItem("voucher");
+
   renderCart?.();
   ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
@@ -1130,6 +1147,7 @@ applyVoucherAndUpdateSummary();
   showToast("🧹 Semua data telah dihapus.", "info");
   playSound("delete");
 });
+
 </script>
 
 </body>
