@@ -109,31 +109,67 @@ const DB_NAME = 'MenuvaDB';
 let db;
 
 /* buka / upgrade db */
-function initDB(){
-  return new Promise((resolve,reject)=>{
-    const req = indexedDB.open(DB_NAME, 6);
-    req.onerror = ()=>reject(req.error);
-    req.onsuccess = (e)=>{
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 7);
+
+    req.onupgradeneeded = (e) => {
       db = e.target.result;
+      if (!db.objectStoreNames.contains('ordersData')) {
+        const store = db.createObjectStore('ordersData', { keyPath: 'id', autoIncrement: true });
+        store.createIndex('status', 'status', { unique: false });
+      }
+      console.log('✅ ordersData store checked/created');
+    };
+
+    req.onsuccess = (e) => {
+      db = e.target.result;
+      console.log('✅ DB connected');
       resolve();
+    };
+
+    req.onerror = () => {
+      console.error('❌ DB Init Error:', req.error);
+      reject(req.error);
     };
   });
 }
 
+/* amanin akses ke store */
+function safeTransaction(storeName, mode = 'readonly') {
+  if (!db) {
+    console.error('❌ Database belum siap.');
+    return null;
+  }
+  try {
+    return db.transaction(storeName, mode).objectStore(storeName);
+  } catch (err) {
+    console.error(`❌ Gagal buka store ${storeName}:`, err);
+    return null;
+  }
+}
+
 /* ambil semua order dari store ordersData */
-function loadOrders(){
-  const tx = db.transaction('ordersData', 'readonly');
-  const store = tx.objectStore('ordersData');
+function loadOrders() {
+  const store = safeTransaction('ordersData', 'readonly');
+  if (!store) {
+    document.getElementById('ordersBox').innerHTML =
+      "<p style='color:red'>❌ ordersData tidak ditemukan. Pastikan book.html sudah mengirim pesanan.</p>";
+    return;
+  }
+
   const req = store.getAll();
-  req.onsuccess = ()=>{
+  req.onsuccess = () => {
     const orders = req.result || [];
     renderOrders(orders);
   };
-  req.onerror = (e)=>{
-    console.error("❌ Gagal load orders:", e.target.error);
-    document.getElementById('ordersBox').innerHTML = "<p style='color:red'>❌ Error loading orders.</p>";
+  req.onerror = (e) => {
+    console.error('❌ Gagal load orders:', e.target.error);
+    document.getElementById('ordersBox').innerHTML =
+      "<p style='color:red'>❌ Error loading orders.</p>";
   };
 }
+
 
 /* render order list */
 function renderOrders(data){
@@ -210,12 +246,16 @@ document.getElementById('darkToggle').addEventListener('click',()=>{
   document.body.classList.toggle('dark-mode');
 });
 
-/* start */
-initDB().then(loadOrders).catch(err=>{
-  console.error("❌ DB Init Error:", err);
+  /* start */
+document.getElementById('ordersBox').innerHTML = "<p style='color:var(--muted)'>Loading orders...</p>";
+initDB().then(loadOrders).catch(err => {
+  console.error('❌ DB Init Error:', err);
+  document.getElementById('ordersBox').innerHTML = "<p style='color:red'>❌ Gagal membuka database.</p>";
 });
+
 </script>
 
 </body>
 </html>
+
 
