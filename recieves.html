@@ -95,6 +95,9 @@ header{
 .theme-btn:hover {
   transform: scale(1.2);
 }
+* {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
 
 </style>
 </head>
@@ -308,20 +311,19 @@ const themeIcon = document.getElementById('themeIcon');
 
 // === apply theme saat load ===
 if (localStorage.getItem('theme') === 'dark') {
-  document.body.classList.add('dark');
+  document.body.classList.add('dark-mode');
   themeIcon.textContent = '🌞';
 } else {
-  document.body.classList.remove('dark');
+  document.body.classList.remove('dark-mode');
   themeIcon.textContent = '🌙';
 }
 
 // === toggle saat diklik ===
 themeToggle.addEventListener('click', () => {
-  const isDark = document.body.classList.toggle('dark');
+  const isDark = document.body.classList.toggle('dark-mode');
   themeIcon.textContent = isDark ? '🌞' : '🌙';
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
 });
-
 
 /* start */
 document.getElementById('ordersBox').innerHTML = `
@@ -348,6 +350,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
