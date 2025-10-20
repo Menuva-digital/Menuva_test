@@ -92,7 +92,11 @@ header{
   <div class="header-inner">
     <div style="display:flex;align-items:center;gap:10px">
       <img id="restoLogo" alt="Logo">
-      <h1 id="restoName">Loading...</h1>
+      <div>
+        <h1 id="restoName">Loading...</h1>
+        <p id="restoAddress" style="font-size:12px;margin:2px 0 0;opacity:0.8"></p>
+        <p id="restoPhone" style="font-size:12px;margin:0;opacity:0.8"></p>
+      </div>
     </div>
     <button id="darkToggle" class="dark-toggle">🌙</button>
   </div>
@@ -108,18 +112,25 @@ header{
 const DB_NAME = 'MenuvaDB';
 let db;
 
-/* buka / upgrade db */
 function initDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 7);
 
     req.onupgradeneeded = (e) => {
       db = e.target.result;
+
+      // ====== ordersData ======
       if (!db.objectStoreNames.contains('ordersData')) {
         const store = db.createObjectStore('ordersData', { keyPath: 'id', autoIncrement: true });
         store.createIndex('status', 'status', { unique: false });
       }
-      console.log('✅ ordersData store checked/created');
+
+      // ====== menuvaData (buat resto info) ======
+      if (!db.objectStoreNames.contains('menuvaData')) {
+        db.createObjectStore('menuvaData', { keyPath: 'id', autoIncrement: true });
+      }
+
+      console.log('✅ stores checked/created');
     };
 
     req.onsuccess = (e) => {
@@ -170,18 +181,30 @@ function loadOrders() {
   };
 }
 
-  /* ================= LOAD RESTO INFO ================= */
-function loadRestoInfo(){
+function loadRestoInfo() {
+  if (!db.objectStoreNames.contains('menuvaData')) {
+    console.warn('⚠️ menuvaData store tidak ditemukan di DB ini.');
+    return;
+  }
+
   const tx = db.transaction('menuvaData', 'readonly');
   const store = tx.objectStore('menuvaData');
-  const req = store.get(1); // biasanya info resto disimpan di id=1
-  req.onsuccess = ()=>{
+  const req = store.get(1); // biasanya id=1 untuk data resto utama
+
+  req.onsuccess = () => {
     const data = req.result;
-    if (!data) return;
+    if (!data) {
+      console.warn('⚠️ Tidak ada data resto tersimpan di menuvaData.');
+      return;
+    }
+
     if (data.restoName) document.getElementById('restoName').textContent = data.restoName;
     if (data.restoLogo) document.getElementById('restoLogo').src = data.restoLogo;
+    if (data.restoAddress) document.getElementById('restoAddress').textContent = data.restoAddress;
+    if (data.restoPhone) document.getElementById('restoPhone').textContent = `📞 ${data.restoPhone}`;
   };
-  req.onerror = ()=>{
+
+  req.onerror = () => {
     console.warn('⚠️ Gagal load resto info');
   };
 }
@@ -286,6 +309,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
