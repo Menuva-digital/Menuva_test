@@ -684,6 +684,7 @@ function renderCart() {
 
     // simpan kondisi cart kosong ke storage
     saveCartToStorage();
+    restoreVoucherFromStorage();
     return;
   }
 
@@ -725,6 +726,8 @@ function renderCart() {
 
   // ✅ simpan cart setiap kali render ulang
   saveCartToStorage();
+  restoreVoucherFromStorage();
+  applyVoucherAndUpdateSummary(); 
 }
 
 
@@ -779,11 +782,20 @@ function loadCustomerForm() {
     renderCart();
   }
 
-  function removeFromCart(index) {
-    if (!cart[index]) return;
-    cart.splice(index,1);
-    renderCart();
+ function removeFromCart(index) {
+  if (!cart[index]) return;
+  cart.splice(index, 1);
+  renderCart();
+  saveCartToStorage(); // pastikan tersimpan ulang
+
+  // kalau cart kosong, bersihkan voucher juga
+  if (cart.length === 0) {
+    activeVoucherData = null;
+    localStorage.removeItem('menuva_voucher');
+    applyVoucherAndUpdateSummary();
   }
+}
+
 
   /* expose these helpers for onclick usage in HTML */
   window._menuva = window._menuva || {};
@@ -939,9 +951,30 @@ function renderPromo(list) {
         voucherMessage.textContent = '';
       }
       applyVoucherAndUpdateSummary();
+      saveVoucherToStorage();
     };
     ['input','keyup','change','blur'].forEach(evt=> voucherInput.addEventListener(evt, apply));
   }
+
+  function saveVoucherToStorage() {
+  if (!activeVoucherData) {
+    localStorage.removeItem('menuva_voucher');
+    return;
+  }
+  localStorage.setItem('menuva_voucher', JSON.stringify(activeVoucherData));
+}
+
+function restoreVoucherFromStorage() {
+  const saved = localStorage.getItem('menuva_voucher');
+  if (!saved) return;
+  try {
+    activeVoucherData = JSON.parse(saved);
+    applyVoucherAndUpdateSummary();
+  } catch(e) {
+    console.warn('Gagal load voucher:', e);
+  }
+}
+
 
   /* ------------------ LOCALE UI ------------------------- */
   function initLocaleSelect(){
@@ -1115,6 +1148,8 @@ loadCustomerForm();
 renderCart();
 applyVoucherAndUpdateSummary();
 
+ restoreVoucherFromStorage();
+
 // pasang listener agar form autosave
 ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
   const el=document.getElementById(id);
@@ -1152,3 +1187,4 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
+
