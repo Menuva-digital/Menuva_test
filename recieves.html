@@ -181,47 +181,38 @@ function loadOrders() {
   };
 }
 
-function loadRestoInfo() {
+/* ================= LOAD RESTO INFO ================= */
+function loadRestoInfo(){
   const tx = db.transaction('menuvaData', 'readonly');
   const store = tx.objectStore('menuvaData');
-  const req = store.get(1); // info resto biasanya disimpan di id=1
+  const req = store.get(1); // data resto tersimpan di id=1
 
   req.onsuccess = () => {
     const data = req.result;
-    console.log('📦 Resto data ditemukan:', data);
-
     if (!data) {
-      document.getElementById('restoName').textContent = 'No Resto Info';
+      console.warn('⚠️ Data resto tidak ditemukan di IndexedDB');
+      document.getElementById('restoName').textContent = 'Unknown Resto';
       return;
     }
 
-    // cek nama resto di beberapa kemungkinan key
-    const name =
-      data.restoName ||
-      data.namaResto ||
-      data.nama ||
-      data.name ||
-      'Unknown Resto';
+    // nama resto
+    const name = data.namaRestoran || data.restoName || 'Unknown Resto';
     document.getElementById('restoName').textContent = name;
 
-    // cek logo di beberapa kemungkinan key
-    const logo =
-      data.restoLogo ||
-      data.logoResto ||
-      data.logo ||
-      data.image ||
-      '';
-    if (logo) {
-      document.getElementById('restoLogo').src = logo;
-    } else {
-      document.getElementById('restoLogo').src =
-        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="100%" height="100%" rx="8" ry="8" fill="%23ccc"/></svg>';
-    }
+    // logo
+    if (data.logo)
+      document.getElementById('restoLogo').src = data.logo;
+
+    // alamat & no telp (opsional jika nanti mau ditampilkan)
+    if (data.restoAddress)
+      console.log('📍 Alamat:', data.restoAddress);
+    if (data.restoPhone)
+      console.log('📞 Telepon:', data.restoPhone);
   };
 
   req.onerror = () => {
     console.warn('⚠️ Gagal load resto info');
-    document.getElementById('restoName').textContent = 'Error Loading Info';
+    document.getElementById('restoName').textContent = 'Unknown Resto';
   };
 }
 
@@ -325,6 +316,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
