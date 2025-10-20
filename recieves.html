@@ -203,11 +203,13 @@ function loadRestoInfo(){
     if (data.logo)
       document.getElementById('restoLogo').src = data.logo;
 
-    // alamat & no telp (opsional jika nanti mau ditampilkan)
+    // alamat
     if (data.restoAddress)
-      console.log('📍 Alamat:', data.restoAddress);
+      document.getElementById('restoAddress').textContent = data.restoAddress;
+
+    // nomor telepon
     if (data.restoPhone)
-      console.log('📞 Telepon:', data.restoPhone);
+      document.getElementById('restoPhone').textContent = `📞 ${data.restoPhone}`;
   };
 
   req.onerror = () => {
@@ -316,6 +318,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
