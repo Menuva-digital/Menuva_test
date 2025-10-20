@@ -182,30 +182,46 @@ function loadOrders() {
 }
 
 function loadRestoInfo() {
-  if (!db.objectStoreNames.contains('menuvaData')) {
-    console.warn('⚠️ menuvaData store tidak ditemukan di DB ini.');
-    return;
-  }
-
   const tx = db.transaction('menuvaData', 'readonly');
   const store = tx.objectStore('menuvaData');
-  const req = store.get(1); // biasanya id=1 untuk data resto utama
+  const req = store.get(1); // info resto biasanya disimpan di id=1
 
   req.onsuccess = () => {
     const data = req.result;
+    console.log('📦 Resto data ditemukan:', data);
+
     if (!data) {
-      console.warn('⚠️ Tidak ada data resto tersimpan di menuvaData.');
+      document.getElementById('restoName').textContent = 'No Resto Info';
       return;
     }
 
-    if (data.restoName) document.getElementById('restoName').textContent = data.restoName;
-    if (data.restoLogo) document.getElementById('restoLogo').src = data.restoLogo;
-    if (data.restoAddress) document.getElementById('restoAddress').textContent = data.restoAddress;
-    if (data.restoPhone) document.getElementById('restoPhone').textContent = `📞 ${data.restoPhone}`;
+    // cek nama resto di beberapa kemungkinan key
+    const name =
+      data.restoName ||
+      data.namaResto ||
+      data.nama ||
+      data.name ||
+      'Unknown Resto';
+    document.getElementById('restoName').textContent = name;
+
+    // cek logo di beberapa kemungkinan key
+    const logo =
+      data.restoLogo ||
+      data.logoResto ||
+      data.logo ||
+      data.image ||
+      '';
+    if (logo) {
+      document.getElementById('restoLogo').src = logo;
+    } else {
+      document.getElementById('restoLogo').src =
+        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="100%" height="100%" rx="8" ry="8" fill="%23ccc"/></svg>';
+    }
   };
 
   req.onerror = () => {
     console.warn('⚠️ Gagal load resto info');
+    document.getElementById('restoName').textContent = 'Error Loading Info';
   };
 }
 
@@ -309,6 +325,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
