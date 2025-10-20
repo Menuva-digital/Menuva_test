@@ -170,6 +170,21 @@ function loadOrders() {
   };
 }
 
+  /* ================= LOAD RESTO INFO ================= */
+function loadRestoInfo(){
+  const tx = db.transaction('menuvaData', 'readonly');
+  const store = tx.objectStore('menuvaData');
+  const req = store.get(1); // biasanya info resto disimpan di id=1
+  req.onsuccess = ()=>{
+    const data = req.result;
+    if (!data) return;
+    if (data.restoName) document.getElementById('restoName').textContent = data.restoName;
+    if (data.restoLogo) document.getElementById('restoLogo').src = data.restoLogo;
+  };
+  req.onerror = ()=>{
+    console.warn('⚠️ Gagal load resto info');
+  };
+}
 
 /* render order list */
 function renderOrders(data){
@@ -179,7 +194,7 @@ function renderOrders(data){
     box.innerHTML = `<p style="color:var(--muted)">No orders yet.</p>`;
     return;
   }
-  data.sort((a,b)=>b.id - a.id); // terbaru di atas
+  data.sort((a,b)=>a.id - b.id); // terbaru di bawah
 
   data.forEach(order=>{
     const div = document.createElement('div');
@@ -246,16 +261,31 @@ document.getElementById('darkToggle').addEventListener('click',()=>{
   document.body.classList.toggle('dark-mode');
 });
 
-  /* start */
-document.getElementById('ordersBox').innerHTML = "<p style='color:var(--muted)'>Loading orders...</p>";
-initDB().then(loadOrders).catch(err => {
-  console.error('❌ DB Init Error:', err);
-  document.getElementById('ordersBox').innerHTML = "<p style='color:red'>❌ Gagal membuka database.</p>";
-});
+/* start */
+document.getElementById('ordersBox').innerHTML = `
+  <p style="color:var(--muted)">⏳ Loading orders...</p>
+`;
+
+initDB()
+  .then(() => {
+    // ✅ tampilkan logo & nama resto
+    loadRestoInfo();
+
+    // ✅ tampilkan daftar pesanan
+    loadOrders();
+  })
+  .catch(err => {
+    console.error('❌ DB Init Error:', err);
+    document.getElementById('ordersBox').innerHTML = `
+      <p style="color:red">❌ Gagal membuka database. Periksa IndexedDB di browser.</p>
+    `;
+  });
+
 
 </script>
 
 </body>
 </html>
+
 
 
