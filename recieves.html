@@ -306,7 +306,7 @@ function voidOrder(id){
 const themeToggle = document.getElementById('themeToggle');
 const themeIcon = document.getElementById('themeIcon');
 
-// === cek localStorage ===
+// === apply theme saat load ===
 if (localStorage.getItem('theme') === 'dark') {
   document.body.classList.add('dark');
   themeIcon.textContent = '🌞';
@@ -315,10 +315,9 @@ if (localStorage.getItem('theme') === 'dark') {
   themeIcon.textContent = '🌙';
 }
 
-// === tombol klik ganti tema ===
+// === toggle saat diklik ===
 themeToggle.addEventListener('click', () => {
-  document.body.classList.toggle('dark');
-  const isDark = document.body.classList.contains('dark');
+  const isDark = document.body.classList.toggle('dark');
   themeIcon.textContent = isDark ? '🌞' : '🌙';
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
 });
@@ -349,6 +348,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
