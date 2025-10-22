@@ -187,6 +187,21 @@ function initDB() {
     };
   });
 }
+/* ================== REAL-TIME UPDATER ================== */
+const bc = new BroadcastChannel('orders_channel');
+
+// Dengarkan sinyal update dari tab lain
+bc.onmessage = (event) => {
+  if (event.data === 'update_orders') {
+    console.log('📡 Update order diterima (real-time refresh)');
+    loadOrders(); // reload daftar order tanpa refresh halaman
+  }
+};
+
+// Fungsi untuk kirim sinyal update ke semua tab
+function notifyOrdersUpdated() {
+  bc.postMessage('update_orders');
+}
 
 /* amanin akses ke store */
 function safeTransaction(storeName, mode = 'readonly') {
@@ -411,20 +426,30 @@ function printOrder(id) {
     win.close();
   }, 500);
 }
-
-
-/* aksi void */
-function voidOrder(id){
+/* aksi void (real-time update) */
+function voidOrder(id) {
   const tx = db.transaction('ordersData', 'readwrite');
   const store = tx.objectStore('ordersData');
   const req = store.get(id);
-  req.onsuccess = ()=>{
+
+  req.onsuccess = () => {
     const order = req.result;
-    if(order){
+    if (order) {
       order.status = 'void';
       store.put(order);
-      loadOrders();
+
+      tx.oncomplete = () => {
+        console.log(`🗑 Order #${id} berhasil diubah menjadi void`);
+        loadOrders();        // 🔄 refresh tampilan lokal
+        notifyOrdersUpdated(); // 📡 kirim sinyal update ke tab lain
+      };
+    } else {
+      console.warn(`⚠️ Order dengan ID ${id} tidak ditemukan.`);
     }
+  };
+
+  req.onerror = (e) => {
+    console.error('❌ Gagal mengambil order:', e.target.error);
   };
 }
 
@@ -472,6 +497,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
