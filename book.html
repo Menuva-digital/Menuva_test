@@ -1124,85 +1124,107 @@ function playSound(type) {
   window.sendOrder = sendOrder;
   window.switchTab = switchTab;
 
-  /* ------------------ INIT (on DOM ready) ---------------- */
-  window.addEventListener('DOMContentLoaded', async ()=>{
-    initLocaleSelect();
-    initVoucherInput();
+ /* ------------------ INIT (on DOM ready) ---------------- */
+window.addEventListener('DOMContentLoaded', async () => {
+  // ========== Inisialisasi Locale & Voucher ==========
+  initLocaleSelect();
+  initVoucherInput();
 
-    // init DB & load data (best-effort: resolve null if no db)
-    try{
-      await initDB();
-      const restoId = getQueryRestoId();
-      const data = await loadDataFromDB(restoId);
-      restoData = data || {};
-      menuData = Array.isArray(data?.menu) ? data.menu : [];
-      menuPromo = Array.isArray(data?.menuPromo) ? data.menuPromo : [];
-    }catch(e){ console.warn('DB init error',e); }
+  try {
+    // ========== Buka DB ==========
+    await initDB();
+    const restoId = getQueryRestoId();
+    const data = await loadDataFromDB(restoId);
+    restoData = data || {};
+    menuData = Array.isArray(data?.menu) ? data.menu : [];
+    menuPromo = Array.isArray(data?.menuPromo) ? data.menuPromo : [];
+  } catch (e) {
+    console.warn('⚠️ DB init error:', e);
+  }
 
-    // header info (defensive)
-    const logoEl = document.getElementById('restoLogo'); if (logoEl) { logoEl.src = restoData?.logo || ''; logoEl.style.display = restoData?.logo ? 'block' : 'none'; }
-    const nameEl = document.getElementById('restoName'); if (nameEl) nameEl.innerText = restoData?.namaRestoran || 'Nama Restoran';
-    const alamatEl = document.getElementById('alamatRestoranDisplay'); if (alamatEl) alamatEl.innerText = restoData?.restoAddress || '';
-    const telEl = document.getElementById('teleponRestoranDisplay'); if (telEl) telEl.innerText = restoData?.restoPhone || '';
+  // ========== Header Info ==========
+  const logoEl = document.getElementById('restoLogo');
+  if (logoEl) {
+    logoEl.src = restoData?.logo || '';
+    logoEl.style.display = restoData?.logo ? 'block' : 'none';
+  }
 
-    // set default date/time
-    const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    const dateInput = document.getElementById('custDate'); if (dateInput) dateInput.value = dateStr;
-    const timeInput = document.getElementById('custTime'); if (timeInput) timeInput.value = timeStr;
+  const nameEl = document.getElementById('restoName');
+  if (nameEl) nameEl.innerText = restoData?.namaRestoran || 'Nama Restoran';
 
-  // initial render
-renderMenu();
-renderPromo(menuPromo);
+  const alamatEl = document.getElementById('alamatRestoranDisplay');
+  if (alamatEl) alamatEl.innerText = restoData?.restoAddress || '';
 
-// ✅ restore data dari localStorage dulu (PENTING)
-loadCartFromStorage();
-loadCustomerForm();
+  const telEl = document.getElementById('teleponRestoranDisplay');
+  if (telEl) telEl.innerText = restoData?.restoPhone || '';
 
-// sekarang render berdasarkan data yang sudah di-restore
-renderCart();
-applyVoucherAndUpdateSummary();
+  // ========== Default Date/Time ==========
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
- restoreVoucherFromStorage();
+  const dateInput = document.getElementById('custDate');
+  if (dateInput) dateInput.value = dateStr;
+  const timeInput = document.getElementById('custTime');
+  if (timeInput) timeInput.value = timeStr;
 
-// pasang listener agar form autosave
-['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
-  const el=document.getElementById(id);
-  if(el) el.addEventListener('input', saveCustomerForm);
+  // ========== Render Awal ==========
+  renderMenu();
+  renderPromo(menuPromo);
+
+  // restore data dari localStorage
+  loadCartFromStorage();
+  loadCustomerForm();
+  renderCart();
+  applyVoucherAndUpdateSummary();
+  restoreVoucherFromStorage();
+
+  // ========== Auto Save Customer Form ==========
+  ['custName', 'custTable', 'custDate', 'custTime', 'custNote'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', saveCustomerForm);
+  });
+
+  // ========== Locale Select ==========
+  const sel = document.getElementById('localeSelect');
+  if (sel) sel.value = localStorage.getItem(LOCALE_KEY) || 'auto';
+
+  console.log('✅ Menuva JS initialized');
+
+  // ========== 🔴 Broadcast Channel: Realtime Sync ke receives.html ==========
+  const bc = new BroadcastChannel('orders_channel');
+  window.notifyOrdersUpdated = () => {
+    bc.postMessage('update_orders');
+    console.log('📡 Orders broadcast dikirim ke receives.html');
+  };
 });
 
-    // wire up any header locale select default (safe)
-    const sel = document.getElementById('localeSelect');
-    if (sel) sel.value = localStorage.getItem(LOCALE_KEY) || 'auto';
-
-    console.log('menuva JS initialized');
-  });
-
-})();
-
-  document.getElementById('clearDataBtn')?.addEventListener('click', ()=>{
-  if (!confirm("Yakin mau hapus semua data pesanan di halaman ini?")) return;
+/* ------------------ CLEAR DATA ------------------ */
+document.getElementById('clearDataBtn')?.addEventListener('click', () => {
+  if (!confirm('Yakin mau hapus semua data pesanan di halaman ini?')) return;
 
   cart = [];
-  // hapus storage
-  localStorage.removeItem("menuva_cart");
-  localStorage.removeItem("menuva_customer");
-  // jika ada voucher yg di-save juga, optional: localStorage.removeItem("voucher");
+
+  // hapus local storage
+  localStorage.removeItem('menuva_cart');
+  localStorage.removeItem('menuva_customer');
+  // localStorage.removeItem('voucher'); // optional
 
   renderCart?.();
-  ['custName','custTable','custDate','custTime','custNote'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
+  ['custName', 'custTable', 'custDate', 'custTime', 'custNote'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
 
-  showToast("🧹 Semua data telah dihapus.", "info");
-  playSound("delete");
+  showToast('🧹 Semua data telah dihapus.', 'info');
+  playSound('delete');
 });
 
 </script>
 
 </body>
 </html>
+
 
 
