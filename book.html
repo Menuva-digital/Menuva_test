@@ -626,6 +626,10 @@ function initDB() {
   });
 }
 
+  /* ================== REALTIME BROADCAST CHANNEL ================== */
+const bc = new BroadcastChannel("menuvaOrders");
+
+
  function loadDataFromDB(restoId) {
   return new Promise((resolve) => {
     if (!db) return resolve(null);
@@ -998,7 +1002,7 @@ function restoreVoucherFromStorage() {
     try { applyVoucherAndUpdateSummary(); } catch(e){}
   }
 
-/* ------------------ SAVE ORDER (NEW STORE) ------------- */
+/* ------------------ SAVE ORDER (NEW STORE + REALTIME BROADCAST) ------------- */
 async function sendOrder() {
   const name = (document.getElementById('custName')?.value || '').trim();
   const table = (document.getElementById('custTable')?.value || '').trim();
@@ -1051,16 +1055,29 @@ async function sendOrder() {
     const store = tx.objectStore("ordersData");
     const req = store.add(orderData);
 
-   req.onsuccess = (e) => {
-    const newId = e.target.result;
-    console.log("✅ Order stored:", { ...orderData, id: newId });
-    showToast("✅ Order submitted successfully!", "success", "top");
-    playSound("success");
+    req.onsuccess = (e) => {
+      const newId = e.target.result;
+      console.log("✅ Order stored:", { ...orderData, id: newId });
+      showToast("✅ Order submitted successfully!", "success", "top");
+      playSound("success");
 
-    setTimeout(() => {
-      showToast("🧾 Order is being processed", "info", "bottom");
-    }, 1200);
-  };
+      // ✅ Kirim sinyal real-time ke receives.html
+      try {
+        const bc = new BroadcastChannel("menuvaOrders");
+        bc.postMessage({ type: "newOrder", data: { ...orderData, id: newId } });
+        bc.close();
+      } catch (err) {
+        console.warn("⚠️ Broadcast gagal:", err);
+      }
+
+      // 🧹 Bersihkan cart setelah dikirim
+      setTimeout(() => {
+        cart = [];
+        saveCartToStorage();
+        renderCart();
+        showToast("🧾 Order is being processed", "info", "bottom");
+      }, 1200);
+    };
 
     req.onerror = (e) => {
       console.error("❌ Failed saving order:", e.target.error);
@@ -1187,4 +1204,5 @@ applyVoucherAndUpdateSummary();
 
 </body>
 </html>
+
 
