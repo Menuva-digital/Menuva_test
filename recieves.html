@@ -122,6 +122,14 @@ header{
 .date-btn:hover {
   opacity: 0.85;
 }
+.order-note {
+  background: rgba(255, 230, 180, 0.2);
+  border-left: 3px solid #f9b84a;
+  padding: 6px 10px;
+  margin: 6px 0 10px 0;
+  font-size: 0.9rem;
+  color: #444;
+}
 
 </style>
 </head>
@@ -345,6 +353,12 @@ function renderOrdersByDate(data, selectedDate) {
       <div class="order-meta">
         Order ID: ${order.id} | Status: ${order.status}
       </div>
+
+      ${order.note ? `
+      <div class="order-note">
+        📝 <b>Note:</b> ${order.note}
+      </div>` : ''}
+
       <div class="order-items">
         ${order.items.map(i => `
           <div class="order-item">
@@ -353,6 +367,7 @@ function renderOrdersByDate(data, selectedDate) {
           </div>
         `).join('')}
       </div>
+
       <div class="order-summary">
         Subtotal: ${formatHarga(order.subtotal)}<br>
         ${order.discount > 0
@@ -361,6 +376,7 @@ function renderOrdersByDate(data, selectedDate) {
         }
         <strong>Grand Total: ${formatHarga(order.grandTotal)}</strong>
       </div>
+
       <div class="order-actions">
         <button class="btn btn-print" onclick="printOrder(${order.id})">🖨 Print</button>
         <button class="btn btn-void" onclick="voidOrder(${order.id})">❌ Void</button>
@@ -497,16 +513,3 @@ initDB()
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
