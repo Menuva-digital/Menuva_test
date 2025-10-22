@@ -98,6 +98,30 @@ header{
 * {
   transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.date-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+.date-btn.active {
+  background: var(--brand);
+  color: #fff;
+}
+.date-btn:hover {
+  opacity: 0.85;
+}
 
 </style>
 </head>
@@ -236,29 +260,78 @@ function loadRestoInfo(){
   };
 }
 
-/* render order list */
-function renderOrders(data){
+function renderOrders(data) {
   const box = document.getElementById('ordersBox');
   box.innerHTML = '';
-  if(!data.length){
+
+  if (!data.length) {
     box.innerHTML = `<p style="color:var(--muted)">No orders yet.</p>`;
     return;
   }
-  data.sort((a,b)=>a.id - b.id); // terbaru di bawah
 
-  data.forEach(order=>{
+  // Urutkan berdasarkan tanggal (lama ke baru)
+  data.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Ambil semua tanggal unik
+  const uniqueDates = [...new Set(data.map(o => o.date || 'Unknown Date'))];
+
+  // ======== FILTER NAV (TOMBOL PER TANGGAL) ========
+  const filterBar = document.createElement('div');
+  filterBar.className = 'filter-bar';
+  filterBar.innerHTML = uniqueDates
+    .map(
+      (tgl, idx) =>
+        `<button class="date-btn ${idx === uniqueDates.length - 1 ? 'active' : ''}" data-date="${tgl}">${tgl}</button>`
+    )
+    .join('');
+  box.appendChild(filterBar);
+
+  // ======== TEMPAT ORDER ========
+  const listContainer = document.createElement('div');
+  listContainer.id = 'ordersList';
+  box.appendChild(listContainer);
+
+  // tampilkan default tanggal terakhir
+  const defaultDate = uniqueDates[uniqueDates.length - 1];
+  renderOrdersByDate(data, defaultDate);
+
+  // Event klik pada tombol tanggal
+  box.querySelectorAll('.date-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // ubah highlight
+      box.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // render ulang
+      renderOrdersByDate(data, btn.dataset.date);
+    });
+  });
+}
+
+/* render hanya untuk tanggal tertentu */
+function renderOrdersByDate(data, selectedDate) {
+  const listContainer = document.getElementById('ordersList');
+  listContainer.innerHTML = '';
+
+  const filtered = data.filter(o => (o.date || 'Unknown Date') === selectedDate);
+
+  if (!filtered.length) {
+    listContainer.innerHTML = `<p style="color:var(--muted)">No orders for ${selectedDate}.</p>`;
+    return;
+  }
+
+  filtered.forEach(order => {
     const div = document.createElement('div');
     div.className = 'order-card';
     div.innerHTML = `
       <div class="order-header">
-        <h3>Table ${order.table} - ${order.customer}</h3>
-        <span>${order.date || ''} ${order.time || ''}</span>
+        <h3>Table ${order.table || '-'} - ${order.customer || '-'}</h3>
+        <span>${order.time || ''}</span>
       </div>
       <div class="order-meta">
         Order ID: ${order.id} | Status: ${order.status}
       </div>
       <div class="order-items">
-        ${order.items.map(i=>`
+        ${order.items.map(i => `
           <div class="order-item">
             <span>${i.nama} ×${i.qty}</span>
             <span>${formatHarga(i.total)}</span>
@@ -267,7 +340,10 @@ function renderOrders(data){
       </div>
       <div class="order-summary">
         Subtotal: ${formatHarga(order.subtotal)}<br>
-        ${order.discount>0?`Discount (${order.voucherCode||''} - ${order.discountPercent}%): -${formatHarga(order.discount)}<br>`:''}
+        ${order.discount > 0
+          ? `Discount (${order.voucherCode || ''} - ${order.discountPercent}%): -${formatHarga(order.discount)}<br>`
+          : ''
+        }
         <strong>Grand Total: ${formatHarga(order.grandTotal)}</strong>
       </div>
       <div class="order-actions">
@@ -275,7 +351,7 @@ function renderOrders(data){
         <button class="btn btn-void" onclick="voidOrder(${order.id})">❌ Void</button>
       </div>
     `;
-    box.appendChild(div);
+    listContainer.appendChild(div);
   });
 }
 
@@ -396,6 +472,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
