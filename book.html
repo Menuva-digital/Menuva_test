@@ -1008,7 +1008,7 @@ async function sendOrder() {
   const table = (document.getElementById('custTable')?.value || '').trim();
   const date = document.getElementById('custDate')?.value || '';
   const time = document.getElementById('custTime')?.value || '';
-  const note = (document.getElementById('custNote')?.value || '').trim();
+  const note = (document.getElementById('custNote')?.value || '').trim(); // ✅ ambil notes
 
   if (!name) return showToast('⚠️ Please fill in customer name!', "error"), playSound("error");
   if (!table) return showToast('⚠️ Please fill in table number!', "error"), playSound("error");
@@ -1027,13 +1027,14 @@ async function sendOrder() {
   const grandTotal = subtotal - discount;
   const now = new Date();
 
+  // ✅ Data lengkap termasuk note
   const orderData = {
     resto: restoData?.namaRestoran || '',
     customer: name,
     table,
     date,
     time,
-    note,
+    note: note || '-', // ✅ simpan note walau kosong
     items: cart.map(c => ({
       nama: c.nama,
       qty: c.qty,
@@ -1061,10 +1062,13 @@ async function sendOrder() {
       showToast("✅ Order submitted successfully!", "success", "top");
       playSound("success");
 
-      // ✅ Kirim sinyal real-time ke receives.html
+      // ✅ Kirim sinyal real-time ke receives.html + pastikan note ikut
       try {
         const bc = new BroadcastChannel("menuvaOrders");
-        bc.postMessage({ type: "newOrder", data: { ...orderData, id: newId } });
+        bc.postMessage({
+          type: "newOrder",
+          data: { ...orderData, id: newId }
+        });
         bc.close();
       } catch (err) {
         console.warn("⚠️ Broadcast gagal:", err);
@@ -1090,6 +1094,7 @@ async function sendOrder() {
     showToast("❌ Database not initialized", "error");
   }
 }
+
 
 /* ---------------- SOUND EFFECT ---------------- */
 function playSound(type) {
@@ -1225,6 +1230,7 @@ document.getElementById('clearDataBtn')?.addEventListener('click', () => {
 
 </body>
 </html>
+
 
 
 
