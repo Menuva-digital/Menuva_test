@@ -132,7 +132,31 @@ header{
   line-height: 1.4;
   white-space: pre-wrap; /* biar line break di notes muncul */
 }
-
+.new-order-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #222;
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  z-index: 9999;
+}
+.new-order-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast-icon {
+  font-size: 1.4em;
+}
 </style>
 </head>
 <body>
@@ -198,16 +222,48 @@ function initDB() {
     };
   });
 }
+  
+  /* ================== NOTIFIKASI ORDER BARU ================== */
+function showNewOrderNotification() {
+  // ====== 1️⃣ Notifikasi visual ======
+  const notif = document.createElement('div');
+  notif.className = 'new-order-toast';
+  notif.innerHTML = `
+    <div class="toast-icon">🛎️</div>
+    <div class="toast-text">Pesanan baru diterima!</div>
+  `;
+  document.body.appendChild(notif);
+
+  // animasi muncul
+  setTimeout(() => notif.classList.add('show'), 50);
+
+  // hilang otomatis setelah 4 detik
+  setTimeout(() => {
+    notif.classList.remove('show');
+    setTimeout(() => notif.remove(), 500);
+  }, 4000);
+
+  // ====== 2️⃣ Notifikasi suara ======
+  try {
+    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+    audio.volume = 0.5;
+    audio.play().catch(()=>{});
+  } catch (err) {
+    console.warn('⚠️ Gagal memutar suara notif:', err);
+  }
+}
+
 /* ================== REAL-TIME UPDATER ================== */
 const bc = new BroadcastChannel("menuvaOrders");
 
 
 // Dengarkan sinyal update dari tab lain
 bc.onmessage = (event) => {
- if (event.data?.type === 'newOrder') {
- console.log('📡 Pesanan baru diterima dari book.html');
-loadOrders(); // reload daftar order
-}
+  if (event.data?.type === 'newOrder') {
+    console.log('📡 Pesanan baru diterima dari book.html');
+    loadOrders(); // 🔄 reload daftar order
+    showNewOrderNotification(); // 🔔 tampilkan notifikasi visual + suara
+  }
 };
 
 // Fungsi untuk kirim sinyal update ke semua tab
@@ -241,7 +297,6 @@ function loadOrders() {
   const req = store.getAll();
   req.onsuccess = () => {
     const orders = req.result || [];
-    console.log("📦 Data dari IndexedDB (ordersData):", orders);
     renderOrders(orders);
   };
   req.onerror = (e) => {
@@ -518,6 +573,7 @@ initDB()
 
 </body>
 </html>
+
 
 
 
