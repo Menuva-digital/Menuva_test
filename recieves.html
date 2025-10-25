@@ -158,7 +158,6 @@ header{
 </main>
 
 <script>
-console.log("📦 Data Receives:", receiveData);
 
 /* ================== DB CONFIG (v7) =================== */
 const DB_NAME = 'MenuvaDB';
@@ -240,6 +239,7 @@ function loadOrders() {
   const req = store.getAll();
   req.onsuccess = () => {
     const orders = req.result || [];
+    console.log("📦 Data dari IndexedDB (ordersData):", orders);
     renderOrders(orders);
   };
   req.onerror = (e) => {
@@ -516,5 +516,6 @@ initDB()
 
 </body>
 </html>
+
 
 
