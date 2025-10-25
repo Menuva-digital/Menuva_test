@@ -157,6 +157,27 @@ header{
 .toast-icon {
   font-size: 1.4em;
 }
+  #backToAdmin {
+  text-align: left;
+  margin: 12px 0 16px 12px;
+}
+
+#backToAdmin button {
+  background-color: var(--accent, #2563eb);
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+#backToAdmin button:hover {
+  background-color: #1e40af;
+  transform: scale(1.03);
+}
+
 </style>
 </head>
 <body>
@@ -182,9 +203,13 @@ header{
   <h2 style="margin-bottom:16px">📥 Incoming Orders</h2>
   <div id="ordersBox"></div>
 </main>
+  
+<!-- Tombol kembali -->
+<div id="backToAdmin">
+  <button onclick="goBackToAdmin()">⬅ Kembali ke Admin</button>
+</div>
 
 <script>
-
 /* ================== DB CONFIG (v7) =================== */
 const DB_NAME = 'MenuvaDB';
 let db;
@@ -222,7 +247,6 @@ function initDB() {
     };
   });
 }
-  
   /* ================== NOTIFIKASI ORDER BARU ================== */
 function showNewOrderNotification() {
   // ====== 1️⃣ Notifikasi visual ======
@@ -230,7 +254,7 @@ function showNewOrderNotification() {
   notif.className = 'new-order-toast';
   notif.innerHTML = `
     <div class="toast-icon">🛎️</div>
-    <div class="toast-text">Pesanan baru diterima!</div>
+    <div class="toast-text">New Order!</div>
   `;
   document.body.appendChild(notif);
 
@@ -241,13 +265,15 @@ function showNewOrderNotification() {
   setTimeout(() => {
     notif.classList.remove('show');
     setTimeout(() => notif.remove(), 500);
-  }, 4000);
+  }, 8000);
 
-  // ====== 2️⃣ Notifikasi suara ======
+  // ====== 2️⃣ Notifikasi suara (pakai file lokal) ======
   try {
-    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-    audio.volume = 0.5;
-    audio.play().catch(()=>{});
+    const audio = new Audio('./beep.mp3'); // ✅ file lokal
+    audio.volume = 0.6;                    // sesuaikan volume
+    audio.play().catch(() => {
+      console.warn('⚠️ Browser menolak autoplay suara (butuh interaksi user dulu).');
+    });
   } catch (err) {
     console.warn('⚠️ Gagal memutar suara notif:', err);
   }
@@ -567,14 +593,12 @@ initDB()
       <p style="color:red">❌ Gagal membuka database. Periksa IndexedDB di browser.</p>
     `;
   });
-
+  
+function goBackToAdmin() {
+  // arahkan balik ke admin.html
+  window.location.href = 'admin.html';
+}
 
 </script>
-
 </body>
 </html>
-
-
-
-
-
