@@ -196,14 +196,15 @@ function initDB() {
   });
 }
 /* ================== REAL-TIME UPDATER ================== */
-const bc = new BroadcastChannel('orders_channel');
+const bc = new BroadcastChannel("menuvaOrders");
+
 
 // Dengarkan sinyal update dari tab lain
 bc.onmessage = (event) => {
-  if (event.data === 'update_orders') {
-    console.log('📡 Update order diterima (real-time refresh)');
-    loadOrders(); // reload daftar order tanpa refresh halaman
-  }
+ if (event.data?.type === 'newOrder') {
+ console.log('📡 Pesanan baru diterima dari book.html');
+loadOrders(); // reload daftar order
+}
 };
 
 // Fungsi untuk kirim sinyal update ke semua tab
@@ -513,3 +514,4 @@ initDB()
 
 </body>
 </html>
+
