@@ -1946,25 +1946,35 @@ async function saveVoucher() {
 
   const voucher = { code, discount, expiry };
 
-  // simpan juga ke localStorage biar renderVoucher bisa baca
+  // simpan ke localStorage untuk tampilan cepat
   localStorage.setItem("voucher", JSON.stringify(voucher));
 
-  // push ke server
-  /*
   try {
-    await fetch("https://yourserver.com/api/voucher", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(voucher),
-    });
-    alert("Voucher berhasil disimpan ke server!");
-  } catch (err) {
-    console.error("Gagal simpan ke server", err);
-    alert("Voucher tersimpan lokal. Sinkron gagal!");
-  }
-  */
+    // === Simpan juga ke IndexedDB ===
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
 
-  renderVoucher();
+    // Ambil data lama dulu (jika ada)
+    const getReq = store.get(1);
+    getReq.onsuccess = async (e) => {
+      const existingData = e.target.result || { id: 1 };
+      existingData.menuVoucher = [voucher]; // bisa multi voucher kalau mau
+
+      const putReq = store.put(existingData);
+      putReq.onsuccess = () => {
+        console.log("💾 Voucher tersimpan ke IndexedDB:", voucher);
+        renderVoucher();
+      };
+      putReq.onerror = (err) => {
+        console.error("❌ Gagal simpan voucher ke DB:", err);
+      };
+    };
+  } catch (err) {
+    console.error("🔥 Error IndexedDB:", err);
+  }
+
+  // opsional: bisa kirim ke server kalau ada API
 }
 
   function renderVoucher() {
@@ -2006,6 +2016,7 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
 
 
