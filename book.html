@@ -1275,39 +1275,42 @@ if (clearBtn) {
   const newBtn = document.getElementById('clearDataBtn');
   newBtn.addEventListener('click', () => clearCustomerData(true));
 }
-
-  /* ------------------ DARK MODE ---------------------- */
+  
+})(); 
+</script>
+<script>
+/* ======================
+   DARK MODE HANDLER
+   ====================== */
 function initDarkMode() {
-  const toggle = document.getElementById('darkToggle');
-  if (!toggle) return;
+  const toggleBtn = document.getElementById('darkToggle');
+  if (!toggleBtn) return;
 
-  // 🌓 Baca preferensi dari localStorage
-  const savedTheme = localStorage.getItem('menuva_theme') || 'light';
+  // 🔹 Baca preferensi user dari localStorage
+  const savedTheme = localStorage.getItem('menuva_theme');
   if (savedTheme === 'dark') {
-    document.documentElement.classList.add('dark');
-    toggle.textContent = '☀️';
+    document.body.classList.add('dark-mode');
+    toggleBtn.textContent = '☀️';
   } else {
-    document.documentElement.classList.remove('dark');
-    toggle.textContent = '🌙';
+    document.body.classList.remove('dark-mode');
+    toggleBtn.textContent = '🌙';
   }
 
-  // 🖱️ Toggle saat diklik
-  toggle.addEventListener('click', () => {
-    const isDark = document.documentElement.classList.toggle('dark');
+  // 🔹 Event klik toggle
+  toggleBtn.addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark-mode');
     localStorage.setItem('menuva_theme', isDark ? 'dark' : 'light');
-    toggle.textContent = isDark ? '☀️' : '🌙';
+    toggleBtn.textContent = isDark ? '☀️' : '🌙';
   });
 }
 
-// ✅ Panggil saat DOM siap
+// Jalankan setelah DOM siap
 window.addEventListener('DOMContentLoaded', initDarkMode);
-
-  
-})(); 
 </script>
 
 </body>
 </html>
+
 
 
 
