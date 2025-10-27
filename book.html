@@ -1205,32 +1205,87 @@ function playSound(type) {
     };
   });
 
-  /* ------------------ CLEAR DATA ------------------ */
-  document.getElementById('clearDataBtn')?.addEventListener('click', () => {
+ /* ------------------ CLEAR CUSTOMER DATA (replace old handler) ------------------ */
+async function clearCustomerData(confirmRequired = true) {
+  if (confirmRequired) {
     if (!confirm('Yakin mau hapus semua data pesanan di halaman ini?')) return;
+  }
 
+  try {
+    // 1) Kosongkan runtime state
     cart = [];
+    activeVoucherData = null;
 
-    // hapus local storage
+    // 2) Hapus semua key localStorage yang berkaitan dengan customer-side
     localStorage.removeItem('menuva_cart');
     localStorage.removeItem('menuva_customer');
-    // localStorage.removeItem('voucher'); // optional
+    localStorage.removeItem('menuva_voucher');
+    localStorage.removeItem('voucher');
 
-    renderCart?.();
-    ['custName', 'custTable', 'custDate', 'custTime', 'custNote'].forEach(id => {
+    // 3) Reset form fields di DOM (jangan lupa set default date/time lagi)
+    const idsToClear = ['custName', 'custTable', 'custNote'];
+    idsToClear.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
 
-    showToast('🧹 Semua data telah dihapus.', 'info');
-    playSound('delete');
-  });
-})(); 
+    // reset date/time to "now" in same format used on init
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const dateInput = document.getElementById('custDate');
+    const timeInput = document.getElementById('custTime');
+    if (dateInput) dateInput.value = dateStr;
+    if (timeInput) timeInput.value = timeStr;
 
+    // 4) Persist the cleared state so reload isn't required (important)
+    saveCartToStorage();     // will write empty cart
+    saveCustomerForm();      // will save cleared customer form
+    saveVoucherToStorage();  // will remove menuva_voucher if activeVoucherData is null
+
+    // 5) Update UI immediately
+    renderCart();                    // rebuild cart UI (will show empty)
+    applyVoucherAndUpdateSummary();  // update totals / discount rows
+    renderMenu();                    // (optional) refresh menu price display/badges
+    renderPromo(menuPromo);          // re-render promo area (keeps promo visible)
+    updateCartCount();
+
+    // 6) Notify other tabs (if any) so they can sync/clear UI too
+    try {
+      const notifyBc = new BroadcastChannel('menuvaOrders');
+      notifyBc.postMessage({ type: 'customer_cleared' });
+      notifyBc.close();
+    } catch (e) {
+      // ignore if BC not available
+    }
+
+    // 7) UX feedback
+    showToast('🧹 Semua data pesanan Anda telah dihapus.', 'success', 'top');
+    playSound('delete');
+
+  } catch (err) {
+    console.error('❌ clearCustomerData error:', err);
+    showToast('❌ Gagal menghapus data. Coba lagi.', 'error');
+  }
+}
+
+/* pasang ke tombol (gantikan handler lama) */
+const clearBtn = document.getElementById('clearDataBtn');
+if (clearBtn) {
+  // remove any previous listeners just in case
+  clearBtn.replaceWith(clearBtn.cloneNode(true));
+  const newBtn = document.getElementById('clearDataBtn');
+  newBtn.addEventListener('click', () => clearCustomerData(true));
+}
+
+  
+})(); 
 </script>
 
 </body>
 </html>
+
 
 
 
