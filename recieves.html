@@ -530,6 +530,21 @@ function printOrder(id) {
 }
 /* aksi void (real-time update) */
 function voidOrder(id) {
+  const PASSWORD_VOID = "1234"; // 🔐 Ganti dengan password lo sendiri
+
+  // Minta password sebelum lanjut
+  const input = prompt("Masukkan password untuk Void order:");
+  if (input === null) {
+    console.log("❌ Void dibatalkan oleh user.");
+    return; // user klik Cancel
+  }
+
+  if (input.trim() !== PASSWORD_VOID) {
+    alert("⚠️ Password salah! Void dibatalkan.");
+    return;
+  }
+
+  // Jika password benar → lanjut Void
   const tx = db.transaction('ordersData', 'readwrite');
   const store = tx.objectStore('ordersData');
   const req = store.get(id);
@@ -537,11 +552,21 @@ function voidOrder(id) {
   req.onsuccess = () => {
     const order = req.result;
     if (order) {
+      if (order.status === "void") {
+        alert(`⚠️ Order #${id} sudah di-void sebelumnya.`);
+        return;
+      }
+
+      // Konfirmasi terakhir
+      const confirmVoid = confirm(`Yakin ingin VOID Order #${id}?`);
+      if (!confirmVoid) return;
+
       order.status = 'void';
       store.put(order);
 
       tx.oncomplete = () => {
         console.log(`🗑 Order #${id} berhasil diubah menjadi void`);
+        alert(`✅ Order #${id} berhasil di-VOID.`);
         loadOrders();        // 🔄 refresh tampilan lokal
         notifyOrdersUpdated(); // 📡 kirim sinyal update ke tab lain
       };
@@ -554,6 +579,7 @@ function voidOrder(id) {
     console.error('❌ Gagal mengambil order:', e.target.error);
   };
 }
+
 
 const themeToggle = document.getElementById('themeToggle');
 const themeIcon = document.getElementById('themeIcon');
@@ -602,3 +628,4 @@ function goBackToAdmin() {
 </script>
 </body>
 </html>
+
