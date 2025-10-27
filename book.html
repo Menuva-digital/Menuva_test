@@ -864,7 +864,8 @@ function loadCustomerForm() {
       });
     });
   }
-function renderPromo(list) {
+
+  function renderPromo(list) {
   const grid = document.getElementById('promoGrid');
   if (!grid) return;
   grid.innerHTML = '';
@@ -878,19 +879,19 @@ function renderPromo(list) {
 
   if (!promos.length) {
     grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
-    stopPromoCountdown();
+    stopPromoCountdown?.();
     return;
   }
 
   promos.forEach(p => {
     const card = document.createElement('div');
     card.className = 'promo-card';
-    card.style.position = 'relative'; // biar badge nempel ke card
+    card.style.position = 'relative'; // biar badge nempel ke pojok kanan atas
 
     const endAttr = p.tanggalAkhir ? `data-end="${p.tanggalAkhir}"` : '';
 
+    // isi konten utama promo
     card.innerHTML = `
-      <div class="promo-badge">${(p.kategori || 'PROMO').toUpperCase()}</div>
       ${p.image ? `<img src="${p.image}" class="promo-thumb">` : ''}
       <div class="promo-title">${escapeHtml(p.namaPromo || p.namaMenu)}</div>
       <div class="promo-desc">${escapeHtml(p.deskripsi || '')}</div>
@@ -898,12 +899,48 @@ function renderPromo(list) {
       <div class="promo-count" ${endAttr}></div>
     `;
 
-    // Klik = tambah ke cart
-    card.onclick = () => addToCartObj(p.namaPromo || p.namaMenu, p.harga);
+    // 🔹 badge kategori (misal tulisan "PROMO" di pojok kiri)
+    const badgeLabel = document.createElement('div');
+    badgeLabel.className = 'promo-badge';
+    badgeLabel.textContent = (p.kategori || 'PROMO').toUpperCase();
+    card.appendChild(badgeLabel);
+
+    // 🔹 badge angka (pojok kanan atas)
+    const badgeCount = document.createElement('div');
+    badgeCount.className = 'promo-click-badge';
+    badgeCount.textContent = '0';
+    badgeCount.style.position = 'absolute';
+    badgeCount.style.top = '6px';
+    badgeCount.style.right = '6px';
+    badgeCount.style.background = '#ff3b30';
+    badgeCount.style.color = '#fff';
+    badgeCount.style.fontWeight = 'bold';
+    badgeCount.style.borderRadius = '50%';
+    badgeCount.style.width = '22px';
+    badgeCount.style.height = '22px';
+    badgeCount.style.display = 'none';
+    badgeCount.style.justifyContent = 'center';
+    badgeCount.style.alignItems = 'center';
+    badgeCount.style.fontSize = '13px';
+    badgeCount.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+    badgeCount.style.zIndex = '2';
+    card.appendChild(badgeCount);
+
+    // 🔹 klik = tambah ke cart + naikin badge angka
+    let count = 0;
+    card.onclick = () => {
+      addToCartObj(p.namaPromo || p.namaMenu, p.harga);
+
+      count++;
+      badgeCount.textContent = count;
+      badgeCount.style.display = 'flex';
+      badgeCount.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 200 });
+    };
+
     grid.appendChild(card);
   });
 
-  startPromoCountdown(); // aktifkan countdown
+  startPromoCountdown?.();
 }
 
   function updateBadge(cardEl, itemName) {
@@ -1336,6 +1373,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
