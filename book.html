@@ -1062,7 +1062,7 @@ async function sendOrder() {
       showToast("✅ Order submitted successfully!", "success", "top");
       playSound("success");
 
-      // ✅ Kirim sinyal real-time ke receives.html + pastikan note ikut
+      // ✅ Kirim sinyal real-time ke receives.html
       try {
         const bc = new BroadcastChannel("menuvaOrders");
         bc.postMessage({
@@ -1074,13 +1074,11 @@ async function sendOrder() {
         console.warn("⚠️ Broadcast gagal:", err);
       }
 
-      // 🧹 Bersihkan cart setelah dikirim
-      setTimeout(() => {
-        cart = [];
-        saveCartToStorage();
-        renderCart();
-        showToast("🧾 Order is being processed", "info", "bottom");
-      }, 1200);
+      // 🚫 Jangan hapus data di sini!
+      // Biarkan customer tetap lihat pesanan & datanya walau sudah dikirim
+      // Semua data akan tetap tersimpan di localStorage
+
+      showToast("🧾 Order is being processed", "info", "bottom");
     };
 
     req.onerror = (e) => {
@@ -1094,7 +1092,6 @@ async function sendOrder() {
     showToast("❌ Database not initialized", "error");
   }
 }
-
 
 /* ---------------- SOUND EFFECT ---------------- */
 function playSound(type) {
@@ -1285,6 +1282,7 @@ if (clearBtn) {
 
 </body>
 </html>
+
 
 
 
