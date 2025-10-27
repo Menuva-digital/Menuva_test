@@ -1276,12 +1276,39 @@ if (clearBtn) {
   newBtn.addEventListener('click', () => clearCustomerData(true));
 }
 
+  /* ------------------ DARK MODE ---------------------- */
+function initDarkMode() {
+  const toggle = document.getElementById('darkToggle');
+  if (!toggle) return;
+
+  // 🌓 Baca preferensi dari localStorage
+  const savedTheme = localStorage.getItem('menuva_theme') || 'light';
+  if (savedTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+    toggle.textContent = '☀️';
+  } else {
+    document.documentElement.classList.remove('dark');
+    toggle.textContent = '🌙';
+  }
+
+  // 🖱️ Toggle saat diklik
+  toggle.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('menuva_theme', isDark ? 'dark' : 'light');
+    toggle.textContent = isDark ? '☀️' : '🌙';
+  });
+}
+
+// ✅ Panggil saat DOM siap
+window.addEventListener('DOMContentLoaded', initDarkMode);
+
   
 })(); 
 </script>
 
 </body>
 </html>
+
 
 
 
