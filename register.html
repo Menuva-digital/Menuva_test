@@ -165,12 +165,26 @@
       }
       
       let users = JSON.parse(localStorage.getItem('menuvaUsers')) || [];
-      const userExists = users.some(user => user.email === email);
-      if (userExists) {
-        errorMsg.textContent = "❌ Your email is already registered!";
-        return;
-      }
-      
+      // Cari user lama
+let existingUser = users.find(u => u.email === email);
+
+if (existingUser) {
+  const now = new Date();
+  const expire = new Date(existingUser.premiumExpire);
+  const trialExpired = existingUser.premiumPlan === "trial" && now > expire;
+
+  // Jika akun premium aktif atau trial belum habis → blok
+  if (!trialExpired && existingUser.premiumPlan !== "trial") {
+    errorMsg.textContent = "❌ Your email is already registered and active!";
+    return;
+  }
+
+  // Jika trial sudah expired → hapus agar bisa daftar ulang ke premium
+  if (trialExpired) {
+    users = users.filter(u => u.email !== email);
+  }
+}
+
       // Trial sekali pakai
       if (selectedPlan === "trial") {
         const trialUsedBefore = users.some(user => user.trialUsed === true);
@@ -234,3 +248,4 @@
   
 </body>
 </html>
+
