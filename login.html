@@ -131,8 +131,104 @@
       <div class="link back-link"><a href="index.html">⬅️ Back to Home</a></div>
     </form>
   </div>
-<script> const loginForm = document.getElementById('loginForm'); const errorMsg = document.getElementById('errorMsg'); // Toggle password visibility const passwordInput = document.getElementById('password'); const togglePassword = document.getElementById('togglePassword'); togglePassword.addEventListener('click', () => { const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password'; passwordInput.setAttribute('type', type); togglePassword.textContent = type === 'password' ? '👁️' : '🙈'; }); // Prefill email terakhir window.addEventListener('DOMContentLoaded', () => { const storedUsers = JSON.parse(localStorage.getItem('menuvaUsers')) || []; if (storedUsers.length > 0) { const lastUser = storedUsers[storedUsers.length - 1]; document.getElementById('email').value = lastUser.email || ''; } }); // Login process loginForm.addEventListener('submit', function(e) { e.preventDefault(); const emailValue = document.getElementById('email').value.trim().toLowerCase(); const passwordValue = document.getElementById('password').value; const storedUsers = JSON.parse(localStorage.getItem('menuvaUsers')) || []; const matchedUser = storedUsers.find(user => user.email === emailValue && user.password === passwordValue); if (!matchedUser) { errorMsg.textContent = '❌ Incorrect email or password, please register first.'; return; } const now = new Date(); // === Cek expired === if (matchedUser.premiumExpire) { const expireDate = new Date(matchedUser.premiumExpire); if (now > expireDate) { matchedUser.isExpired = true; localStorage.setItem('menuvaUsers', JSON.stringify(storedUsers)); if (matchedUser.premiumPlan === "trial") { // Arahkan ke halaman upgrade errorMsg.innerHTML = "❌ Your free trial has expired.<br><a href='plans.html' style='color:#007bff;'>Upgrade to Premium</a> to continue."; } else { errorMsg.innerHTML = "❌ Your subscription has expired.<br><a href='plans.html' style='color:#007bff;'>Renew your plan</a>."; } return; } // === Cegah login ulang trial === if (matchedUser.premiumPlan === "trial" && matchedUser.trialUsed && matchedUser.isExpired) { errorMsg.textContent = "❌ Free trial is single-use only. Please upgrade to continue."; return; } // === Cek status pembayaran === if (!matchedUser.isPaid && matchedUser.premiumPlan !== "trial") { errorMsg.textContent = "❌ Your payment has not been confirmed yet."; return; } // === Login sukses === localStorage.setItem('isLoggedIn', 'true'); localStorage.setItem('activeUser', JSON.stringify(matchedUser)); window.location.href = 'admin.html'; }); </script>
+<script>
+  const loginForm = document.getElementById("loginForm");
+  const errorMsg = document.getElementById("errorMsg");
+
+  // ========== Toggle Password Visibility ==========
+  const passwordInput = document.getElementById("password");
+  const togglePassword = document.getElementById("togglePassword");
+
+  togglePassword?.addEventListener("click", () => {
+    const type =
+      passwordInput.getAttribute("type") === "password" ? "text" : "password";
+    passwordInput.setAttribute("type", type);
+    togglePassword.textContent = type === "password" ? "👁️" : "🙈";
+  });
+
+  // ========== Prefill Email Terakhir ==========
+  window.addEventListener("DOMContentLoaded", () => {
+    try {
+      const storedUsers = JSON.parse(localStorage.getItem("menuvaUsers")) || [];
+      if (storedUsers.length > 0) {
+        const lastUser = storedUsers[storedUsers.length - 1];
+        document.getElementById("email").value = lastUser.email || "";
+      }
+    } catch (err) {
+      console.error("Error prefill email:", err);
+    }
+  });
+
+  // ========== Login Process ==========
+  loginForm?.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const emailValue = document.getElementById("email").value.trim().toLowerCase();
+    const passwordValue = document.getElementById("password").value;
+
+    let storedUsers = [];
+    try {
+      storedUsers = JSON.parse(localStorage.getItem("menuvaUsers")) || [];
+    } catch (err) {
+      console.error("Error reading users:", err);
+    }
+
+    const matchedUser = storedUsers.find(
+      (user) => user.email === emailValue && user.password === passwordValue
+    );
+
+    if (!matchedUser) {
+      errorMsg.textContent =
+        "❌ Incorrect email or password. Please register first.";
+      return;
+    }
+
+    const now = new Date();
+
+    // === Cek Expired ===
+    if (matchedUser.premiumExpire) {
+      const expireDate = new Date(matchedUser.premiumExpire);
+      if (now > expireDate) {
+        matchedUser.isExpired = true;
+        localStorage.setItem("menuvaUsers", JSON.stringify(storedUsers));
+
+        if (matchedUser.premiumPlan === "trial") {
+          errorMsg.innerHTML =
+            "❌ Your free trial has expired.<br><a href='plans.html' style='color:#007bff;'>Upgrade to Premium</a> to continue.";
+        } else {
+          errorMsg.innerHTML =
+            "❌ Your subscription has expired.<br><a href='plans.html' style='color:#007bff;'>Renew your plan</a>.";
+        }
+        return;
+      }
+    }
+
+    // === Cegah Login Ulang Trial Expired ===
+    if (
+      matchedUser.premiumPlan === "trial" &&
+      matchedUser.trialUsed &&
+      matchedUser.isExpired
+    ) {
+      errorMsg.textContent =
+        "❌ Free trial is single-use only. Please upgrade to continue.";
+      return;
+    }
+
+    // === Cek Status Pembayaran ===
+    if (!matchedUser.isPaid && matchedUser.premiumPlan !== "trial") {
+      errorMsg.textContent = "❌ Your payment has not been confirmed yet.";
+      return;
+    }
+
+    // === Login Sukses ===
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("activeUser", JSON.stringify(matchedUser));
+
+    window.location.href = "admin.html";
+  });
+</script>
 
 </body>
 </html>
+
 
