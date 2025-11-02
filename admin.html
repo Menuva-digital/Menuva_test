@@ -2047,7 +2047,7 @@ async function saveVoucher() {
 
   const voucher = { code, discount, expiry };
 
-  // simpan ke localStorage untuk akses cepat
+  // simpan ke localStorage
   localStorage.setItem("voucher", JSON.stringify(voucher));
 
   try {
@@ -2055,20 +2055,15 @@ async function saveVoucher() {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    const getReq = store.get(1);
-    getReq.onsuccess = (e) => {
-      const existingData = e.target.result || { id: 1, menuVoucher: [] };
-      existingData.menuVoucher = [voucher]; // hanya simpan voucher aktif saat ini
+    const existing = (await store.get(1)) || { id: 1, menuVoucher: [] };
+    existing.menuVoucher = [voucher]; // hanya 1 voucher aktif
 
-      const putReq = store.put(existingData);
-      putReq.onsuccess = () => {
-        console.log("💾 Voucher disimpan permanen:", voucher);
-        renderVoucher(voucher);
-      };
-      putReq.onerror = (err) => console.error("❌ Gagal simpan voucher:", err);
+    const putReq = store.put(existing);
+    putReq.onsuccess = () => {
+      console.log("💾 Voucher disimpan permanen:", voucher);
+      renderVoucher(voucher);
     };
-
-    getReq.onerror = (err) => console.error("❌ Gagal ambil data:", err);
+    putReq.onerror = (err) => console.error("❌ Gagal simpan voucher:", err);
   } catch (err) {
     console.error("🔥 Error IndexedDB:", err);
   }
@@ -2096,13 +2091,23 @@ function renderVoucher(voucher) {
 
 // ====================== LOAD SAAT AWAL ======================
 async function loadVoucherOnInit() {
+  // 1️⃣ coba baca dari localStorage dulu
+  const fromLocal = localStorage.getItem("voucher");
+  if (fromLocal) {
+    const voucher = JSON.parse(fromLocal);
+    console.log("📦 Voucher dari localStorage:", voucher);
+    renderVoucher(voucher);
+    return; // udah ketemu, gak usah lanjut ke DB
+  }
+
+  // 2️⃣ kalau kosong, baru cek IndexedDB
   try {
     const db = await initDB();
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
+    const req = store.get(1);
 
-    const getReq = store.get(1);
-    getReq.onsuccess = (e) => {
+    req.onsuccess = (e) => {
       const data = e.target.result;
       const voucher =
         data?.menuVoucher && data.menuVoucher.length
@@ -2114,7 +2119,7 @@ async function loadVoucherOnInit() {
         localStorage.setItem("voucher", JSON.stringify(voucher));
         renderVoucher(voucher);
       } else {
-        console.log("⚠️ Tidak ada voucher tersimpan");
+        console.log("⚠️ Tidak ada voucher di DB");
         renderVoucher(null);
       }
     };
@@ -2122,6 +2127,11 @@ async function loadVoucherOnInit() {
     console.error("❌ Gagal load voucher dari DB:", err);
   }
 }
+
+// ====================== INIT ======================
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadVoucherOnInit(); // load voucher permanen pas awal
+});
 
 // ====================== INIT ======================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -2152,6 +2162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
 
