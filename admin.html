@@ -712,14 +712,38 @@ button {
 
 <script>
 console.log("Admin Script Version: 2025-09-15-FINAL");
+
+// ====================== GLOBAL DB HANDLER ======================
+let dbReady = null;
+
+// Dapatkan koneksi DB hanya sekali (anti multiple open)
+async function getDB() {
+  if (!dbReady) dbReady = initDB();
+  return dbReady;
+}
+
 // ====================== KONFIGURASI DB ======================
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 7; // 🔼 naikin setiap ubah struktur, biar refresh DB lama
 
-// ====================== INIT DB (FINAL STABIL) ======================
+// ====================== INIT DB (ANTI FREEZE MOBILE) ======================
 async function initDB() {
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    let timeout = setTimeout(() => {
+      console.warn("⏳ IndexedDB terlalu lama respon — fallback RAM aktif (mobile safe)");
+      resolve({
+        fake: true,
+        transaction: () => ({
+          objectStore: () => ({
+            get: () => ({ onsuccess: null, onerror: null }),
+            put: () => ({ onsuccess: null, onerror: null })
+          })
+        }),
+        close: () => {}
+      });
+    }, 5000); // timeout 5 detik agar HP tidak hang
+
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (e) => {
@@ -732,38 +756,51 @@ async function initDB() {
     };
 
     request.onsuccess = (e) => {
+      clearTimeout(timeout);
       const db = e.target.result;
 
-      // 🔁 Auto-reconnect & auto-close protection
       db.onversionchange = () => {
-        console.warn("⚠️ Versi DB berubah — koneksi lama ditutup otomatis");
+        console.warn("⚠️ Versi DB berubah — koneksi ditutup otomatis");
         db.close();
       };
 
-      db.onerror = (err) => {
-        console.error("🔥 Error DB:", err);
-      };
-
-      db.onclose = () => {
-        console.log("ℹ️ DB ditutup — siap dibuka ulang bila diperlukan");
-      };
+      db.onerror = (err) => console.error("🔥 Error DB:", err);
+      db.onclose = () => console.log("ℹ️ DB ditutup otomatis (reopen ready)");
 
       resolve(db);
     };
 
     request.onerror = (e) => {
-      console.error("❌ Gagal buka DB:", e.target.error);
-      reject(e.target.error);
+      clearTimeout(timeout);
+      console.error("❌ Gagal buka IndexedDB:", e.target.error);
+
+      // fallback ke DB tiruan (RAM-only)
+      resolve({
+        fake: true,
+        transaction: () => ({
+          objectStore: () => ({
+            get: () => ({ onsuccess: null, onerror: null }),
+            put: () => ({ onsuccess: null, onerror: null })
+          })
+        }),
+        close: () => {}
+      });
     };
   });
 }
 
-// ====================== SAVE DATA (AMANKAN TRANSAKSI) ======================
+// ====================== SAVE DATA ======================
 async function saveDataToDB(data) {
   if (!data || typeof data !== "object") throw new Error("Invalid data");
 
   const record = { id: data.id || 1, ...data };
-  const db = await initDB();
+  const db = await getDB();
+
+  if (db.fake) {
+    console.warn("⚠️ IndexedDB tidak aktif — data hanya disimpan sementara (RAM)");
+    localStorage.setItem("fallbackData", JSON.stringify(record));
+    return record;
+  }
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
@@ -779,21 +816,28 @@ async function saveDataToDB(data) {
 
     tx.oncomplete = () => {
       console.log("✅ Transaksi simpan selesai");
-      db.close();
       resolve(record);
     };
 
     tx.onerror = (e) => {
       console.error("🔥 Transaksi error:", e.target.error);
-      db.close();
       reject(e.target.error);
     };
   });
 }
 
-// ====================== LOAD DATA (PASTI DATA TERBARU) ======================
+// ====================== LOAD DATA ======================
 async function loadDataFromDB(id = 1) {
-  const db = await initDB();
+  const db = await getDB();
+
+  // fallback jika IndexedDB fake
+  if (db.fake) {
+    const cached = localStorage.getItem("fallbackData");
+    if (cached) {
+      console.warn("⚠️ Load dari cache fallback (RAM)");
+      return JSON.parse(cached);
+    }
+  }
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
@@ -803,28 +847,22 @@ async function loadDataFromDB(id = 1) {
     req.onsuccess = (e) => {
       const data = e.target.result;
       if (data) {
-        console.log("📥 Data terbaru diambil:", data);
+        console.log("📥 Data diambil dari IndexedDB:", data);
         resolve(data);
       } else {
-        console.warn("⚠️ Tidak ada data — buat default baru (tanpa overwrite)");
-        const defaultData = {
-          id: 1,
-          namaRestoran: "",
-          menu: [],
-          menuVoucher: [],
-        };
-        resolve(defaultData); // ❌ Tidak memanggil saveDataToDB
+        console.warn("⚠️ Tidak ada data — buat default baru");
+        const defaultData = { id: 1, namaRestoran: "", menu: [] };
+        saveDataToDB(defaultData).then(() => resolve(defaultData));
       }
     };
 
     req.onerror = (e) => {
-      console.error("❌ Gagal load data:", e.target.error);
+      console.error("❌ Gagal load:", e.target.error);
       reject(e.target.error);
     };
-
-    tx.oncomplete = () => db.close();
   });
 }
+
 // ===== Helper internal: bikin struktur default =====
 function buatDataDefault(id = 1) {
   return {
@@ -2046,6 +2084,7 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
 
 
