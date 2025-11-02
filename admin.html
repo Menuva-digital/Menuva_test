@@ -727,52 +727,26 @@ const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 7; // 🔼 naikin setiap ubah struktur, biar refresh DB lama
 
-// ====================== INIT DB (ANTI FREEZE MOBILE) ======================
 async function initDB() {
   return new Promise((resolve) => {
     let resolved = false;
-let timeout = setTimeout(() => {
-  if (resolved) return;
-  resolved = true;
-  console.warn("⏳ IndexedDB terlalu lama respon — fallback RAM aktif (mobile safe)");
-  resolve({
-    fake: true,
-    transaction: () => ({
-      objectStore: () => ({
-        get: () => ({ onsuccess: null, onerror: null }),
-        put: () => ({ onsuccess: null, onerror: null })
-      })
-    }),
-    close: () => {}
-  });
-}, 2000);
+    let timeout = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      console.warn("⏳ IndexedDB terlalu lama respon — fallback RAM aktif (mobile safe)");
+      resolve({
+        fake: true,
+        transaction: () => ({
+          objectStore: () => ({
+            get: () => ({ onsuccess: null, onerror: null }),
+            put: () => ({ onsuccess: null, onerror: null })
+          })
+        }),
+        close: () => {}
+      });
+    }, 2000);
 
-const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-request.onsuccess = (e) => {
-  if (resolved) return;
-  resolved = true;
-  clearTimeout(timeout);
-  resolve(e.target.result);
-};
-
-request.onerror = (e) => {
-  if (resolved) return;
-  resolved = true;
-  clearTimeout(timeout);
-  console.error("❌ Gagal buka IndexedDB:", e.target.error);
-  resolve({
-    fake: true,
-    transaction: () => ({
-      objectStore: () => ({
-        get: () => ({ onsuccess: null, onerror: null }),
-        put: () => ({ onsuccess: null, onerror: null })
-      })
-    }),
-    close: () => {}
-  });
-};
-
+    // ✅ Deklarasi pertama (tetap)
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (e) => {
@@ -785,6 +759,8 @@ request.onerror = (e) => {
     };
 
     request.onsuccess = (e) => {
+      if (resolved) return;
+      resolved = true;
       clearTimeout(timeout);
       const db = e.target.result;
 
@@ -800,10 +776,10 @@ request.onerror = (e) => {
     };
 
     request.onerror = (e) => {
+      if (resolved) return;
+      resolved = true;
       clearTimeout(timeout);
       console.error("❌ Gagal buka IndexedDB:", e.target.error);
-
-      // fallback ke DB tiruan (RAM-only)
       resolve({
         fake: true,
         transaction: () => ({
@@ -817,6 +793,7 @@ request.onerror = (e) => {
     };
   });
 }
+
 
 // ====================== SAVE DATA ======================
 async function saveDataToDB(data) {
@@ -2155,4 +2132,5 @@ async function saveVoucher() {
 </script>
 </body>
 </html>
+
 
