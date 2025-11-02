@@ -730,19 +730,48 @@ const DB_VERSION = 7; // 🔼 naikin setiap ubah struktur, biar refresh DB lama
 // ====================== INIT DB (ANTI FREEZE MOBILE) ======================
 async function initDB() {
   return new Promise((resolve) => {
-    let timeout = setTimeout(() => {
-      console.warn("⏳ IndexedDB terlalu lama respon — fallback RAM aktif (mobile safe)");
-      resolve({
-        fake: true,
-        transaction: () => ({
-          objectStore: () => ({
-            get: () => ({ onsuccess: null, onerror: null }),
-            put: () => ({ onsuccess: null, onerror: null })
-          })
-        }),
-        close: () => {}
-      });
-    }, 5000); // timeout 5 detik agar HP tidak hang
+    let resolved = false;
+let timeout = setTimeout(() => {
+  if (resolved) return;
+  resolved = true;
+  console.warn("⏳ IndexedDB terlalu lama respon — fallback RAM aktif (mobile safe)");
+  resolve({
+    fake: true,
+    transaction: () => ({
+      objectStore: () => ({
+        get: () => ({ onsuccess: null, onerror: null }),
+        put: () => ({ onsuccess: null, onerror: null })
+      })
+    }),
+    close: () => {}
+  });
+}, 2000);
+
+const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+request.onsuccess = (e) => {
+  if (resolved) return;
+  resolved = true;
+  clearTimeout(timeout);
+  resolve(e.target.result);
+};
+
+request.onerror = (e) => {
+  if (resolved) return;
+  resolved = true;
+  clearTimeout(timeout);
+  console.error("❌ Gagal buka IndexedDB:", e.target.error);
+  resolve({
+    fake: true,
+    transaction: () => ({
+      objectStore: () => ({
+        get: () => ({ onsuccess: null, onerror: null }),
+        put: () => ({ onsuccess: null, onerror: null })
+      })
+    }),
+    close: () => {}
+  });
+};
 
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -826,11 +855,25 @@ async function saveDataToDB(data) {
   });
 }
 
-// ====================== LOAD DATA ======================
+// ====================== LOAD DATA (FIXED) ======================
 async function loadDataFromDB(id = 1) {
-  const db = await getDB();
+  let db;
+  try {
+    db = await Promise.race([
+      getDB(),
+      new Promise((_, reject) => setTimeout(() => reject("Timeout getDB"), 6000))
+    ]);
+  } catch (err) {
+    console.error("❌ getDB gagal atau timeout:", err);
+    // fallback ke localStorage kalau IndexedDB error
+    const cached = localStorage.getItem("fallbackData");
+    if (cached) {
+      console.warn("⚠️ Load dari cache fallback (RAM)");
+      return JSON.parse(cached);
+    }
+    return { id: 1, namaRestoran: "", menu: [] };
+  }
 
-  // fallback jika IndexedDB fake
   if (db.fake) {
     const cached = localStorage.getItem("fallbackData");
     if (cached) {
@@ -839,7 +882,7 @@ async function loadDataFromDB(id = 1) {
     }
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
     const req = store.get(id);
@@ -858,7 +901,18 @@ async function loadDataFromDB(id = 1) {
 
     req.onerror = (e) => {
       console.error("❌ Gagal load:", e.target.error);
-      reject(e.target.error);
+      const cached = localStorage.getItem("fallbackData");
+      if (cached) {
+        resolve(JSON.parse(cached));
+      } else {
+        resolve({ id: 1, namaRestoran: "", menu: [] });
+      }
+    };
+
+    tx.oncomplete = () => console.log("✅ Transaction selesai");
+    tx.onerror = (e) => {
+      console.error("❌ Transaction error:", e);
+      resolve({ id: 1, namaRestoran: "", menu: [] });
     };
   });
 }
@@ -1494,15 +1548,7 @@ async function loadData(data) {
   try {
     showLoader();
 
-    // 🔧 Perbaikan: kalau array, ambil elemen pertama
-    if (Array.isArray(data)) {
-      if (data.length === 0) {
-        console.warn("⚠️ Data kosong di loadData (array kosong)");
-        return;
-      }
-      data = data[0];
-    }
-
+    if (Array.isArray(data)) data = data[0] || {};
     if (!data || typeof data !== "object") {
       console.warn("⚠️ Data kosong atau bukan object di loadData");
       return;
@@ -1510,41 +1556,47 @@ async function loadData(data) {
 
     console.log("📦 Data di-load:", data);
 
-    // --- sisanya tetap sama ---
-    document.getElementById("namaRestoran").value = data.namaRestoran || "";
-    document.getElementById("restoAddress").value = data.restoAddress || "";
-    document.getElementById("restoPhone").value = data.restoPhone || "";
+    // Amanin DOM query (jangan bikin error kalau elemen gak ada)
+    const safeSet = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value || "";
+    };
 
-    if (data.logo) {
-      const preview = document.getElementById("previewLogo");
-      if (preview) preview.src = data.logo;
-    }
+    safeSet("namaRestoran", data.namaRestoran);
+    safeSet("restoAddress", data.restoAddress);
+    safeSet("restoPhone", data.restoPhone);
 
-    if (Array.isArray(data.nomorWaAdmin)) {
-      const container = document.getElementById("nomorWaContainer");
+    const preview = document.getElementById("previewLogo");
+    if (preview && data.logo) preview.src = data.logo;
+
+    const container = document.getElementById("nomorWaContainer");
+    if (container && Array.isArray(data.nomorWaAdmin)) {
       container.innerHTML = "";
       data.nomorWaAdmin.forEach(() => tambahNomorWa());
       const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v, i) => (inputs[i].value = v));
+      data.nomorWaAdmin.forEach((v, i) => (inputs[i] ? (inputs[i].value = v) : null));
     }
 
     menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
-    renderPromoUI();
+    if (typeof renderPromoUI === "function") renderPromoUI();
 
     if (Array.isArray(data.menu))
       data.menu.forEach((m) =>
-        tambahMenu(m.kategori, m.nama, m.harga, m.image)
+        typeof tambahMenu === "function" && tambahMenu(m.kategori, m.nama, m.harga, m.image)
       );
 
-    if (Array.isArray(data.rooms)) restoreRoomFromData(data.rooms);
+    if (Array.isArray(data.rooms) && typeof restoreRoomFromData === "function")
+      restoreRoomFromData(data.rooms);
 
     flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
     flipbookRuanganImages.forEach((src) =>
-      renderImagePreview("ruangan", src)
+      typeof renderImagePreview === "function" && renderImagePreview("ruangan", src)
     );
 
     flipbookMenuImages = (data.flipbookMenuImages || []).slice();
-    flipbookMenuImages.forEach((src) => renderImagePreview("menu", src));
+    flipbookMenuImages.forEach((src) =>
+      typeof renderImagePreview === "function" && renderImagePreview("menu", src)
+    );
 
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
@@ -1562,7 +1614,6 @@ async function loadData(data) {
     hideLoader();
   }
 }
-
 // ====================== RESET & BACKUP ======================
 async function resetData() {
   if (!confirm("Are you sure you want to delete all data?")) return;
@@ -1852,23 +1903,43 @@ async function clearDataDB() {
   });
 }
 
- // ====================== INIT ======================
+// ====================== INIT ======================
 document.addEventListener("DOMContentLoaded", async () => {
+  showLoader();
+  console.log("🚀 Init mulai...");
+
+  // Timeout proteksi kalau loader ngelag di HP
+  const timeout = setTimeout(() => {
+    console.warn("⚠️ Init terlalu lama, sembunyikan loader paksa.");
+    hideLoader();
+  }, 8000); // 8 detik batas aman
+
   try {
-    showLoader();
-    console.log("🚀 Init mulai...");
+    const db = await initDB().catch(err => {
+      console.error("❌ initDB gagal:", err);
+      throw err;
+    });
 
-    await initDB();
-    const data = await loadDataFromDB();
-   if (data) {
-  await loadData(data);
-}
+    const data = await loadDataFromDB().catch(err => {
+      console.error("❌ loadDataFromDB gagal:", err);
+      throw err;
+    });
 
+    if (data) {
+      await loadData(data).catch(err => {
+        console.error("❌ loadData gagal:", err);
+        throw err;
+      });
+    } else {
+      console.warn("⚠️ Tidak ada data ditemukan di DB");
+    }
 
     console.log("✅ Admin siap digunakan");
   } catch (err) {
     console.error("❌ Error saat init:", err);
+    alert("Terjadi kesalahan saat memuat data. Coba refresh halaman.");
   } finally {
+    clearTimeout(timeout);
     hideLoader();
   }
 });
@@ -1957,7 +2028,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   </button>
 </div>
 
-</body>
 <script>
   const toggleVoucherPage = document.getElementById("toggleVoucherPage");
   const voucherForm = document.getElementById("voucherForm");
@@ -2083,11 +2153,6 @@ async function saveVoucher() {
     }
   });
 </script>
+</body>
 </html>
-
-
-
-
-
-
 
