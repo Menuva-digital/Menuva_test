@@ -2034,7 +2034,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-// ====================== SIMPAN VOUCHER ======================
+// ====================== SIMPAN VOUCHER (FIXED) ======================
 async function saveVoucher() {
   const code = document.getElementById("voucherCode").value.trim();
   const discount = document.getElementById("voucherDiscount").value;
@@ -2047,7 +2047,7 @@ async function saveVoucher() {
 
   const voucher = { code, discount, expiry };
 
-  // simpan ke localStorage
+  // simpan juga ke localStorage agar cepat ditampilkan ulang
   localStorage.setItem("voucher", JSON.stringify(voucher));
 
   try {
@@ -2055,12 +2055,20 @@ async function saveVoucher() {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    const existing = (await store.get(1)) || { id: 1, menuVoucher: [] };
-    existing.menuVoucher = [voucher]; // hanya 1 voucher aktif
+    // 🔧 Ambil data lama via Promise
+    const existingData = await new Promise((resolve, reject) => {
+      const getReq = store.get(1);
+      getReq.onsuccess = (e) => resolve(e.target.result || { id: 1, menuVoucher: [] });
+      getReq.onerror = (e) => reject(e.target.error);
+    });
 
-    const putReq = store.put(existing);
+    // Update / ganti voucher lama
+    existingData.menuVoucher = [voucher]; // hanya 1 voucher aktif disimpan
+
+    // Simpan ulang
+    const putReq = store.put(existingData);
     putReq.onsuccess = () => {
-      console.log("💾 Voucher disimpan permanen:", voucher);
+      console.log("💾 Voucher disimpan permanen:", existingData.menuVoucher);
       renderVoucher(voucher);
     };
     putReq.onerror = (err) => console.error("❌ Gagal simpan voucher:", err);
@@ -2162,6 +2170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
 
