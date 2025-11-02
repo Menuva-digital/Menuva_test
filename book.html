@@ -361,6 +361,23 @@ body.dark-mode .promo-badge {
     90% { opacity: 1; transform: translate(-50%, 0); }
     100% { opacity: 0; transform: translate(-50%, 10px); }
   }
+    .fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+.fade-out {
+  animation: fadeOut 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(6px); }
+}
+
   </style>
 
 </head>
@@ -974,6 +991,7 @@ function loadCustomerForm() {
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
  /* ------------------ VOUCHER -------------------- */
+/* ------------------ VOUCHER (with smooth fade) -------------------- */
 function applyVoucherAndUpdateSummary() {
   const cartTotalEl = document.getElementById('cartTotal');
   const grandTotalEl = document.getElementById('grandTotal');
@@ -985,17 +1003,19 @@ function applyVoucherAndUpdateSummary() {
   const rawTotal = cleanNumber(cartTotalEl.dataset.raw) || 0;
   let discount = 0;
 
-  // ✅ ambil voucher aktif dari localStorage (bukan dari session sekali pakai)
+  // ✅ ambil voucher aktif dari localStorage (bukan sekali pakai)
   const voucher = JSON.parse(localStorage.getItem('voucher') || 'null');
   const inputCode = (document.getElementById('voucherInput')?.value || '').trim();
 
+  let voucherValid = false;
+
   if (voucher && inputCode && voucher.code === inputCode) {
-    // ✅ cek kadaluarsa
     const now = new Date();
     const expiry = new Date(voucher.expiry);
 
     if (now <= expiry) {
       discount = rawTotal * (parseFloat(voucher.discount || 0) / 100);
+      voucherValid = true;
       showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${voucher.discount}%`, 'success');
     } else {
       showToast('⚠️ Voucher sudah kadaluarsa.', 'warning');
@@ -1006,19 +1026,23 @@ function applyVoucherAndUpdateSummary() {
 
   const newTotal = Math.max(0, rawTotal - discount);
 
-  // ✅ update tampilan
+  // ✅ update tampilan total
   cartTotalEl.textContent = formatWithActive(rawTotal);
-  if (discount > 0) {
-    if (discountRow) discountRow.style.display = 'flex';
-    if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(discount);
-  } else {
-    if (discountRow) discountRow.style.display = 'none';
-    if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(0);
-  }
+  if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(discount);
   if (grandTotalEl) grandTotalEl.textContent = formatWithActive(newTotal);
 
-  // ❌ jangan pernah simpan status voucherUsed
-  // localStorage.removeItem('voucherUsed'); <-- pastikan gak ada di mana pun
+  // ✅ efek animasi
+  if (discountRow) {
+    if (voucherValid && discount > 0) {
+      discountRow.style.display = 'flex';
+      discountRow.classList.add('fade-in');
+      discountRow.classList.remove('fade-out');
+    } else {
+      discountRow.classList.remove('fade-in');
+      discountRow.classList.add('fade-out');
+      setTimeout(() => (discountRow.style.display = 'none'), 300);
+    }
+  }
 }
 
   function initVoucherInput(){
@@ -1396,6 +1420,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
