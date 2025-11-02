@@ -717,13 +717,13 @@ const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 7; // 🔼 naikin setiap ubah struktur, biar refresh DB lama
 
-// ====================== INIT DB (STABIL) ======================
+// ====================== INIT DB (FINAL STABIL) ======================
 async function initDB() {
-  return new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
       console.log(`⚙️ Upgrade ${DB_NAME} ke versi ${DB_VERSION}`);
 
       if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -731,18 +731,29 @@ async function initDB() {
       }
     };
 
-    request.onsuccess = (event) => {
-      const db = event.target.result;
+    request.onsuccess = (e) => {
+      const db = e.target.result;
+
+      // 🔁 Auto-reconnect & auto-close protection
       db.onversionchange = () => {
-        console.warn("⚠️ Versi DB berubah — menutup koneksi lama");
+        console.warn("⚠️ Versi DB berubah — koneksi lama ditutup otomatis");
         db.close();
       };
+
+      db.onerror = (err) => {
+        console.error("🔥 Error DB:", err);
+      };
+
+      db.onclose = () => {
+        console.log("ℹ️ DB ditutup — siap dibuka ulang bila diperlukan");
+      };
+
       resolve(db);
     };
 
-    request.onerror = (event) => {
-      console.error("❌ Gagal buka DB:", event.target.error);
-      reject(event.target.error);
+    request.onerror = (e) => {
+      console.error("❌ Gagal buka DB:", e.target.error);
+      reject(e.target.error);
     };
   });
 }
@@ -795,21 +806,25 @@ async function loadDataFromDB(id = 1) {
         console.log("📥 Data terbaru diambil:", data);
         resolve(data);
       } else {
-        console.warn("⚠️ Tidak ada data — buat default baru");
-        const defaultData = { id: 1, namaRestoran: "", menu: [] };
-        saveDataToDB(defaultData).then(() => resolve(defaultData));
+        console.warn("⚠️ Tidak ada data — buat default baru (tanpa overwrite)");
+        const defaultData = {
+          id: 1,
+          namaRestoran: "",
+          menu: [],
+          menuVoucher: [],
+        };
+        resolve(defaultData); // ❌ Tidak memanggil saveDataToDB
       }
     };
 
     req.onerror = (e) => {
-      console.error("❌ Gagal load:", e.target.error);
+      console.error("❌ Gagal load data:", e.target.error);
       reject(e.target.error);
     };
 
     tx.oncomplete = () => db.close();
   });
 }
-
 // ===== Helper internal: bikin struktur default =====
 function buatDataDefault(id = 1) {
   return {
@@ -1950,31 +1965,46 @@ async function saveVoucher() {
   localStorage.setItem("voucher", JSON.stringify(voucher));
 
   try {
-    // === Simpan juga ke IndexedDB ===
     const db = await initDB();
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // Ambil data lama dulu (jika ada)
     const getReq = store.get(1);
-    getReq.onsuccess = async (e) => {
-      const existingData = e.target.result || { id: 1 };
-      existingData.menuVoucher = [voucher]; // bisa multi voucher kalau mau
+    getReq.onsuccess = (e) => {
+      const existingData = e.target.result || { id: 1, menuVoucher: [] };
+
+      // 🧩 Pastikan array voucher ada
+      existingData.menuVoucher = existingData.menuVoucher || [];
+
+      // 🔍 Cek apakah voucher dengan kode sama sudah ada
+      const existingIndex = existingData.menuVoucher.findIndex(
+        (v) => v.code === code
+      );
+
+      if (existingIndex >= 0) {
+        // Update voucher lama
+        existingData.menuVoucher[existingIndex] = voucher;
+        console.log(`🔄 Voucher "${code}" diperbarui.`);
+      } else {
+        // Tambahkan voucher baru
+        existingData.menuVoucher.push(voucher);
+        console.log(`➕ Voucher baru "${code}" ditambahkan.`);
+      }
 
       const putReq = store.put(existingData);
       putReq.onsuccess = () => {
-        console.log("💾 Voucher tersimpan ke IndexedDB:", voucher);
-        renderVoucher();
+        console.log("💾 Semua voucher tersimpan:", existingData.menuVoucher);
+        renderVoucher(); // refresh tampilan daftar voucher
       };
-      putReq.onerror = (err) => {
-        console.error("❌ Gagal simpan voucher ke DB:", err);
-      };
+      putReq.onerror = (err) =>
+        console.error("❌ Gagal simpan voucher:", err);
     };
+
+    getReq.onerror = (err) =>
+      console.error("❌ Gagal ambil data lama:", err);
   } catch (err) {
     console.error("🔥 Error IndexedDB:", err);
   }
-
-  // opsional: bisa kirim ke server kalau ada API
 }
 
   function renderVoucher() {
@@ -2016,6 +2046,7 @@ async function saveVoucher() {
   });
 </script>
 </html>
+
 
 
 
