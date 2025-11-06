@@ -270,8 +270,8 @@ body.dark .room-card {
   border: 1px solid var(--border);
   background: var(--surface);
 }
+/* ================= LOADING OVERLAY ================= */
 #loadingOverlay {
-  display: none;
   position: fixed;
   z-index: 9999;
   top: 0;
@@ -283,6 +283,14 @@ body.dark .room-card {
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#loadingOverlay.show {
+  opacity: 1;
+  pointer-events: all;
 }
 
 .loading-spinner {
@@ -303,16 +311,7 @@ body.dark .room-card {
   0% { transform: scale(1); opacity: 0.9; }
   100% { transform: scale(1.2); opacity: 0.7; }
 }
-  #loadingOverlay {
-  transition: opacity 0.3s ease;
-  opacity: 0;
-  pointer-events: none;
-}
 
-#loadingOverlay.show {
-  opacity: 1;
-  pointer-events: all;
-}
 </style>
 </head>
 <body>
@@ -903,6 +902,7 @@ function hideLoading() {
 </script>
 </body>
 </html>
+
 
 
 
