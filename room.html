@@ -224,11 +224,6 @@ body.dark .room-card {
 .form-input input,.form-input textarea{padding:6px 8px;border-radius:6px;border:1px solid #ccc;font-size:0.85rem;width:100%}
 .form-input textarea{min-height:60px;resize:vertical}
 
-/* loading */
-#loadingIndicator{display:none;text-align:center;padding:20px;font-size:0.9rem;color:#666}
-#loadingIndicator.active{display:block;animation:fadeIn .3s ease-in-out}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-
 /* fixed bar */
 .fixed-bar{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;gap:10px;padding:10px;background:linear-gradient(135deg,#1e3c72,#2a5298);z-index:2000}
 .fixed-bar button{flex:1;padding:12px 0;font-size:0.95rem;border-radius:8px;border:none;cursor:pointer;color:#fff}
@@ -275,7 +270,49 @@ body.dark .room-card {
   border: 1px solid var(--border);
   background: var(--surface);
 }
+#loadingOverlay {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
+.loading-spinner {
+  width: 100px;
+  height: 100px;
+  border: 6px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #00c8ff;
+  border-radius: 50%;
+  animation: spin 1s ease-in-out infinite, pulse 1.5s infinite alternate;
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.4);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.2); opacity: 0.7; }
+}
+  #loadingOverlay {
+  transition: opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#loadingOverlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
 </style>
 </head>
 <body>
@@ -309,7 +346,9 @@ body.dark .room-card {
   </div>
 </header>
 
-<div id="loadingIndicator">⏳ Loading data...</div>
+<div id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
 
 <div class="main-container" id="app">
   <!-- Tabs -->
@@ -842,6 +881,16 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // hide loader
   if (ld) ld.classList.remove('active');
 });
+  
+function showLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.classList.add('show');
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) overlay.classList.remove('show');
+}
 
 </script>
 
@@ -854,6 +903,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+
 
 
 
