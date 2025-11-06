@@ -882,14 +882,13 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 });
   
 function showLoading() {
-  const overlay = document.getElementById('loadingOverlay');
-  if (overlay) overlay.classList.add('show');
+  document.getElementById('loadingOverlay')?.classList.add('show');
 }
 
 function hideLoading() {
-  const overlay = document.getElementById('loadingOverlay');
-  if (overlay) overlay.classList.remove('show');
+  document.getElementById('loadingOverlay')?.classList.remove('show');
 }
+
 
 </script>
 
@@ -902,6 +901,7 @@ function hideLoading() {
 </script>
 </body>
 </html>
+
 
 
 
