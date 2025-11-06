@@ -271,14 +271,15 @@ body.dark .room-card {
   background: var(--surface);
 }
 /* ================= LOADING OVERLAY ================= */
+/* ================= LOADING OVERLAY ================= */
 #loadingOverlay {
   position: fixed;
   z-index: 9999;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -292,20 +293,38 @@ body.dark .room-card {
   pointer-events: all;
 }
 
+/* kotak tengah */
+.loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* spinner utama */
 .loading-spinner {
   width: 90px;
   height: 90px;
   border: 8px solid rgba(255, 255, 255, 0.2);
   border-top: 8px solid #00c8ff;
   border-radius: 50%;
-  animation: spin 1s linear infinite; /* 🔥 Pastikan hanya 1 animasi dulu */
-  box-shadow: 0 0 20px rgba(0, 200, 255, 0.5);
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 25px rgba(0, 200, 255, 0.5);
 }
 
-/* 🔁 Pastikan ini tidak tertindih */
+/* teks di bawah spinner */
+.loading-text {
+  font-size: 1.1rem;
+  color: #fff;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0, 200, 255, 0.6);
+}
+
+/* animasi muter */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 </style>
@@ -342,9 +361,12 @@ body.dark .room-card {
 </header>
   
 <div id="loadingOverlay">
-  <div class="loading-spinner"></div>
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading Data...</div>
+  </div>
 </div>
-
+  
 <div class="main-container" id="app">
   <!-- Tabs -->
   <div class="tabs">
@@ -894,10 +916,10 @@ function hideLoading() {
   if (overlay) overlay.classList.remove('show');
 }
 
-/* contoh penggunaan */
+/* contoh tes */
 document.addEventListener('DOMContentLoaded', async () => {
   showLoading();
-  await new Promise(r => setTimeout(r, 1500)); // simulasi load data
+  await new Promise(r => setTimeout(r, 1500)); // simulasi loading
   hideLoading();
 });
 
@@ -912,8 +934,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
-
-
-
-
-
