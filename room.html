@@ -293,14 +293,16 @@ body.dark .room-card {
 }
 
 .loading-spinner {
+  position: relative;           /* 🟢 tambahin ini */
   width: 100px;
   height: 100px;
   border: 6px solid rgba(255, 255, 255, 0.2);
   border-top-color: #00c8ff;
   border-radius: 50%;
-  animation: spin 1s ease-in-out infinite, pulse 1.5s infinite alternate;
+  animation: spin 1s linear infinite, pulse 1.5s infinite alternate; /* 🟢 ganti ease-in-out jadi linear biar putarnya stabil */
   box-shadow: 0 0 20px rgba(0, 200, 255, 0.4);
 }
+
 
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -900,13 +902,14 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 /* ========= LOADING OVERLAY CONTROL ========= */
 function showLoading() {
   const overlay = document.getElementById('loadingOverlay');
-  if (overlay) overlay.classList.add('show');
+  overlay.classList.add('show');
 }
 
 function hideLoading() {
   const overlay = document.getElementById('loadingOverlay');
-  if (overlay) overlay.classList.remove('show');
+  overlay.classList.remove('show');
 }
+
 </script>
 
 <script>
@@ -918,6 +921,7 @@ function hideLoading() {
 </script>
 </body>
 </html>
+
 
 
 
