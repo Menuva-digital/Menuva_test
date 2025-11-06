@@ -271,11 +271,10 @@ body.dark .room-card {
   background: var(--surface);
 }
 /* ================= LOADING OVERLAY ================= */
-/* ================= LOADING OVERLAY ================= */
 #loadingOverlay {
   position: fixed;
-  z-index: 9999;
   inset: 0;
+  z-index: 9999;
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.55);
@@ -285,7 +284,7 @@ body.dark .room-card {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
 }
 
 #loadingOverlay.show {
@@ -293,7 +292,6 @@ body.dark .room-card {
   pointer-events: all;
 }
 
-/* kotak tengah */
 .loading-box {
   display: flex;
   flex-direction: column;
@@ -301,7 +299,6 @@ body.dark .room-card {
   gap: 14px;
 }
 
-/* spinner utama */
 .loading-spinner {
   width: 90px;
   height: 90px;
@@ -312,7 +309,6 @@ body.dark .room-card {
   box-shadow: 0 0 25px rgba(0, 200, 255, 0.5);
 }
 
-/* teks di bawah spinner */
 .loading-text {
   font-size: 1.1rem;
   color: #fff;
@@ -321,7 +317,6 @@ body.dark .room-card {
   text-shadow: 0 0 10px rgba(0, 200, 255, 0.6);
 }
 
-/* animasi muter */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -360,13 +355,14 @@ body.dark .room-card {
   </div>
 </header>
   
+<!-- 🔹 Loading Overlay -->
 <div id="loadingOverlay">
   <div class="loading-box">
     <div class="loading-spinner"></div>
     <div class="loading-text">Loading Data...</div>
   </div>
 </div>
-  
+
 <div class="main-container" id="app">
   <!-- Tabs -->
   <div class="tabs">
@@ -905,7 +901,6 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // if (ld) ld.classList.remove('active');
 });
 
-/* ========= LOADING OVERLAY CONTROL ========= */
 function showLoading() {
   const overlay = document.getElementById('loadingOverlay');
   if (overlay) overlay.classList.add('show');
@@ -916,11 +911,10 @@ function hideLoading() {
   if (overlay) overlay.classList.remove('show');
 }
 
-/* contoh tes */
 document.addEventListener('DOMContentLoaded', async () => {
-  showLoading();
-  await new Promise(r => setTimeout(r, 1500)); // simulasi loading
-  hideLoading();
+  showLoading(); // tampil
+  await new Promise(r => setTimeout(r, 1500)); // simulasi proses load data
+  hideLoading(); // sembunyi
 });
 
 </script>
@@ -934,3 +928,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
+
