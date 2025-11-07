@@ -725,68 +725,41 @@ async function getDB() {
   return dbReady;
 }
 
-// ====================== INIT DB ======================
+// ====================== INIT DB (Pure Version, No Fake, No Timeout) ======================
 async function initDB() {
-  return new Promise((resolve) => {
-    let resolved = false;
-    const timeout = setTimeout(() => {
-      if (resolved) return;
-      resolved = true;
-      console.warn("⏳ IndexedDB terlalu lama — fallback RAM aktif");
-      resolve({
-        fake: true,
-        transaction: () => ({
-          objectStore: () => ({
-            get: () => ({ onsuccess: null, onerror: null }),
-            put: () => ({ onsuccess: null, onerror: null }),
-          }),
-        }),
-        close: () => {},
-      });
-    }, 7000); // ⏱️ Naikkan timeout jadi 7 detik
-
+  return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
-      console.log(`⚙️ Upgrade ${DB_NAME} ke versi ${DB_VERSION}`);
+      console.log(`⚙️ Upgrade ${DB_NAME} dari versi ${e.oldVersion} ke ${e.newVersion}`);
+
+      // Pastikan object store utama ada
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
     };
 
     request.onsuccess = (e) => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timeout);
       const db = e.target.result;
       console.log("✅ IndexedDB siap digunakan");
 
+      // Tutup koneksi saat versi berubah
       db.onversionchange = () => {
-        console.warn("⚠️ Versi DB berubah — koneksi ditutup");
+        console.warn("⚠️ Versi DB berubah — koneksi ditutup otomatis");
         db.close();
       };
+
       resolve(db);
     };
 
     request.onerror = (e) => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timeout);
       console.error("❌ IndexedDB gagal dibuka:", e.target.error);
-      resolve({
-        fake: true,
-        transaction: () => ({
-          objectStore: () => ({
-            get: () => ({ onsuccess: null, onerror: null }),
-            put: () => ({ onsuccess: null, onerror: null }),
-          }),
-        }),
-        close: () => {},
-      });
+      reject(e.target.error);
     };
   });
 }
+
 
 // ====================== SAVE DATA ======================
 async function saveDataToDB(data) {
@@ -819,50 +792,65 @@ async function saveDataToDB(data) {
   });
 }
 
-// ====================== LOAD DATA ======================
+// ====================== LOAD DATA (Pure Version) ======================
 async function loadDataFromDB(id = 1) {
   let db;
   try {
     db = await getDB();
   } catch (err) {
-    console.error("❌ initDB gagal:", err);
-  }
-
-  if (!db || db.fake) {
+    console.error("❌ Gagal membuka IndexedDB:", err);
+    // Jika IndexedDB gagal total, fallback ke localStorage
     const cached = localStorage.getItem("fallbackData");
     if (cached) {
-      console.warn("⚠️ Menggunakan fallback cache");
+      console.warn("⚠️ Menggunakan fallback cache karena DB gagal dibuka");
       return JSON.parse(cached);
     }
+    // Kembalikan default kosong
     return { id: 1, namaRestoran: "", menu: [] };
   }
 
+  // Kalau berhasil buka DB
   return new Promise((resolve) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(id);
+    try {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
 
-    req.onsuccess = (e) => {
-      const data = e.target.result;
-      if (data) {
-        console.log("📦 Data diambil dari IndexedDB:", data);
-        localStorage.setItem("fallbackData", JSON.stringify(data));
-        resolve(data);
-      } else {
-        console.warn("⚠️ Tidak ada data, buat default baru");
-        const def = { id: 1, namaRestoran: "", menu: [] };
-        saveDataToDB(def);
-        resolve(def);
-      }
-    };
-    req.onerror = () => {
+      req.onsuccess = (e) => {
+        const data = e.target.result;
+        if (data) {
+          console.log("📦 Data diambil dari IndexedDB:", data);
+          // Backup ke localStorage sebagai cache
+          localStorage.setItem("fallbackData", JSON.stringify(data));
+          resolve(data);
+        } else {
+          console.warn("⚠️ Tidak ada data, buat default baru");
+          const def = { id: 1, namaRestoran: "", menu: [] };
+          saveDataToDB(def);
+          resolve(def);
+        }
+      };
+
+      req.onerror = (e) => {
+        console.error("❌ Gagal membaca data dari IndexedDB:", e.target.error);
+        const cached = localStorage.getItem("fallbackData");
+        if (cached) {
+          console.warn("⚠️ Menggunakan fallback cache");
+          resolve(JSON.parse(cached));
+        } else {
+          resolve({ id: 1, namaRestoran: "", menu: [] });
+        }
+      };
+    } catch (err) {
+      console.error("❌ Transaksi IndexedDB error:", err);
       const cached = localStorage.getItem("fallbackData");
       if (cached) {
+        console.warn("⚠️ Menggunakan fallback cache");
         resolve(JSON.parse(cached));
       } else {
         resolve({ id: 1, namaRestoran: "", menu: [] });
       }
-    };
+    }
   });
 }
 
@@ -2113,11 +2101,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadVoucherOnInit(); // load voucher permanen pas awal
 });
 
-// ====================== INIT ======================
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadVoucherOnInit(); // load voucher permanen pas awal
-});
-
 
   function copyVoucherCode() {
     const codeText = document.getElementById("voucherCodeText").innerText;
@@ -2142,9 +2125,3 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
