@@ -721,6 +721,23 @@ const DB_VERSION = 7;
 
   let dbInstance = null;
 
+  // Tes sederhana: apakah IndexedDB berfungsi di HP?
+if (!window.indexedDB) {
+  alert("⚠️ Browser ini tidak mendukung IndexedDB!");
+} else {
+  const test = indexedDB.open("TestDB_Check");
+  test.onerror = (e) => {
+    console.error("❌ IndexedDB gagal dibuka:", e.target.error);
+    alert("IndexedDB gagal dibuka di HP! Kemungkinan masalah izin browser.");
+  };
+  test.onsuccess = () => {
+    console.log("✅ IndexedDB bisa dibuka di perangkat ini");
+    test.result.close();
+    indexedDB.deleteDatabase("TestDB_Check");
+  };
+}
+
+
 // ====================== INIT DB ======================
 function initDB() {
   console.log("🟢 [DEBUG] initDB() dipanggil...");
@@ -2124,6 +2141,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
 
