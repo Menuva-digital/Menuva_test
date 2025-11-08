@@ -2134,18 +2134,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "visible") {
-    const data = await loadDataFromDB(1);
-    await loadData(data);
-  }
-});
 </script>
 </body>
 </html>
-
-
-
-
-
-
