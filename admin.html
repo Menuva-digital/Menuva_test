@@ -723,52 +723,61 @@ const DB_VERSION = 7;
 
 // ====================== INIT DB ======================
 function initDB() {
-  if (dbInstance) return Promise.resolve(dbInstance);
-
+  console.log("🟢 [DEBUG] initDB() dipanggil...");
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (e) => {
+      console.log("⚙️ [DEBUG] onupgradeneeded:", DB_NAME);
       const db = e.target.result;
-      console.log(`⚙️ Upgrade ${DB_NAME} ke versi ${DB_VERSION}`);
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        console.log("🧱 Membuat object store:", STORE_NAME);
       }
     };
 
     request.onsuccess = (e) => {
-      dbInstance = e.target.result;
-      console.log("✅ IndexedDB siap digunakan");
-
-      dbInstance.onversionchange = () => {
-        console.warn("⚠️ Versi DB berubah, koneksi ditutup");
-        dbInstance.close();
-        alert("Database telah diperbarui. Silakan muat ulang halaman.");
-      };
-
-      resolve(dbInstance);
+      console.log("✅ [DEBUG] initDB sukses:", DB_NAME);
+      const db = e.target.result;
+      resolve(db);
     };
 
     request.onerror = (e) => {
-      console.error("❌ IndexedDB gagal dibuka:", e.target.error);
+      console.error("❌ [DEBUG] initDB gagal:", e.target.error);
       reject(e.target.error);
-    };
-
-    request.onblocked = () => {
-      console.warn("⚠️ Proses upgrade terblokir. Tutup tab lain dari Menuva lalu reload halaman.");
     };
   });
 }
 
-// ====================== GET DB ======================
 async function getDB() {
-  // Jangan buka ulang — pakai yang udah di-init
-  if (!dbInstance) {
-    await initDB();
+  console.log("🟢 [DEBUG] getDB() dipanggil...");
+  if (dbInstance) {
+    console.log("✅ [DEBUG] getDB pakai instance lama");
+    return dbInstance;
   }
-  return dbInstance;
+
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        console.log("🧱 [DEBUG] Membuat store baru:", STORE_NAME);
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+
+    req.onsuccess = (e) => {
+      dbInstance = e.target.result;
+      console.log("✅ [DEBUG] getDB sukses:", dbInstance.name);
+      resolve(dbInstance);
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ [DEBUG] getDB gagal:", e.target.error);
+      reject(e.target.error);
+    };
+  });
 }
+
 // ====================== SAVE DATA ======================
 async function saveDataToDB(data) {
   if (!data || typeof data !== "object") throw new Error("Invalid data");
@@ -2115,5 +2124,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
