@@ -760,10 +760,12 @@ function initDB() {
 
     request.onerror = (e) => {
       console.error("❌ [DEBUG] initDB gagal:", e.target.error);
+      alert("IndexedDB error: " + e.target.error?.message); // << TAMBAH INI BRO
       reject(e.target.error);
     };
   });
 }
+
 
 async function getDB() {
   console.log("🟢 [DEBUG] getDB() dipanggil...");
@@ -2141,6 +2143,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
 
