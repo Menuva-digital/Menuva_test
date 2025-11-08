@@ -1492,7 +1492,14 @@ async function simpanData() {
   }
 }
 
+// Flag global buat cegah render dobel
+let sudahLoadData = false;
+
 async function loadData(data) {
+  // Cegah duplikasi render (misalnya loadData() kepanggil 2x)
+  if (sudahLoadData) return;
+  sudahLoadData = true;
+
   try {
     showLoader();
 
@@ -1504,7 +1511,7 @@ async function loadData(data) {
 
     console.log("📦 Data di-load:", data);
 
-    // Amanin DOM query (jangan bikin error kalau elemen gak ada)
+    // Amanin DOM query (biar gak error kalau elemen gak ada)
     const safeSet = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.value = value || "";
@@ -1517,35 +1524,49 @@ async function loadData(data) {
     const preview = document.getElementById("previewLogo");
     if (preview && data.logo) preview.src = data.logo;
 
+    // ====================== NOMOR WA ADMIN ======================
     const container = document.getElementById("nomorWaContainer");
     if (container && Array.isArray(data.nomorWaAdmin)) {
-      container.innerHTML = "";
+      container.innerHTML = ""; // bersihkan dulu
       data.nomorWaAdmin.forEach(() => tambahNomorWa());
       const inputs = container.querySelectorAll(".nomor-wa");
       data.nomorWaAdmin.forEach((v, i) => (inputs[i] ? (inputs[i].value = v) : null));
     }
 
+    // ====================== MENU PROMO ======================
     menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
     if (typeof renderPromoUI === "function") renderPromoUI();
 
-    if (Array.isArray(data.menu))
-      data.menu.forEach((m) =>
-        typeof tambahMenu === "function" && tambahMenu(m.kategori, m.nama, m.harga, m.image)
-      );
+    // ====================== MENU UTAMA ======================
+    if (Array.isArray(data.menu)) {
+      const menuContainer = document.getElementById("menuContainer");
+      if (menuContainer) menuContainer.innerHTML = ""; // 🧹 bersihkan sebelum isi ulang
 
-    if (Array.isArray(data.rooms) && typeof restoreRoomFromData === "function")
+      data.menu.forEach((m) => {
+        if (typeof tambahMenu === "function") {
+          tambahMenu(m.kategori, m.nama, m.harga, m.image);
+        }
+      });
+    }
+
+    // ====================== ROOMS ======================
+    if (Array.isArray(data.rooms) && typeof restoreRoomFromData === "function") {
       restoreRoomFromData(data.rooms);
+    }
 
+    // ====================== FLIPBOOK RUANGAN ======================
     flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
-    flipbookRuanganImages.forEach((src) =>
-      typeof renderImagePreview === "function" && renderImagePreview("ruangan", src)
-    );
+    flipbookRuanganImages.forEach((src) => {
+      if (typeof renderImagePreview === "function") renderImagePreview("ruangan", src);
+    });
 
+    // ====================== FLIPBOOK MENU ======================
     flipbookMenuImages = (data.flipbookMenuImages || []).slice();
-    flipbookMenuImages.forEach((src) =>
-      typeof renderImagePreview === "function" && renderImagePreview("menu", src)
-    );
+    flipbookMenuImages.forEach((src) => {
+      if (typeof renderImagePreview === "function") renderImagePreview("menu", src);
+    });
 
+    // ====================== RESTO ID ======================
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
       restoIdEl = document.createElement("input");
@@ -1562,6 +1583,7 @@ async function loadData(data) {
     hideLoader();
   }
 }
+
 // ====================== RESET & BACKUP ======================
 async function resetData() {
   if (!confirm("Are you sure you want to delete all data?")) return;
@@ -2137,3 +2159,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
