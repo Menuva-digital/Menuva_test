@@ -1894,19 +1894,24 @@ async function clearDataDB() {
     }
   });
 }
+</script>
+<script>
+/* ============================================================
+   ADMIN SCRIPT - Versi Stabil (fix duplikasi & struktur rapi)
+   ============================================================ */
 
-// ====================== INIT ======================
 document.addEventListener("DOMContentLoaded", async () => {
-  showLoader();
   console.log("🚀 Init mulai...");
+  showLoader();
 
-  // Timeout proteksi kalau loader ngelag di HP
+  // Timeout proteksi loader
   const timeout = setTimeout(() => {
     console.warn("⚠️ Init terlalu lama, sembunyikan loader paksa.");
     hideLoader();
-  }, 8000); // 8 detik batas aman
+  }, 8000);
 
   try {
+    /* ====================== INIT DATABASE ====================== */
     const db = await initDB().catch(err => {
       console.error("❌ initDB gagal:", err);
       throw err;
@@ -1927,6 +1932,73 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     console.log("✅ Admin siap digunakan");
+
+    /* ====================== PAGE TOGGLE: ORDER ====================== */
+    const toggleOrderPage = document.getElementById("toggleOrderPage");
+    const orderContainerBox = document.getElementById("orderContainerBox");
+
+    if (toggleOrderPage && orderContainerBox) {
+      const saved = localStorage.getItem("page_order");
+      toggleOrderPage.checked = saved === "true";
+      orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
+
+      toggleOrderPage.addEventListener("change", e => {
+        const enabled = e.target.checked;
+        localStorage.setItem("page_order", enabled);
+        orderContainerBox.style.display = enabled ? "block" : "none";
+      });
+    }
+
+    /* ====================== PAGE TOGGLE: ROOM ====================== */
+    const toggleRoomPage = document.getElementById("toggleRoomPage");
+    const roomContainerBox = document.getElementById("roomContainerBox");
+
+    if (toggleRoomPage && roomContainerBox) {
+      const saved = localStorage.getItem("page_room");
+      toggleRoomPage.checked = saved === "true";
+      roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
+
+      toggleRoomPage.addEventListener("change", e => {
+        const enabled = e.target.checked;
+        localStorage.setItem("page_room", enabled);
+        roomContainerBox.style.display = enabled ? "block" : "none";
+      });
+    }
+
+    /* ====================== PAGE TOGGLE: VOUCHER ====================== */
+    const plan = localStorage.getItem("user_plan"); 
+    const toggleVoucherPage = document.getElementById("toggleVoucherPage");
+    const voucherForm = document.getElementById("voucherForm");
+    const voucherContainerBox = document.getElementById("voucherContainerBox");
+
+    if (plan === "monthly" && voucherContainerBox) {
+      voucherContainerBox.style.display = "none";
+    } else if (toggleVoucherPage && voucherForm) {
+      const enabled = localStorage.getItem("page_voucher") === "true";
+      toggleVoucherPage.checked = enabled;
+      voucherForm.style.display = enabled ? "block" : "none";
+
+      toggleVoucherPage.addEventListener("change", e => {
+        const enabled = e.target.checked;
+        localStorage.setItem("page_voucher", enabled);
+        voucherForm.style.display = enabled ? "block" : "none";
+        if (!enabled) {
+          localStorage.removeItem("voucher");
+          renderVoucher();
+        }
+      });
+
+      // ✅ Load voucher cuma sekali
+      await loadVoucherOnInit();
+    }
+
+    /* ====================== FIXED BAR PADDING ====================== */
+    const fixbar = document.querySelector(".fixed-bar");
+    if (fixbar) {
+      const fixbarHeight = fixbar.offsetHeight;
+      document.body.style.paddingBottom = fixbarHeight + "px";
+    }
+
   } catch (err) {
     console.error("❌ Error saat init:", err);
     alert("Terjadi kesalahan saat memuat data. Coba refresh halaman.");
@@ -1936,105 +2008,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-</script>
- <script>
-  const toggleOrderPage = document.getElementById("toggleOrderPage");
-  const orderContainerBox = document.getElementById("orderContainerBox");
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const saved = localStorage.getItem("page_order");
-    toggleOrderPage.checked = saved === "true";
-    if (orderContainerBox) {
-      orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
-    }
-  });
+/* ============================================================
+   VOUCHER HANDLER
+   ============================================================ */
 
-  toggleOrderPage.addEventListener("change", (e) => {
-    const enabled = e.target.checked;
-    localStorage.setItem("page_order", enabled);
-    if (orderContainerBox) {
-      orderContainerBox.style.display = enabled ? "block" : "none";
-    }
-  });
-</script>
-
-<script>
-  const toggleRoomPage = document.getElementById("toggleRoomPage");
-  const roomContainerBox = document.getElementById("roomContainerBox");
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const saved = localStorage.getItem("page_room");
-    toggleRoomPage.checked = saved === "true";
-    roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
-  });
-
-  toggleRoomPage.addEventListener("change", (e) => {
-    const enabled = e.target.checked;
-    localStorage.setItem("page_room", enabled);
-    roomContainerBox.style.display = enabled ? "block" : "none";
-  });
-</script>
-
-<script>
-  const toggleVoucherPage = document.getElementById("toggleVoucherPage");
-  const voucherForm = document.getElementById("voucherForm");
-
-  document.addEventListener("DOMContentLoaded", async () => {
-    const plan = localStorage.getItem("user_plan"); 
-    if (plan === "monthly") {
-      document.getElementById("voucherContainerBox").style.display = "none";
-      return;
-    }
-
-    const enabled = localStorage.getItem("page_voucher") === "true";
-    toggleVoucherPage.checked = enabled;
-    voucherForm.style.display = enabled ? "block" : "none";
-
-    await loadVoucherOnInit(); // load voucher pas awal
-  });
-
-  toggleVoucherPage.addEventListener("change", (e) => {
-    const enabled = e.target.checked;
-    localStorage.setItem("page_voucher", enabled);
-    voucherForm.style.display = enabled ? "block" : "none";
-    if (!enabled) {
-      localStorage.removeItem("voucher");
-      renderVoucher();
-    }
-  });
-</script>
-
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const fixbar = document.querySelector(".fixed-bar");
-    if (fixbar) {
-      const fixbarHeight = fixbar.offsetHeight;
-      document.body.style.paddingBottom = fixbarHeight + "px";
-    }
-  });
-</script>
-  <script>
-  // ====================== RENDER VOUCHER ======================
-  function renderVoucher(voucher) {
-    const voucherPreview = document.getElementById("voucherPreview");
-    if (!voucherPreview) return;
-
-    if (voucher) {
-      voucherPreview.innerHTML = `
-        <p>
-          <strong>Kode Voucher:</strong>
-          <span id="voucherCodeText">${voucher.code}</span>
-          <button onclick="copyVoucherCode()">📋 Copy</button>
-        </p>
-        <p><strong>Diskon:</strong> ${voucher.discount}%</p>
-        <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
-      `;
-    } else {
-      voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
-    }
-  }
-
-  // ====================== LOAD SAAT AWAL ======================
 let voucherLoaded = false; // Guard supaya gak dobel
 
 async function loadVoucherOnInit() {
@@ -2062,7 +2040,7 @@ async function loadVoucherOnInit() {
     const store = tx.objectStore(STORE_NAME);
     const req = store.get(1);
 
-    req.onsuccess = (e) => {
+    req.onsuccess = e => {
       const data = e.target.result;
       const voucher =
         data?.menuVoucher && data.menuVoucher.length
@@ -2083,26 +2061,33 @@ async function loadVoucherOnInit() {
   }
 }
 
-  // ====================== INIT SAAT DOM READY ======================
-  document.addEventListener("DOMContentLoaded", async () => {
-    await loadVoucherOnInit(); // <- sekarang fungsi udah terdefinisi duluan
-  });
+function renderVoucher(voucher) {
+  const voucherPreview = document.getElementById("voucherPreview");
+  if (!voucherPreview) return;
 
-  function copyVoucherCode() {
-    const codeText = document.getElementById("voucherCodeText").innerText;
-    navigator.clipboard.writeText(codeText).then(() => {
-      alert("Kode voucher berhasil di-copy: " + codeText);
-    }).catch(err => {
-      console.error("Gagal copy", err);
-    });
+  if (voucher) {
+    voucherPreview.innerHTML = `
+      <p>
+        <strong>Kode Voucher:</strong>
+        <span id="voucherCodeText">${voucher.code}</span>
+        <button onclick="copyVoucherCode()">📋 Copy</button>
+      </p>
+      <p><strong>Diskon:</strong> ${voucher.discount}%</p>
+      <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
+    `;
+  } else {
+    voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
   }
+}
+
+function copyVoucherCode() {
+  const codeText = document.getElementById("voucherCodeText")?.innerText;
+  if (!codeText) return;
+  navigator.clipboard.writeText(codeText)
+    .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
+    .catch(err => console.error("Gagal copy", err));
+}
 </script>
+
 </body>
 </html>
-
-
-
-
-
-
-
