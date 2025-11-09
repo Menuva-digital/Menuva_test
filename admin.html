@@ -800,38 +800,55 @@ async function getDB() {
 // ====================== SAVE DATA ======================
 async function saveDataToDB(data) {
   if (!data || typeof data !== "object") throw new Error("Invalid data");
-  const record = { id: data.id || 1, ...data };
+
+  // 🔧 pastikan ada id unik tetap
+  const recordId = data.id || data.restoId || data.restoPhone || 1;
+  const record = { id: recordId, ...data };
+
+  console.groupCollapsed("💾 [TRACE] saveDataToDB()");
+  console.log("📦 Data diterima untuk disimpan:", record);
+  console.log("🆔 ID yang digunakan:", recordId);
 
   const db = await getDB();
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    const req = store.put(record);
 
-    req.onsuccess = () => {
-      console.log("💾 Data tersimpan di IndexedDB:", record);
-      resolve(record);
+    // 🔍 cek apakah sudah ada record dengan id yang sama
+    const checkReq = store.get(recordId);
+    checkReq.onsuccess = (ev) => {
+      const existing = ev.target.result;
+
+      if (existing) {
+        console.warn("⚠️ [DUPLIKASI TERDETEKSI] Data dengan ID ini sudah ada di DB:", recordId);
+        console.log("📄 Data lama:", existing);
+        console.log("🆕 Data baru:", record);
+      } else {
+        console.log("✅ Tidak ada duplikasi, data baru akan disimpan");
+      }
+
+      // lanjut simpan
+      const req = store.put(record);
+      req.onsuccess = () => {
+        console.log("✅ [OK] Data berhasil disimpan di IndexedDB:", record);
+        console.groupEnd();
+        resolve(record);
+      };
+      req.onerror = (e) => {
+        console.error("❌ [ERROR] Gagal simpan ke DB:", e.target.error);
+        console.groupEnd();
+        reject(e.target.error);
+      };
     };
 
-    req.onerror = (e) => {
-      console.error("❌ Gagal simpan ke DB:", e.target.error);
-      reject(e.target.error);
+    checkReq.onerror = (err) => {
+      console.error("❌ [ERROR] Gagal cek duplikasi ID:", err);
+      console.groupEnd();
+      reject(err);
     };
   });
 }
-
-// ====================== STORAGE PERMISSION ======================
-if (navigator.storage && navigator.storage.persist) {
-  navigator.storage.persist().then((granted) => {
-    console.log(
-      granted
-        ? "💾 Storage dijamin persistent (tidak akan dihapus oleh browser)"
-        : "⚠️ Storage belum persistent, bisa dihapus otomatis"
-    );
-  });
-}
-
 // ====================== LOAD DATA ======================
 async function loadDataFromDB(id = 1) {
   await new Promise((res) => setTimeout(res, 300)); // tambahkan delay 0.3 detik
@@ -2065,6 +2082,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
 
