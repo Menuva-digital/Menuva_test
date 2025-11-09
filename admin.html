@@ -2035,41 +2035,53 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ====================== LOAD SAAT AWAL ======================
-  async function loadVoucherOnInit() {
-    const fromLocal = localStorage.getItem("voucher");
-    if (fromLocal) {
-      const voucher = JSON.parse(fromLocal);
-      console.log("📦 Voucher dari localStorage:", voucher);
-      renderVoucher(voucher);
-      return;
-    }
+let voucherLoaded = false; // Guard supaya gak dobel
 
-    try {
-      const db = await initDB();
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(1);
+async function loadVoucherOnInit() {
+  console.groupCollapsed("🟣 [TRACE] loadVoucherOnInit() dipanggil");
+  console.trace("Asal pemanggilan loadVoucherOnInit()");
+  console.groupEnd();
 
-      req.onsuccess = (e) => {
-        const data = e.target.result;
-        const voucher =
-          data?.menuVoucher && data.menuVoucher.length
-            ? data.menuVoucher[0]
-            : null;
-
-        if (voucher) {
-          console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
-          localStorage.setItem("voucher", JSON.stringify(voucher));
-          renderVoucher(voucher);
-        } else {
-          console.log("⚠️ Tidak ada voucher di DB");
-          renderVoucher(null);
-        }
-      };
-    } catch (err) {
-      console.error("❌ Gagal load voucher dari DB:", err);
-    }
+  if (voucherLoaded) {
+    console.warn("⚠️ loadVoucherOnInit() di-skip karena sudah dijalankan sebelumnya");
+    return;
   }
+  voucherLoaded = true;
+
+  const fromLocal = localStorage.getItem("voucher");
+  if (fromLocal) {
+    const voucher = JSON.parse(fromLocal);
+    console.log("📦 Voucher dari localStorage:", voucher);
+    renderVoucher(voucher);
+    return;
+  }
+
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(1);
+
+    req.onsuccess = (e) => {
+      const data = e.target.result;
+      const voucher =
+        data?.menuVoucher && data.menuVoucher.length
+          ? data.menuVoucher[0]
+          : null;
+
+      if (voucher) {
+        console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
+        localStorage.setItem("voucher", JSON.stringify(voucher));
+        renderVoucher(voucher);
+      } else {
+        console.log("⚠️ Tidak ada voucher di DB");
+        renderVoucher(null);
+      }
+    };
+  } catch (err) {
+    console.error("❌ Gagal load voucher dari DB:", err);
+  }
+}
 
   // ====================== INIT SAAT DOM READY ======================
   document.addEventListener("DOMContentLoaded", async () => {
@@ -2087,6 +2099,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
 
