@@ -719,7 +719,7 @@ const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
 const DB_VERSION = 9;
 
-  let dbInstance = null;
+let dbInstance = null;
 
   // Tes sederhana: apakah IndexedDB berfungsi di HP?
 if (!window.indexedDB) {
@@ -1897,108 +1897,54 @@ async function clearDataDB() {
 </script>
 <script>
 /* ============================================================
-   ADMIN SCRIPT - Versi Stabil (fix duplikasi & struktur rapi)
+   ADMIN SCRIPT - FINAL ANTI DUPLIKAT
    ============================================================ */
 
-document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 Init mulai...");
-  showLoader();
+let appInitialized = false; // 🔒 Anti duplikasi init
+let voucherLoaded = false;  // Anti duplikasi voucher
 
-  // Timeout proteksi loader
+document.addEventListener("DOMContentLoaded", async () => {
+  if (appInitialized) {
+    console.warn("⚠️ Admin init sudah dijalankan sebelumnya, skip!");
+    return;
+  }
+  appInitialized = true;
+
+  showLoader();
+  console.log("🚀 Init mulai...");
+
   const timeout = setTimeout(() => {
     console.warn("⚠️ Init terlalu lama, sembunyikan loader paksa.");
     hideLoader();
   }, 8000);
 
   try {
-    /* ====================== INIT DATABASE ====================== */
-    const db = await initDB().catch(err => {
-      console.error("❌ initDB gagal:", err);
-      throw err;
-    });
+    // ====================== INIT DATABASE ======================
+    dbInstance = await initDB();
+    console.log("✅ DB siap:", dbInstance.name);
 
-    const data = await loadDataFromDB().catch(err => {
-      console.error("❌ loadDataFromDB gagal:", err);
-      throw err;
-    });
-
+    // ====================== LOAD DATA ======================
+    const data = await loadDataFromDB();
     if (data) {
-      await loadData(data).catch(err => {
-        console.error("❌ loadData gagal:", err);
-        throw err;
-      });
+      console.log("📦 Data diambil:", data);
+      await loadData(data);
     } else {
       console.warn("⚠️ Tidak ada data ditemukan di DB");
     }
 
-    console.log("✅ Admin siap digunakan");
+    // ====================== SETUP TOGGLES ======================
+    setupPageToggles();
 
-    /* ====================== PAGE TOGGLE: ORDER ====================== */
-    const toggleOrderPage = document.getElementById("toggleOrderPage");
-    const orderContainerBox = document.getElementById("orderContainerBox");
+    // ====================== LOAD VOUCHER ======================
+    await loadVoucherOnInit();
 
-    if (toggleOrderPage && orderContainerBox) {
-      const saved = localStorage.getItem("page_order");
-      toggleOrderPage.checked = saved === "true";
-      orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
-
-      toggleOrderPage.addEventListener("change", e => {
-        const enabled = e.target.checked;
-        localStorage.setItem("page_order", enabled);
-        orderContainerBox.style.display = enabled ? "block" : "none";
-      });
-    }
-
-    /* ====================== PAGE TOGGLE: ROOM ====================== */
-    const toggleRoomPage = document.getElementById("toggleRoomPage");
-    const roomContainerBox = document.getElementById("roomContainerBox");
-
-    if (toggleRoomPage && roomContainerBox) {
-      const saved = localStorage.getItem("page_room");
-      toggleRoomPage.checked = saved === "true";
-      roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
-
-      toggleRoomPage.addEventListener("change", e => {
-        const enabled = e.target.checked;
-        localStorage.setItem("page_room", enabled);
-        roomContainerBox.style.display = enabled ? "block" : "none";
-      });
-    }
-
-    /* ====================== PAGE TOGGLE: VOUCHER ====================== */
-    const plan = localStorage.getItem("user_plan"); 
-    const toggleVoucherPage = document.getElementById("toggleVoucherPage");
-    const voucherForm = document.getElementById("voucherForm");
-    const voucherContainerBox = document.getElementById("voucherContainerBox");
-
-    if (plan === "monthly" && voucherContainerBox) {
-      voucherContainerBox.style.display = "none";
-    } else if (toggleVoucherPage && voucherForm) {
-      const enabled = localStorage.getItem("page_voucher") === "true";
-      toggleVoucherPage.checked = enabled;
-      voucherForm.style.display = enabled ? "block" : "none";
-
-      toggleVoucherPage.addEventListener("change", e => {
-        const enabled = e.target.checked;
-        localStorage.setItem("page_voucher", enabled);
-        voucherForm.style.display = enabled ? "block" : "none";
-        if (!enabled) {
-          localStorage.removeItem("voucher");
-          renderVoucher();
-        }
-      });
-
-      // ✅ Load voucher cuma sekali
-      await loadVoucherOnInit();
-    }
-
-    /* ====================== FIXED BAR PADDING ====================== */
+    // ====================== FIXED BAR PADDING ======================
     const fixbar = document.querySelector(".fixed-bar");
     if (fixbar) {
-      const fixbarHeight = fixbar.offsetHeight;
-      document.body.style.paddingBottom = fixbarHeight + "px";
+      document.body.style.paddingBottom = fixbar.offsetHeight + "px";
     }
 
+    console.log("✅ Admin siap digunakan");
   } catch (err) {
     console.error("❌ Error saat init:", err);
     alert("Terjadi kesalahan saat memuat data. Coba refresh halaman.");
@@ -2008,23 +1954,74 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+/* ============================================================
+   PAGE TOGGLES
+   ============================================================ */
+function setupPageToggles() {
+  // ORDER PAGE
+  const toggleOrder = document.getElementById("toggleOrderPage");
+  const orderBox = document.getElementById("orderContainerBox");
+  if (toggleOrder && orderBox) {
+    const enabled = localStorage.getItem("page_order") === "true";
+    toggleOrder.checked = enabled;
+    orderBox.style.display = enabled ? "block" : "none";
+    toggleOrder.addEventListener("change", e => {
+      const on = e.target.checked;
+      localStorage.setItem("page_order", on);
+      orderBox.style.display = on ? "block" : "none";
+    });
+  }
+
+  // ROOM PAGE
+  const toggleRoom = document.getElementById("toggleRoomPage");
+  const roomBox = document.getElementById("roomContainerBox");
+  if (toggleRoom && roomBox) {
+    const enabled = localStorage.getItem("page_room") === "true";
+    toggleRoom.checked = enabled;
+    roomBox.style.display = enabled ? "block" : "none";
+    toggleRoom.addEventListener("change", e => {
+      const on = e.target.checked;
+      localStorage.setItem("page_room", on);
+      roomBox.style.display = on ? "block" : "none";
+    });
+  }
+
+  // VOUCHER PAGE
+  const plan = localStorage.getItem("user_plan");
+  const toggleVoucher = document.getElementById("toggleVoucherPage");
+  const voucherForm = document.getElementById("voucherForm");
+  const voucherContainer = document.getElementById("voucherContainerBox");
+  if (plan === "monthly" && voucherContainer) {
+    voucherContainer.style.display = "none";
+  } else if (toggleVoucher && voucherForm) {
+    const enabled = localStorage.getItem("page_voucher") === "true";
+    toggleVoucher.checked = enabled;
+    voucherForm.style.display = enabled ? "block" : "none";
+    toggleVoucher.addEventListener("change", e => {
+      const on = e.target.checked;
+      localStorage.setItem("page_voucher", on);
+      voucherForm.style.display = on ? "block" : "none";
+      if (!on) {
+        localStorage.removeItem("voucher");
+        renderVoucher(null);
+      }
+    });
+  }
+}
 
 /* ============================================================
    VOUCHER HANDLER
    ============================================================ */
-
-let voucherLoaded = false; // Guard supaya gak dobel
-
 async function loadVoucherOnInit() {
-  console.groupCollapsed("🟣 [TRACE] loadVoucherOnInit() dipanggil");
-  console.trace("Asal pemanggilan loadVoucherOnInit()");
-  console.groupEnd();
-
   if (voucherLoaded) {
-    console.warn("⚠️ loadVoucherOnInit() di-skip karena sudah dijalankan sebelumnya");
+    console.warn("⚠️ Voucher sudah diload sebelumnya, skip.");
     return;
   }
   voucherLoaded = true;
+
+  console.groupCollapsed("🟣 loadVoucherOnInit()");
+  console.trace("Asal pemanggilan loadVoucherOnInit()");
+  console.groupEnd();
 
   const fromLocal = localStorage.getItem("voucher");
   if (fromLocal) {
@@ -2035,18 +2032,13 @@ async function loadVoucherOnInit() {
   }
 
   try {
-    const db = await initDB();
+    const db = dbInstance || (await initDB());
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
     const req = store.get(1);
-
     req.onsuccess = e => {
       const data = e.target.result;
-      const voucher =
-        data?.menuVoucher && data.menuVoucher.length
-          ? data.menuVoucher[0]
-          : null;
-
+      const voucher = data?.menuVoucher?.[0] || null;
       if (voucher) {
         console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
         localStorage.setItem("voucher", JSON.stringify(voucher));
@@ -2057,16 +2049,20 @@ async function loadVoucherOnInit() {
       }
     };
   } catch (err) {
-    console.error("❌ Gagal load voucher dari DB:", err);
+    console.error("❌ Gagal load voucher:", err);
   }
 }
 
+/* ============================================================
+   RENDER VOUCHER
+   ============================================================ */
 function renderVoucher(voucher) {
-  const voucherPreview = document.getElementById("voucherPreview");
-  if (!voucherPreview) return;
+  const el = document.getElementById("voucherPreview");
+  if (!el) return;
+  el.innerHTML = ""; // 💥 Bersihkan dulu supaya gak double
 
   if (voucher) {
-    voucherPreview.innerHTML = `
+    el.innerHTML = `
       <p>
         <strong>Kode Voucher:</strong>
         <span id="voucherCodeText">${voucher.code}</span>
@@ -2076,7 +2072,7 @@ function renderVoucher(voucher) {
       <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
     `;
   } else {
-    voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
+    el.innerHTML = "<em>Belum ada voucher aktif</em>";
   }
 }
 
@@ -2087,7 +2083,29 @@ function copyVoucherCode() {
     .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
     .catch(err => console.error("Gagal copy", err));
 }
-</script>
 
+/* ============================================================
+   PENCEGAHAN DUPLIKAT DATA PADA RENDER PRODUK
+   ============================================================ */
+// Pastikan setiap kali render product dipanggil:
+// contoh:
+function renderProductList(products) {
+  const container = document.getElementById("productList");
+  if (!container) return;
+  container.innerHTML = ""; // 💥 Hapus semua elemen lama sebelum render baru
+
+  products.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "product-item";
+    item.innerHTML = `
+      <img src="${p.image}" alt="${p.name}">
+      <h4>${p.name}</h4>
+      <p>${p.desc}</p>
+    `;
+    container.appendChild(item);
+  });
+}
+</script>
 </body>
 </html>
+
