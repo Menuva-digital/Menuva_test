@@ -1933,7 +1933,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.warn("⚠️ Tidak ada data ditemukan di DB");
     }
 
-    // ===================== TOGGLE ORDER =====================
+    // ===================== TOGGLE SECTION =====================
     initOrderToggle();
     initRoomToggle();
     await initVoucherToggle();
@@ -1946,7 +1946,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     console.log("✅ Admin siap digunakan");
-
   } catch (err) {
     console.error("❌ Error saat init:", err);
     alert("Terjadi kesalahan saat memuat data. Coba refresh halaman.");
@@ -1955,6 +1954,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     hideLoader();
   }
 });
+
 
 // ===================== SAFE LOAD WRAPPER =====================
 async function safeLoadDataFromDB(id = 1) {
@@ -1977,13 +1977,26 @@ async function safeLoadData(data) {
   await loadData(data);
 }
 
+
 // ===================== TOGGLES =====================
 function initOrderToggle() {
   const toggleOrderPage = document.getElementById("toggleOrderPage");
   const orderContainerBox = document.getElementById("orderContainerBox");
+
+  // 💥 Tambahan keamanan: kalau elemen nggak ada, jangan error
+  if (!toggleOrderPage) {
+    console.warn("⚠️ Elemen toggleOrderPage tidak ditemukan.");
+    return;
+  }
+  if (!orderContainerBox) {
+    console.warn("⚠️ Elemen orderContainerBox tidak ditemukan — akan dilewati.");
+    return;
+  }
+
   const saved = localStorage.getItem("page_order");
   toggleOrderPage.checked = saved === "true";
   orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
+
   toggleOrderPage.addEventListener("change", (e) => {
     const enabled = e.target.checked;
     localStorage.setItem("page_order", enabled);
@@ -1991,12 +2004,20 @@ function initOrderToggle() {
   });
 }
 
+
 function initRoomToggle() {
   const toggleRoomPage = document.getElementById("toggleRoomPage");
   const roomContainerBox = document.getElementById("roomContainerBox");
+
+  if (!toggleRoomPage || !roomContainerBox) {
+    console.warn("⚠️ Elemen toggleRoomPage atau roomContainerBox tidak ditemukan.");
+    return;
+  }
+
   const saved = localStorage.getItem("page_room");
   toggleRoomPage.checked = saved === "true";
   roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
+
   toggleRoomPage.addEventListener("change", (e) => {
     const enabled = e.target.checked;
     localStorage.setItem("page_room", enabled);
@@ -2004,13 +2025,20 @@ function initRoomToggle() {
   });
 }
 
+
 async function initVoucherToggle() {
   const toggleVoucherPage = document.getElementById("toggleVoucherPage");
   const voucherForm = document.getElementById("voucherForm");
-  const plan = localStorage.getItem("user_plan");
+  const voucherContainerBox = document.getElementById("voucherContainerBox");
 
+  if (!toggleVoucherPage || !voucherForm || !voucherContainerBox) {
+    console.warn("⚠️ Elemen voucher toggle/form/container tidak lengkap, skip initVoucherToggle()");
+    return;
+  }
+
+  const plan = localStorage.getItem("user_plan");
   if (plan === "monthly") {
-    document.getElementById("voucherContainerBox").style.display = "none";
+    voucherContainerBox.style.display = "none";
     return;
   }
 
@@ -2030,6 +2058,7 @@ async function initVoucherToggle() {
 
   await loadVoucherOnInit();
 }
+
 
 // ===================== LOAD VOUCHER =====================
 async function loadVoucherOnInit() {
@@ -2074,6 +2103,7 @@ async function loadVoucherOnInit() {
   }
 }
 
+
 // ===================== RENDER VOUCHER =====================
 function renderVoucher(voucher) {
   const voucherPreview = document.getElementById("voucherPreview");
@@ -2094,6 +2124,7 @@ function renderVoucher(voucher) {
   }
 }
 
+
 function copyVoucherCode() {
   const codeText = document.getElementById("voucherCodeText")?.innerText;
   if (!codeText) return;
@@ -2102,6 +2133,8 @@ function copyVoucherCode() {
     .catch(err => console.error("Gagal copy", err));
 }
 </script>
+
 </body>
 </html>
+
 
