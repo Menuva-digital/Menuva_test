@@ -737,10 +737,12 @@ if (!window.indexedDB) {
   };
 }
 
+// ====================== INIT DB (VERSI TRACE DEBUG) ======================
+async function initDB() {
+  console.groupCollapsed("🟢 [DEBUG] initDB() dipanggil");
+  console.trace("📍 Asal pemanggilan initDB()");
+  console.groupEnd();
 
-// ====================== INIT DB ======================
-function initDB() {
-  console.log("🟢 [DEBUG] initDB() dipanggil...");
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -760,12 +762,11 @@ function initDB() {
 
     request.onerror = (e) => {
       console.error("❌ [DEBUG] initDB gagal:", e.target.error);
-      alert("IndexedDB error: " + e.target.error?.message); // << TAMBAH INI BRO
+      alert("IndexedDB error: " + e.target.error?.message);
       reject(e.target.error);
     };
   });
 }
-
 
 async function getDB() {
   console.log("🟢 [DEBUG] getDB() dipanggil...");
@@ -2082,6 +2083,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
 
 
