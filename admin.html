@@ -1915,22 +1915,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 </script>
-  <script>
+ <script>
   const toggleOrderPage = document.getElementById("toggleOrderPage");
-  const orderContainerBox = document.getElementById("orderContainerBox"); // kalau ada section khusus di admin
+  const orderContainerBox = document.getElementById("orderContainerBox");
 
-  window.addEventListener("load", () => {
+  document.addEventListener("DOMContentLoaded", () => {
     const saved = localStorage.getItem("page_order");
-    if (saved !== null) {
-      toggleOrderPage.checked = saved === "true";
-      if (orderContainerBox) {
-        orderContainerBox.style.display = saved === "true" ? "block" : "none";
-      }
-    } else {
-      toggleOrderPage.checked = false; // default off
-      if (orderContainerBox) {
-        orderContainerBox.style.display = "none";
-      }
+    toggleOrderPage.checked = saved === "true";
+    if (orderContainerBox) {
+      orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
     }
   });
 
@@ -1942,79 +1935,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 </script>
+
 <script>
   const toggleRoomPage = document.getElementById("toggleRoomPage");
   const roomContainerBox = document.getElementById("roomContainerBox");
 
-  // Load state saat admin page dibuka
-  window.addEventListener("load", () => {
+  document.addEventListener("DOMContentLoaded", () => {
     const saved = localStorage.getItem("page_room");
-    if (saved !== null) {
-      toggleRoomPage.checked = saved === "true";
-      roomContainerBox.style.display = saved === "true" ? "block" : "none";
-    } else {
-      toggleRoomPage.checked = false; // default off
-      roomContainerBox.style.display = "none";
-    }
+    toggleRoomPage.checked = saved === "true";
+    roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
   });
 
-  // Simpan perubahan toggle
   toggleRoomPage.addEventListener("change", (e) => {
     const enabled = e.target.checked;
     localStorage.setItem("page_room", enabled);
     roomContainerBox.style.display = enabled ? "block" : "none";
   });
 </script>
-<!-- Fixed Button Bar -->
-<div class="fixed-bar">
-  <!-- Tombol Dine-in -->
-  <button class="nav-btn" onclick="window.location.href='book.html'">
-    <span class="icon">📖</span>
-    <span class="label">Dine-in Book</span>
-  </button>
-
-  <!-- Tombol Reserve & Delivery -->
-  <button class="nav-btn" onclick="window.location.href='order.html'">
-    <span class="icon">🛒</span>
-    <span class="label">Reserve & Delivery</span>
-  </button>
-
-  <!-- Tombol Room & Package -->
-  <button class="nav-btn" onclick="window.location.href='room.html'">
-    <span class="icon">🏢</span>
-    <span class="label">Room & Package</span>
-  </button>
-
-  <!-- Tombol Recieves (Admin Only) -->
-  <button class="nav-btn" onclick="window.location.href='recieves.html'">
-    <span class="icon">📥</span>
-    <span class="label">Recieves</span>
-  </button>
-
-  <!-- Tombol Logout -->
-  <button class="nav-btn" onclick="window.location.href='index.html'">
-    <span class="icon">🔒</span>
-    <span class="label">Logout</span>
-  </button>
-</div>
 
 <script>
   const toggleVoucherPage = document.getElementById("toggleVoucherPage");
   const voucherForm = document.getElementById("voucherForm");
-  const voucherPreview = document.getElementById("voucherPreview");
 
-  // Load state saat buka admin
-  window.addEventListener("load", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     const plan = localStorage.getItem("user_plan"); 
     if (plan === "monthly") {
       document.getElementById("voucherContainerBox").style.display = "none";
-      return; // monthly ga dapat fitur voucher
+      return;
     }
 
     const enabled = localStorage.getItem("page_voucher") === "true";
     toggleVoucherPage.checked = enabled;
     voucherForm.style.display = enabled ? "block" : "none";
-    renderVoucher();
+
+    await loadVoucherOnInit(); // load voucher pas awal
   });
 
   toggleVoucherPage.addEventListener("change", (e) => {
@@ -2026,137 +1980,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderVoucher();
     }
   });
-
-// ====================== SIMPAN VOUCHER (FIXED) ======================
-async function saveVoucher() {
-  const code = document.getElementById("voucherCode").value.trim();
-  const discount = document.getElementById("voucherDiscount").value;
-  const expiry = document.getElementById("voucherExpiry").value;
-
-  if (!code || !discount || !expiry) {
-    alert("Lengkapi semua data voucher!");
-    return;
-  }
-
-  const voucher = { code, discount, expiry };
-
-  // simpan juga ke localStorage agar cepat ditampilkan ulang
-  localStorage.setItem("voucher", JSON.stringify(voucher));
-
-  try {
-    const db = await initDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-
-    // 🔧 Ambil data lama via Promise
-    const existingData = await new Promise((resolve, reject) => {
-      const getReq = store.get(1);
-      getReq.onsuccess = (e) => resolve(e.target.result || { id: 1, menuVoucher: [] });
-      getReq.onerror = (e) => reject(e.target.error);
-    });
-
-    // Update / ganti voucher lama
-    existingData.menuVoucher = [voucher]; // hanya 1 voucher aktif disimpan
-
-    // Simpan ulang
-    const putReq = store.put(existingData);
-    putReq.onsuccess = () => {
-      console.log("💾 Voucher disimpan permanen:", existingData.menuVoucher);
-      renderVoucher(voucher);
-    };
-    putReq.onerror = (err) => console.error("❌ Gagal simpan voucher:", err);
-  } catch (err) {
-    console.error("🔥 Error IndexedDB:", err);
-  }
-}
-
-// ====================== RENDER VOUCHER ======================
-function renderVoucher(voucher) {
-  const voucherPreview = document.getElementById("voucherPreview");
-  if (!voucherPreview) return;
-
-  if (voucher) {
-    voucherPreview.innerHTML = `
-      <p>
-        <strong>Kode Voucher:</strong>
-        <span id="voucherCodeText">${voucher.code}</span>
-        <button onclick="copyVoucherCode()">📋 Copy</button>
-      </p>
-      <p><strong>Diskon:</strong> ${voucher.discount}%</p>
-      <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
-    `;
-  } else {
-    voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
-  }
-}
-
-// ====================== LOAD SAAT AWAL ======================
-async function loadVoucherOnInit() {
-  // 1️⃣ coba baca dari localStorage dulu
-  const fromLocal = localStorage.getItem("voucher");
-  if (fromLocal) {
-    const voucher = JSON.parse(fromLocal);
-    console.log("📦 Voucher dari localStorage:", voucher);
-    renderVoucher(voucher);
-    return; // udah ketemu, gak usah lanjut ke DB
-  }
-
-  // 2️⃣ kalau kosong, baru cek IndexedDB
-  try {
-    const db = await initDB();
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(1);
-
-    req.onsuccess = (e) => {
-      const data = e.target.result;
-      const voucher =
-        data?.menuVoucher && data.menuVoucher.length
-          ? data.menuVoucher[0]
-          : null;
-
-      if (voucher) {
-        console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
-        localStorage.setItem("voucher", JSON.stringify(voucher));
-        renderVoucher(voucher);
-      } else {
-        console.log("⚠️ Tidak ada voucher di DB");
-        renderVoucher(null);
-      }
-    };
-  } catch (err) {
-    console.error("❌ Gagal load voucher dari DB:", err);
-  }
-}
-
-// ====================== INIT ======================
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadVoucherOnInit(); // load voucher permanen pas awal
-});
-
-
-  function copyVoucherCode() {
-    const codeText = document.getElementById("voucherCodeText").innerText;
-    navigator.clipboard.writeText(codeText).then(() => {
-      alert("Kode voucher berhasil di-copy: " + codeText);
-    }).catch(err => {
-      console.error("Gagal copy", err);
-    });
-  }
-
 </script>
 
 <script>
-  window.addEventListener("load", function() {
+  document.addEventListener("DOMContentLoaded", () => {
     const fixbar = document.querySelector(".fixed-bar");
     if (fixbar) {
       const fixbarHeight = fixbar.offsetHeight;
-      document.body.style.paddingBottom = fixbarHeight + 0 + "px"; 
-      // +20 biar ada ruang ekstra
+      document.body.style.paddingBottom = fixbarHeight + "px";
     }
   });
-
 </script>
 </body>
 </html>
-
