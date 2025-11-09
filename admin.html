@@ -737,17 +737,25 @@ if (!window.indexedDB) {
   };
 }
 
+let dbPromise = null; // 🔒 lock promise untuk mencegah race condition
+
 async function initDB() {
   if (dbInstance) {
     console.log("♻️ [DEBUG] Reuse DB instance:", DB_NAME);
     return dbInstance;
   }
 
+  // Jika sedang dalam proses membuka DB, tunggu promise yang sama
+  if (dbPromise) {
+    console.log("⏳ [DEBUG] initDB sedang dibuka, tunggu...");
+    return dbPromise;
+  }
+
   console.groupCollapsed("🟢 [DEBUG] initDB() dipanggil");
   console.trace("📍 Asal pemanggilan initDB()");
   console.groupEnd();
 
-  dbInstance = await new Promise((resolve, reject) => {
+  dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (e) => {
@@ -760,16 +768,19 @@ async function initDB() {
 
     request.onsuccess = (e) => {
       console.log("✅ [DEBUG] initDB sukses:", DB_NAME);
-      resolve(e.target.result);
+      dbInstance = e.target.result;
+      resolve(dbInstance);
+      dbPromise = null; // reset lock
     };
 
     request.onerror = (e) => {
       console.error("❌ [DEBUG] initDB gagal:", e.target.error);
       reject(e.target.error);
+      dbPromise = null; // reset lock meski gagal
     };
   });
 
-  return dbInstance;
+  return dbPromise;
 }
 
 async function getDB() {
@@ -1896,6 +1907,10 @@ async function clearDataDB() {
 }
 </script>
 <script>
+let sudahLoadData = false;
+let isLoadingFromDB = false;
+let voucherLoaded = false;
+
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Init mulai...");
   showLoader();
@@ -1911,60 +1926,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("✅ IndexedDB siap");
 
     // ===================== LOAD DATA UTAMA =====================
-    const data = await loadDataFromDB();
+    const data = await safeLoadDataFromDB();
     if (data) {
-      await loadData(data);
+      await safeLoadData(data);
       console.log("📦 Data diambil:", data);
     } else {
       console.warn("⚠️ Tidak ada data ditemukan di DB");
     }
 
     // ===================== TOGGLE ORDER =====================
-    const toggleOrderPage = document.getElementById("toggleOrderPage");
-    const orderContainerBox = document.getElementById("orderContainerBox");
-    const savedOrder = localStorage.getItem("page_order");
-    toggleOrderPage.checked = savedOrder === "true";
-    orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
-    toggleOrderPage.addEventListener("change", (e) => {
-      const enabled = e.target.checked;
-      localStorage.setItem("page_order", enabled);
-      orderContainerBox.style.display = enabled ? "block" : "none";
-    });
-
-    // ===================== TOGGLE ROOM =====================
-    const toggleRoomPage = document.getElementById("toggleRoomPage");
-    const roomContainerBox = document.getElementById("roomContainerBox");
-    const savedRoom = localStorage.getItem("page_room");
-    toggleRoomPage.checked = savedRoom === "true";
-    roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
-    toggleRoomPage.addEventListener("change", (e) => {
-      const enabled = e.target.checked;
-      localStorage.setItem("page_room", enabled);
-      roomContainerBox.style.display = enabled ? "block" : "none";
-    });
-
-    // ===================== TOGGLE VOUCHER =====================
-    const toggleVoucherPage = document.getElementById("toggleVoucherPage");
-    const voucherForm = document.getElementById("voucherForm");
-    const plan = localStorage.getItem("user_plan");
-
-    if (plan === "monthly") {
-      document.getElementById("voucherContainerBox").style.display = "none";
-    } else {
-      const enabledVoucher = localStorage.getItem("page_voucher") === "true";
-      toggleVoucherPage.checked = enabledVoucher;
-      voucherForm.style.display = enabledVoucher ? "block" : "none";
-      toggleVoucherPage.addEventListener("change", (e) => {
-        const enabled = e.target.checked;
-        localStorage.setItem("page_voucher", enabled);
-        voucherForm.style.display = enabled ? "block" : "none";
-        if (!enabled) {
-          localStorage.removeItem("voucher");
-          renderVoucher();
-        }
-      });
-      await loadVoucherOnInit();
-    }
+    initOrderToggle();
+    initRoomToggle();
+    await initVoucherToggle();
 
     // ===================== FIXED BAR =====================
     const fixbar = document.querySelector(".fixed-bar");
@@ -1983,9 +1956,152 @@ document.addEventListener("DOMContentLoaded", async () => {
     hideLoader();
   }
 });
-</script>
 
+// ===================== SAFE LOAD WRAPPER =====================
+async function safeLoadDataFromDB(id = 1) {
+  if (isLoadingFromDB) {
+    console.warn("⚠️ loadDataFromDB() di-skip, masih jalan");
+    return null;
+  }
+  isLoadingFromDB = true;
+  const data = await loadDataFromDB(id);
+  isLoadingFromDB = false;
+  return data;
+}
+
+async function safeLoadData(data) {
+  if (sudahLoadData) {
+    console.warn("⚠️ loadData() sudah pernah jalan, skip render ulang");
+    return;
+  }
+  sudahLoadData = true;
+  await loadData(data);
+}
+
+// ===================== TOGGLES =====================
+function initOrderToggle() {
+  const toggleOrderPage = document.getElementById("toggleOrderPage");
+  const orderContainerBox = document.getElementById("orderContainerBox");
+  const saved = localStorage.getItem("page_order");
+  toggleOrderPage.checked = saved === "true";
+  orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
+  toggleOrderPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_order", enabled);
+    orderContainerBox.style.display = enabled ? "block" : "none";
+  });
+}
+
+function initRoomToggle() {
+  const toggleRoomPage = document.getElementById("toggleRoomPage");
+  const roomContainerBox = document.getElementById("roomContainerBox");
+  const saved = localStorage.getItem("page_room");
+  toggleRoomPage.checked = saved === "true";
+  roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
+  toggleRoomPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_room", enabled);
+    roomContainerBox.style.display = enabled ? "block" : "none";
+  });
+}
+
+async function initVoucherToggle() {
+  const toggleVoucherPage = document.getElementById("toggleVoucherPage");
+  const voucherForm = document.getElementById("voucherForm");
+  const plan = localStorage.getItem("user_plan");
+
+  if (plan === "monthly") {
+    document.getElementById("voucherContainerBox").style.display = "none";
+    return;
+  }
+
+  const enabled = localStorage.getItem("page_voucher") === "true";
+  toggleVoucherPage.checked = enabled;
+  voucherForm.style.display = enabled ? "block" : "none";
+
+  toggleVoucherPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_voucher", enabled);
+    voucherForm.style.display = enabled ? "block" : "none";
+    if (!enabled) {
+      localStorage.removeItem("voucher");
+      renderVoucher();
+    }
+  });
+
+  await loadVoucherOnInit();
+}
+
+// ===================== LOAD VOUCHER =====================
+async function loadVoucherOnInit() {
+  if (voucherLoaded) {
+    console.warn("⚠️ loadVoucherOnInit() sudah pernah dijalankan, skip");
+    return;
+  }
+  voucherLoaded = true;
+
+  const fromLocal = localStorage.getItem("voucher");
+  if (fromLocal) {
+    const voucher = JSON.parse(fromLocal);
+    console.log("📦 Voucher dari localStorage:", voucher);
+    renderVoucher(voucher);
+    return;
+  }
+
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(1);
+
+    req.onsuccess = (e) => {
+      const data = e.target.result;
+      const voucher =
+        data?.menuVoucher && data.menuVoucher.length
+          ? data.menuVoucher[0]
+          : null;
+
+      if (voucher) {
+        console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
+        localStorage.setItem("voucher", JSON.stringify(voucher));
+        renderVoucher(voucher);
+      } else {
+        console.log("⚠️ Tidak ada voucher di DB");
+        renderVoucher(null);
+      }
+    };
+  } catch (err) {
+    console.error("❌ Gagal load voucher dari DB:", err);
+  }
+}
+
+// ===================== RENDER VOUCHER =====================
+function renderVoucher(voucher) {
+  const voucherPreview = document.getElementById("voucherPreview");
+  if (!voucherPreview) return;
+
+  if (voucher) {
+    voucherPreview.innerHTML = `
+      <p>
+        <strong>Kode Voucher:</strong>
+        <span id="voucherCodeText">${voucher.code}</span>
+        <button onclick="copyVoucherCode()">📋 Copy</button>
+      </p>
+      <p><strong>Diskon:</strong> ${voucher.discount}%</p>
+      <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
+    `;
+  } else {
+    voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
+  }
+}
+
+function copyVoucherCode() {
+  const codeText = document.getElementById("voucherCodeText")?.innerText;
+  if (!codeText) return;
+  navigator.clipboard.writeText(codeText)
+    .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
+    .catch(err => console.error("Gagal copy", err));
+}
+</script>
 </body>
 </html>
-
-
