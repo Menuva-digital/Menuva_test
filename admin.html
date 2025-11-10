@@ -817,13 +817,12 @@ async function getDB() {
 async function saveDataToDB(data) {
   if (!data || typeof data !== "object") throw new Error("Invalid data");
 
-  // 🔧 pastikan ada id unik tetap
-  const recordId = data.id || data.restoId || data.restoPhone || 1;
+  // 💡 Gunakan ID tetap = 1 agar tidak membuat banyak record
+  const recordId = 1;
   const record = { id: recordId, ...data };
 
   console.groupCollapsed("💾 [TRACE] saveDataToDB()");
   console.log("📦 Data diterima untuk disimpan:", record);
-  console.log("🆔 ID yang digunakan:", recordId);
 
   const db = await getDB();
 
@@ -831,40 +830,23 @@ async function saveDataToDB(data) {
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
 
-    // 🔍 cek apakah sudah ada record dengan id yang sama
-    const checkReq = store.get(recordId);
-    checkReq.onsuccess = (ev) => {
-      const existing = ev.target.result;
+    // Langsung replace data lama (jika ada)
+    const req = store.put(record);
 
-      if (existing) {
-        console.warn("⚠️ [DUPLIKASI TERDETEKSI] Data dengan ID ini sudah ada di DB:", recordId);
-        console.log("📄 Data lama:", existing);
-        console.log("🆕 Data baru:", record);
-      } else {
-        console.log("✅ Tidak ada duplikasi, data baru akan disimpan");
-      }
-
-      // lanjut simpan
-      const req = store.put(record);
-      req.onsuccess = () => {
-        console.log("✅ [OK] Data berhasil disimpan di IndexedDB:", record);
-        console.groupEnd();
-        resolve(record);
-      };
-      req.onerror = (e) => {
-        console.error("❌ [ERROR] Gagal simpan ke DB:", e.target.error);
-        console.groupEnd();
-        reject(e.target.error);
-      };
+    req.onsuccess = () => {
+      console.log("✅ [OK] Data berhasil disimpan di IndexedDB:", record);
+      console.groupEnd();
+      resolve(record);
     };
 
-    checkReq.onerror = (err) => {
-      console.error("❌ [ERROR] Gagal cek duplikasi ID:", err);
+    req.onerror = (e) => {
+      console.error("❌ [ERROR] Gagal simpan ke DB:", e.target.error);
       console.groupEnd();
-      reject(err);
+      reject(e.target.error);
     };
   });
 }
+
 // ====================== LOAD DATA ======================
 async function loadDataFromDB(id = 1) {
   // ⏳ Sedikit delay agar IndexedDB siap
@@ -1475,9 +1457,7 @@ async function simpanData() {
       hideLoader();
       return;
     }
-
-    const restoId = restoPhone;
-
+    const restoId = document.getElementById("restoId")?.value || "resto-main";
     const menuData = [
       ...ambilMenu("menuFoodContainer"),
       ...ambilMenu("menuSnackContainer"),
@@ -2157,6 +2137,7 @@ function copyVoucherCode() {
 
 </body>
 </html>
+
 
 
 
