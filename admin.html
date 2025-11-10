@@ -1934,9 +1934,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // ===================== TOGGLE SECTION =====================
-    initOrderToggle();
-    initRoomToggle();
-    await initVoucherToggle();
+    await initAllToggles();
 
     // ===================== FIXED BAR =====================
     const fixbar = document.querySelector(".fixed-bar");
@@ -1969,28 +1967,45 @@ async function safeLoadDataFromDB(id = 1) {
 }
 
 async function safeLoadData(data) {
-  if (sudahLoadData) {
+  if (window.sudahLoadData) {
     console.warn("⚠️ loadData() sudah pernah jalan, skip render ulang");
     return;
   }
-  sudahLoadData = true;
+  window.sudahLoadData = true;
   await loadData(data);
 }
 
 
-// ===================== TOGGLES =====================
+// ===================== TOGGLES MASTER =====================
+async function initAllToggles() {
+  await new Promise((resolve) => {
+    if (document.readyState === "complete") return resolve();
+    document.addEventListener("readystatechange", () => {
+      if (document.readyState === "complete") resolve();
+    });
+  });
+
+  initOrderToggle();
+  initRoomToggle();
+  await initVoucherToggle();
+}
+
+
+// ===================== ORDER TOGGLE =====================
 function initOrderToggle() {
   const toggleOrderPage = document.getElementById("toggleOrderPage");
-  const orderContainerBox = document.getElementById("orderContainerBox");
+  // FIXED: disinkronkan dengan HTML (id="orderToggleBox")
+  const orderContainerBox =
+    document.getElementById("orderContainerBox") ||
+    document.getElementById("orderToggleBox");
 
-  // 💥 Tambahan keamanan: kalau elemen nggak ada, jangan error
   if (!toggleOrderPage) {
     console.warn("⚠️ Elemen toggleOrderPage tidak ditemukan.");
     return;
   }
   if (!orderContainerBox) {
-    console.warn("⚠️ Elemen orderContainerBox tidak ditemukan — akan dilewati.");
-    return;
+    console.warn("⚠️ Elemen orderContainerBox/orderToggleBox belum ada, coba lagi 300ms...");
+    return setTimeout(initOrderToggle, 300);
   }
 
   const saved = localStorage.getItem("page_order");
@@ -2005,6 +2020,7 @@ function initOrderToggle() {
 }
 
 
+// ===================== ROOM TOGGLE =====================
 function initRoomToggle() {
   const toggleRoomPage = document.getElementById("toggleRoomPage");
   const roomContainerBox = document.getElementById("roomContainerBox");
@@ -2026,6 +2042,7 @@ function initRoomToggle() {
 }
 
 
+// ===================== VOUCHER TOGGLE =====================
 async function initVoucherToggle() {
   const toggleVoucherPage = document.getElementById("toggleVoucherPage");
   const voucherForm = document.getElementById("voucherForm");
@@ -2125,6 +2142,7 @@ function renderVoucher(voucher) {
 }
 
 
+// ===================== COPY VOUCHER CODE =====================
 function copyVoucherCode() {
   const codeText = document.getElementById("voucherCodeText")?.innerText;
   if (!codeText) return;
@@ -2136,5 +2154,6 @@ function copyVoucherCode() {
 
 </body>
 </html>
+
 
 
