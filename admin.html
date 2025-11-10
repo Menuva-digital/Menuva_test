@@ -867,35 +867,35 @@ async function saveDataToDB(data) {
 }
 // ====================== LOAD DATA ======================
 async function loadDataFromDB(id = 1) {
-  await new Promise((res) => setTimeout(res, 300)); // tambahkan delay 0.3 detik
-  let db;
+  // ⏳ Sedikit delay agar IndexedDB siap
+  await new Promise((res) => setTimeout(res, 300));
+
   try {
-    db = await getDB();
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
+
+      req.onsuccess = (e) => {
+        const data = e.target.result;
+        if (data) {
+          resolve(data);
+        } else {
+          console.warn("⚠️ Tidak ada data ditemukan, tapi tidak menimpa data lama");
+          resolve({ id: 1, namaRestoran: "", menu: [] });
+        }
+      };
+
+      req.onerror = (e) => {
+        console.error("❌ Gagal load dari IndexedDB:", e.target.error);
+        resolve({ id: 1, namaRestoran: "", menu: [] });
+      };
+    });
   } catch (err) {
     console.error("❌ initDB gagal:", err);
     return { id: 1, namaRestoran: "", menu: [] };
   }
-  return new Promise((resolve) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(id);
-
-    req.onsuccess = (e) => {
-      const data = e.target.result;
-     if (data) {
-  resolve(data);
-} else {
-  console.warn("⚠️ Tidak ada data ditemukan, tapi tidak menimpa data lama");
-  resolve({ id: 1, namaRestoran: "", menu: [] }); // jangan save langsung
-}
-
-    };
-
-    req.onerror = (e) => {
-      console.error("❌ Gagal load dari IndexedDB:", e.target.error);
-      resolve({ id: 1, namaRestoran: "", menu: [] });
-    };
-  });
 }
 
 // ===== Helper internal: bikin struktur default =====
@@ -1529,8 +1529,11 @@ async function simpanData() {
 let sudahLoadData = false;
 
 async function loadData(data) {
-  // Cegah duplikasi render (misalnya loadData() kepanggil 2x)
-  if (sudahLoadData) return;
+  // 🚫 Hindari render ganda
+  if (sudahLoadData) {
+    console.warn("⚠️ loadData() sudah pernah dijalankan, skip render ulang.");
+    return;
+  }
   sudahLoadData = true;
 
   try {
@@ -1544,7 +1547,7 @@ async function loadData(data) {
 
     console.log("📦 Data di-load:", data);
 
-    // Amanin DOM query (biar gak error kalau elemen gak ada)
+    // ====================== AMAN SET NILAI FORM ======================
     const safeSet = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.value = value || "";
@@ -1560,10 +1563,12 @@ async function loadData(data) {
     // ====================== NOMOR WA ADMIN ======================
     const container = document.getElementById("nomorWaContainer");
     if (container && Array.isArray(data.nomorWaAdmin)) {
-      container.innerHTML = ""; // bersihkan dulu
+      container.innerHTML = ""; // clear dulu
       data.nomorWaAdmin.forEach(() => tambahNomorWa());
       const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v, i) => (inputs[i] ? (inputs[i].value = v) : null));
+      data.nomorWaAdmin.forEach((v, i) => {
+        if (inputs[i]) inputs[i].value = v;
+      });
     }
 
     // ====================== MENU PROMO ======================
@@ -1571,10 +1576,9 @@ async function loadData(data) {
     if (typeof renderPromoUI === "function") renderPromoUI();
 
     // ====================== MENU UTAMA ======================
+    const menuContainer = document.getElementById("menuContainer");
+    if (menuContainer) menuContainer.innerHTML = ""; // bersihkan dulu
     if (Array.isArray(data.menu)) {
-      const menuContainer = document.getElementById("menuContainer");
-      if (menuContainer) menuContainer.innerHTML = ""; // 🧹 bersihkan sebelum isi ulang
-
       data.menu.forEach((m) => {
         if (typeof tambahMenu === "function") {
           tambahMenu(m.kategori, m.nama, m.harga, m.image);
@@ -1588,16 +1592,16 @@ async function loadData(data) {
     }
 
     // ====================== FLIPBOOK RUANGAN ======================
-    flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
-    flipbookRuanganImages.forEach((src) => {
-      if (typeof renderImagePreview === "function") renderImagePreview("ruangan", src);
-    });
+    const flipRuang = (data.flipbookRuanganImages || []).slice();
+    if (typeof renderImagePreview === "function") {
+      flipRuang.forEach((src) => renderImagePreview("ruangan", src));
+    }
 
     // ====================== FLIPBOOK MENU ======================
-    flipbookMenuImages = (data.flipbookMenuImages || []).slice();
-    flipbookMenuImages.forEach((src) => {
-      if (typeof renderImagePreview === "function") renderImagePreview("menu", src);
-    });
+    const flipMenu = (data.flipbookMenuImages || []).slice();
+    if (typeof renderImagePreview === "function") {
+      flipMenu.forEach((src) => renderImagePreview("menu", src));
+    }
 
     // ====================== RESTO ID ======================
     let restoIdEl = document.getElementById("restoId");
@@ -1609,14 +1613,13 @@ async function loadData(data) {
     }
     restoIdEl.value = data.restoId || data.restoPhone || "";
 
-    console.log("✅ loadData selesai dan stabil");
+    console.log("✅ loadData selesai & anti-duplikat.");
   } catch (err) {
     console.error("❌ loadData gagal:", err);
   } finally {
     hideLoader();
   }
 }
-
 // ====================== RESET & BACKUP ======================
 async function resetData() {
   if (!confirm("Are you sure you want to delete all data?")) return;
@@ -2154,6 +2157,7 @@ function copyVoucherCode() {
 
 </body>
 </html>
+
 
 
 
