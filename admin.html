@@ -706,1197 +706,1429 @@ button {
 
   <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
 </div>
-  <script>
-/*
-  Admin Unified Script - Menuva
-  Merged & fixed (part1 + part2) — prevents duplicated menu & room rendering
-  Date: 2025-11-10
-*/
+ <script>
+console.log("Admin Script Version: 2025-11-07-STABLE");
 
-// ----- GUARDS -----
-if (window.__AdminInitDone) {
-  console.warn("⚠️ Admin script sudah di-init sebelumnya - skrip ini akan berhenti.");
+// ====================== GLOBAL DB HANDLER ======================
+let dbReady = null;
+const DB_NAME = "MenuvaDB";
+const STORE_NAME = "menuvaData";
+const DB_VERSION = 9;
+
+let dbInstance = null;
+
+  // Tes sederhana: apakah IndexedDB berfungsi di HP?
+if (!window.indexedDB) {
+  alert("⚠️ Browser ini tidak mendukung IndexedDB!");
 } else {
-  window.__AdminInitDone = true;
+  const test = indexedDB.open("TestDB_Check");
+  test.onerror = (e) => {
+    console.error("❌ IndexedDB gagal dibuka:", e.target.error);
+    alert("IndexedDB gagal dibuka di HP! Kemungkinan masalah izin browser.");
+  };
+  test.onsuccess = () => {
+    console.log("✅ IndexedDB bisa dibuka di perangkat ini");
+    test.result.close();
+    indexedDB.deleteDatabase("TestDB_Check");
+  };
+}
 
-  // ====================== GLOBAL DB HANDLER ======================
-  let dbReady = null;
-  const DB_NAME = "MenuvaDB";
-  const STORE_NAME = "menuvaData";
-  const DB_VERSION = 9;
+let dbPromise = null; // 🔒 lock promise untuk mencegah race condition
 
-  let dbInstance = null;
-  let dbPromise = null; // lock to prevent race
-
-  // quick check for presence of indexedDB (mobile)
-  if (!window.indexedDB) {
-    alert("⚠️ Browser ini tidak mendukung IndexedDB!");
-  } else {
-    try {
-      const testReq = indexedDB.open("TestDB_Check");
-      testReq.onsuccess = () => {
-        testReq.result.close();
-        indexedDB.deleteDatabase("TestDB_Check");
-        console.log("✅ IndexedDB bisa dibuka di perangkat ini");
-      };
-      testReq.onerror = (e) => {
-        console.warn("⚠️ Test IndexedDB error:", e);
-      };
-    } catch (err) {
-      console.warn("⚠️ Test IndexedDB failed:", err);
-    }
+async function initDB() {
+  if (dbInstance) {
+    console.log("♻️ [DEBUG] Reuse DB instance:", DB_NAME);
+    return dbInstance;
   }
 
-  async function initDB() {
-    if (dbInstance) return dbInstance;
-    if (dbPromise) return dbPromise;
-
-    console.groupCollapsed("🟢 initDB()");
-    console.trace("initDB called from");
-    console.groupEnd();
-
-    dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        }
-      };
-
-      request.onsuccess = (e) => {
-        dbInstance = e.target.result;
-        resolve(dbInstance);
-        dbPromise = null;
-      };
-
-      request.onerror = (e) => {
-        console.error("❌ initDB error:", e.target.error);
-        reject(e.target.error);
-        dbPromise = null;
-      };
-    });
-
+  // Jika sedang dalam proses membuka DB, tunggu promise yang sama
+  if (dbPromise) {
+    console.log("⏳ [DEBUG] initDB sedang dibuka, tunggu...");
     return dbPromise;
   }
 
-  async function getDB() {
-    if (dbInstance) return dbInstance;
-    return initDB();
-  }
+  console.groupCollapsed("🟢 [DEBUG] initDB() dipanggil");
+  console.trace("📍 Asal pemanggilan initDB()");
+  console.groupEnd();
 
-  // ====================== SAVE & LOAD ======================
-  async function saveDataToDB(data) {
-    if (!data || typeof data !== "object") throw new Error("Invalid data");
+  dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    // Use fixed id 1 to store single admin profile
-    const recordId = 1;
-    const record = { id: recordId, ...data };
-
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.put(record);
-      req.onsuccess = () => {
-        console.log("✅ Data saved:", record);
-        resolve(record);
-      };
-      req.onerror = (e) => {
-        console.error("❌ saveDataToDB error:", e.target.error);
-        reject(e.target.error);
-      };
-    });
-  }
-
-  async function loadDataFromDB(id = 1) {
-    // small delay to let things settle in some devices
-    await new Promise(res => setTimeout(res, 100));
-    try {
-      const db = await getDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readonly");
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.get(id);
-        req.onsuccess = (e) => {
-          const data = e.target.result;
-          if (data) resolve(data);
-          else resolve(null);
-        };
-        req.onerror = (e) => {
-          console.error("❌ loadDataFromDB error:", e.target.error);
-          resolve(null);
-        };
-      });
-    } catch (err) {
-      console.error("❌ loadDataFromDB init failed:", err);
-      return null;
-    }
-  }
-
-  function buatDataDefault(id = 1) {
-    return {
-      id,
-      restoId: "resto-main",
-      namaRestoran: "",
-      restoAddress: "",
-      restoPhone: "",
-      logo: "",
-      nomorWaAdmin: [],
-      menuPromo: [],
-      flipbookRuanganImages: [],
-      flipbookMenuImages: [],
-      menu: [],
-      rooms: [],
-      menuVoucher: []
+    request.onupgradeneeded = (e) => {
+      console.log("⚙️ [DEBUG] onupgradeneeded:", DB_NAME);
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
     };
+
+    request.onsuccess = (e) => {
+      console.log("✅ [DEBUG] initDB sukses:", DB_NAME);
+      dbInstance = e.target.result;
+      resolve(dbInstance);
+      dbPromise = null; // reset lock
+    };
+
+    request.onerror = (e) => {
+      console.error("❌ [DEBUG] initDB gagal:", e.target.error);
+      reject(e.target.error);
+      dbPromise = null; // reset lock meski gagal
+    };
+  });
+
+  return dbPromise;
+}
+
+async function getDB() {
+  console.log("🟢 [DEBUG] getDB() dipanggil...");
+  if (dbInstance) {
+    console.log("✅ [DEBUG] getDB pakai instance lama");
+    return dbInstance;
   }
 
-  async function clearDataDB() {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-      try {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.clear();
-        req.onsuccess = () => {
-          console.log("🧹 Semua data dihapus dari IndexedDB");
-          resolve();
-        };
-        req.onerror = (e) => reject(e.target.error);
-      } catch (err) {
-        reject(err);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        console.log("🧱 [DEBUG] Membuat store baru:", STORE_NAME);
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
-    });
-  }
+    };
 
-  // ====================== GLOBAL STATE ======================
-  let menuPromo = [];
-  let flipbookRuanganImages = [];
-  let flipbookMenuImages = [];
-  let isLoadingFromDB = false;
-  let voucherLoaded = false;
+    req.onsuccess = (e) => {
+      dbInstance = e.target.result;
+      console.log("✅ [DEBUG] getDB sukses:", dbInstance.name);
+      resolve(dbInstance);
+    };
 
-  // ----- loader UI (from part1) -----
-  function showLoader() {
-    let loader = document.getElementById("loader");
-    if (!loader) {
-      loader = document.createElement("div");
-      loader.id = "loader";
-      loader.innerHTML = `
-        <div class="loader-overlay">
-          <div class="loader-content">
-            <div class="spinner"></div>
-            <p>Loading data...</p>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(loader);
+    req.onerror = (e) => {
+      console.error("❌ [DEBUG] getDB gagal:", e.target.error);
+      reject(e.target.error);
+    };
+  });
+}
 
-      const style = document.createElement("style");
-      style.id = "loader-style";
-      style.textContent = `
-        #loader { position: fixed; top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:9999;opacity:0;transition:opacity .3s;}
-        #loader.show { opacity:1; }
-        .loader-content { text-align:center; color:#fff; font-family:Segoe UI, sans-serif; animation:fadeUp .6s; }
-        .spinner { width:64px;height:64px;border:6px solid rgba(255,255,255,0.3);border-top-color:#00d4ff;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;}
-        @keyframes spin { to { transform: rotate(360deg); } } @keyframes fadeUp { from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);} }
-      `;
-      document.head.appendChild(style);
-    }
-    loader.style.display = "flex";
-    requestAnimationFrame(() => loader.classList.add("show"));
-  }
+// ====================== SAVE DATA ======================
+async function saveDataToDB(data) {
+  if (!data || typeof data !== "object") throw new Error("Invalid data");
 
-  function hideLoader() {
-    const loader = document.getElementById("loader");
-    if (loader) {
-      loader.classList.remove("show");
-      setTimeout(() => { loader.style.display = "none"; }, 300);
-    }
-  }
+  // 💡 Gunakan ID tetap = 1 agar tidak membuat banyak record
+  const recordId = 1;
+  const record = { id: recordId, ...data };
 
-  // ====================== UI HELPERS (menu / promo / rooms / flipbook) ======================
+  console.groupCollapsed("💾 [TRACE] saveDataToDB()");
+  console.log("📦 Data diterima untuk disimpan:", record);
 
-  // ensure containers id's are cleared to avoid duplicates
-  function clearRenderContainers() {
-    const idsToClear = [
-      "promoContainer",
-      "menuFoodContainer",
-      "menuSnackContainer",
-      "menuDrinkContainer",
-      "menuSpecialContainer",
-      "nomorWaContainer",
-      "flipbookRuanganPreview",
-      "flipbookMenuPreview",
-      "roomHotelContainer",
-      "meetingRoomContainer",
-      "packageContainer",
-      "listRuangan"
-    ];
-    idsToClear.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = "";
-    });
-  }
+  const db = await getDB();
 
-  // ---------- PROMO ----------
-  function renderPromoUI() {
-    const container = document.getElementById("promoContainer");
-    if (!container) return;
-    container.innerHTML = "";
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
 
-    const promoCategories = ["PROMO", "DISKON", "SPECIAL", "EVENT"];
+    // Langsung replace data lama (jika ada)
+    const req = store.put(record);
 
-    menuPromo.forEach((promo, index) => {
-      const div = document.createElement("div");
-      div.className = "menu-item";
+    req.onsuccess = () => {
+      console.log("✅ [OK] Data berhasil disimpan di IndexedDB:", record);
+      console.groupEnd();
+      resolve(record);
+    };
 
-      const optionsHTML = promoCategories
-        .map(cat => `<option value="${cat}" ${promo.kategori === cat ? "selected" : ""}>${cat}</option>`)
-        .join("");
+    req.onerror = (e) => {
+      console.error("❌ [ERROR] Gagal simpan ke DB:", e.target.error);
+      console.groupEnd();
+      reject(e.target.error);
+    };
+  });
+}
 
-      div.innerHTML = `
-        <input type="text" id="promoName_${index}" name="promoName[]" placeholder="Promo Name" value="${promo.namaPromo || ""}" />
-        <input type="file" id="promoImage_${index}" name="promoImage[]" accept="image/*" />
-        <img id="promoImgPreview${index}" src="${promo.image || ""}" style="max-height:80px; margin:5px 0; ${promo.image ? "" : "display:none"}">
-        <input type="text" id="promoDesc_${index}" name="promoDesc[]" placeholder="Description Promo" value="${promo.deskripsi || ""}" />
-        <input type="number" id="promoPrice_${index}" name="promoPrice[]" placeholder="Promo Price" value="${promo.harga || ""}" />
-        <select id="promoCat_${index}" name="promoCat[]">${optionsHTML}</select>
-        <input type="date" id="promoDate_${index}" name="promoDate[]" value="${promo.tanggalAkhir || ""}" />
-        <button class="btn-danger" data-promo-index="${index}">Delete Promo List</button>
-      `;
+// ====================== LOAD DATA ======================
+async function loadDataFromDB(id = 1) {
+  // ⏳ Sedikit delay agar IndexedDB siap
+  await new Promise((res) => setTimeout(res, 300));
 
-      // attach delete handler
-      div.querySelector(".btn-danger")?.addEventListener("click", (ev) => {
-        const idx = parseInt(ev.currentTarget.dataset.promoIndex, 10);
-        if (!Number.isNaN(idx)) {
-          hapusPromo(idx);
+  try {
+    const db = await getDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
+
+      req.onsuccess = (e) => {
+        const data = e.target.result;
+        if (data) {
+          resolve(data);
+        } else {
+          console.warn("⚠️ Tidak ada data ditemukan, tapi tidak menimpa data lama");
+          resolve({ id: 1, namaRestoran: "", menu: [] });
         }
-      });
+      };
 
-      // attach file change handler
-      const fileInput = div.querySelector(`#promoImage_${index}`);
-      if (fileInput) {
-        fileInput.addEventListener("change", (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          resizeIfNeeded(file).then(resized => {
-            const imgEl = document.getElementById(`promoImgPreview${index}`);
-            if (imgEl) { imgEl.src = resized; imgEl.style.display = "block"; }
-            menuPromo[index].image = resized;
-          }).catch(err => console.error(err));
-        });
-      }
-
-      container.appendChild(div);
+      req.onerror = (e) => {
+        console.error("❌ Gagal load dari IndexedDB:", e.target.error);
+        resolve({ id: 1, namaRestoran: "", menu: [] });
+      };
     });
+  } catch (err) {
+    console.error("❌ initDB gagal:", err);
+    return { id: 1, namaRestoran: "", menu: [] };
   }
+}
 
-  function tambahPromo(promo = {}) {
-    menuPromo.push({
-      namaPromo: promo.namaPromo || "",
-      image: promo.image || "",
-      deskripsi: promo.deskripsi || "",
-      harga: promo.harga || "",
-      kategori: promo.kategori || "PROMO",
-      tanggalAkhir: promo.tanggalAkhir || ""
-    });
-    renderPromoUI();
-  }
+// ===== Helper internal: bikin struktur default =====
+function buatDataDefault(id = 1) {
+  return {
+    id,
+    namaRestoran: "",
+    restoAddress: "",
+    restoPhone: "",
+    menuPromo: [],
+    menu: [],
+    rooms: [],
+    nomorWaAdmin: [],
+    flipbookRuanganImages: [],
+    flipbookMenuImages: [],
+  };
+}
 
-  function updatePromo(index, key, value) {
-    if (!menuPromo[index]) return;
-    menuPromo[index][key] = value;
-  }
+// ====================== Variabel Global ======================
+let menuPromo = [];
+let flipbookRuanganImages = [];
+let flipbookMenuImages = [];
 
-  function hapusPromo(index) {
-    menuPromo.splice(index, 1);
-    renderPromoUI();
-    if (window._saveTimeout) clearTimeout(window._saveTimeout);
-    window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
-  }
+// ====================== PROMO ======================
+function renderPromoUI() {
+  const container = document.getElementById("promoContainer");
+  if (!container) return;
+  container.innerHTML = "";
 
-  // ---------- MENU ----------
-  function uid() { return `${Date.now().toString(36)}_${Math.floor(Math.random()*10000)}`; }
+  // daftar kategori promo (bisa disesuaikan)
+  const promoCategories = ["PROMO", "DISKON", "SPECIAL", "EVENT"];
 
-  function tambahMenu(kategori = "food", nama = "", harga = "", image = "", providedUid = null) {
-    const containerId = {
-      food: "menuFoodContainer",
-      snack: "menuSnackContainer",
-      drink: "menuDrinkContainer",
-      special: "menuSpecialContainer"
-    }[kategori] || "menuFoodContainer";
-
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const elementUid = providedUid || uid();
-
+  menuPromo.forEach((promo, index) => {
     const div = document.createElement("div");
     div.className = "menu-item";
+
+    const optionsHTML = promoCategories
+      .map(cat => `<option value="${cat}" ${promo.kategori === cat ? "selected" : ""}>${cat}</option>`)
+      .join("");
+
     div.innerHTML = `
-      <input type="text" id="menuName_${elementUid}" name="menuName[]" placeholder="Menu Name" value="${nama}" />
-      <input type="number" id="menuPrice_${elementUid}" name="menuPrice[]" placeholder="Price" value="${harga}" />
-      <select id="menuCat_${elementUid}" name="menuCat[]">
-        <option value="food" ${kategori === "food" ? "selected" : ""}>Food</option>
-        <option value="snack" ${kategori === "snack" ? "selected" : ""}>Snack</option>
-        <option value="drink" ${kategori === "drink" ? "selected" : ""}>Drink</option>
-        <option value="special" ${kategori === "special" ? "selected" : ""}>Special</option>
+      <input type="text" id="promoName_${index}" name="promoName[]" placeholder="Promo Name"
+        value="${promo.namaPromo || ""}" onchange="updatePromo(${index}, 'namaPromo', this.value)">
+      
+      <input type="file" id="promoImage_${index}" name="promoImage[]" accept="image/*"
+        onchange="uploadPromoImage(event, ${index})">
+      <img id="promoImgPreview${index}" src="${promo.image || ""}" style="max-height:80px; margin:5px 0">
+      
+      <input type="text" id="promoDesc_${index}" name="promoDesc[]" placeholder="Description Promo"
+        value="${promo.deskripsi || ""}" onchange="updatePromo(${index}, 'deskripsi', this.value)">
+      
+      <input type="number" id="promoPrice_${index}" name="promoPrice[]" placeholder="Promo Price"
+        value="${promo.harga || ""}" onchange="updatePromo(${index}, 'harga', this.value)">
+      
+      <select id="promoCat_${index}" name="promoCat[]" onchange="updatePromo(${index}, 'kategori', this.value)">
+        ${optionsHTML}
       </select>
-      <input type="file" id="menuImage_${elementUid}" name="menuImage[]" accept="image/*" />
-      <img class="menuPreview" id="menuPreview_${elementUid}" src="${image}" style="max-height:80px; margin:5px 0; ${image ? "" : "display:none"}">
-      <button class="btn-danger btn-delete-menu">Delete</button>
+      
+      <input type="date" id="promoDate_${index}" name="promoDate[]"
+        value="${promo.tanggalAkhir || ""}" onchange="updatePromo(${index}, 'tanggalAkhir', this.value)">
+      
+      <button class="btn-danger" onclick="hapusPromo(${index})">Delete Promo List</button>
     `;
 
-    // file input handler
-    const fileInput = div.querySelector(`#menuImage_${elementUid}`);
-    if (fileInput) {
-      fileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        resizeIfNeeded(file).then(resized => {
-          const preview = div.querySelector(`#menuPreview_${elementUid}`);
-          if (preview) { preview.src = resized; preview.style.display = "block"; }
-          fileInput.setAttribute("data-image", resized);
-        }).catch(err => console.error(err));
-      });
-    }
-
-    // delete handler
-    div.querySelector(".btn-delete-menu")?.addEventListener("click", () => {
-      div.remove();
-      if (window._saveTimeout) clearTimeout(window._saveTimeout);
-      window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
-    });
-
     container.appendChild(div);
-  }
+  });
+}
 
-  function uploadMenuImage(event, inputEl) {
-    const file = event.target.files[0];
-    if (!file) return;
-    resizeIfNeeded(file)
-      .then((resized) => {
-        const preview = inputEl.parentElement.querySelector(".menuPreview");
-        preview.src = resized;
-        preview.style.display = "block";
-        inputEl.setAttribute("data-image", resized);
-      })
-      .catch(err => console.error("Upload menu image failed:", err));
-  }
+  function tambahPromo(promo = {}) {
+  menuPromo.push({
+    namaPromo: promo.namaPromo || "",
+    image: promo.image || "",
+    deskripsi: promo.deskripsi || "",
+    harga: promo.harga || "",
+    kategori: promo.kategori || "PROMO", // default category
+    tanggalAkhir: promo.tanggalAkhir || ""
+  });
+  renderPromoUI();
+}
 
-  function ambilMenu(containerId) {
-    const container = document.getElementById(containerId);
-    const items = container ? container.querySelectorAll(".menu-item") : [];
-    const result = [];
-    items.forEach(item => {
-      const nameEl = item.querySelector('input[type="text"]');
-      const priceEl = item.querySelector('input[type="number"]');
-      const catEl = item.querySelector('select');
-      const imgEl = item.querySelector('input[type="file"]');
-      const nama = nameEl?.value?.trim() || "";
-      const harga = parseInt(priceEl?.value || "0") || 0;
-      const kategori = catEl?.value || "food";
-      const image = imgEl?.getAttribute("data-image") || item.querySelector('.menuPreview')?.src || "";
-      if (nama && harga >= 0) {
-        result.push({ nama, harga, kategori, image });
+function updatePromo(index, key, value) {
+  if (!menuPromo[index]) return;
+  menuPromo[index][key] = value;
+}
+
+function hapusPromo(index) {
+  menuPromo.splice(index, 1);
+  renderPromoUI();
+  if (window._saveTimeout) clearTimeout(window._saveTimeout);
+  window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
+}
+
+function uploadPromoImage(event, index) {
+  const file = event.target.files[0];
+  if (!file) return;
+  resizeIfNeeded(file)
+    .then((resized) => {
+      const el = document.getElementById(`promoImgPreview${index}`);
+      if (el) el.src = resized;
+      updatePromo(index, "image", resized);
+    })
+    .catch(err => console.error("Failed upload promo:", err));
+}
+
+// ====================== MENU ======================
+function tambahMenu(kategori = "food", nama = "", harga = "", image = "") {
+  const containerId = {
+    food: "menuFoodContainer",
+    snack: "menuSnackContainer",
+    drink: "menuDrinkContainer",
+    special: "menuSpecialContainer"
+  }[kategori] || "menuFoodContainer";
+
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const div = document.createElement("div");
+  div.className = "menu-item";
+  div.innerHTML = `
+  <input type="text" id="menuName_${Date.now()}" name="menuName[]" placeholder="Menu Name" value="${nama}" />
+  <input type="number" id="menuPrice_${Date.now()}" name="menuPrice[]" placeholder="Price" value="${harga}" />
+  <select id="menuCat_${Date.now()}" name="menuCat[]">
+    <option value="food" ${kategori === "food" ? "selected" : ""}>Food</option>
+    <option value="snack" ${kategori === "snack" ? "selected" : ""}>Snack</option>
+    <option value="drink" ${kategori === "drink" ? "selected" : ""}>Drink</option>
+    <option value="special" ${kategori === "special" ? "selected" : ""}>Special</option>
+  </select>
+  <input type="file" id="menuImage_${Date.now()}" name="menuImage[]" accept="image/*" onchange="uploadMenuImage(event, this)" data-image="${image}">
+  <img class="menuPreview" src="${image}" style="max-height:80px; margin:5px 0; ${image ? "" : "display:none"}">
+  <button class="btn-danger" onclick="this.parentElement.remove()">Delete</button>
+`;
+  container.appendChild(div);
+}
+
+function uploadMenuImage(event, inputEl) {
+  const file = event.target.files[0];
+  if (!file) return;
+  resizeIfNeeded(file)
+    .then((resized) => {
+      const preview = inputEl.parentElement.querySelector(".menuPreview");
+      preview.src = resized;
+      preview.style.display = "block";
+      inputEl.setAttribute("data-image", resized);
+    })
+    .catch(err => console.error("Upload menu image failed:", err));
+}
+
+function ambilMenu(containerId) {
+  const container = document.getElementById(containerId);
+  const items = container ? container.querySelectorAll(".menu-item") : [];
+  const result = [];
+
+  items.forEach(item => {
+    const inputs = item.querySelectorAll("input, select");
+    const nama = inputs[0]?.value || "";
+    const harga = parseInt(inputs[1]?.value || "0");
+    const kategori = inputs[2]?.value || "food";
+    const image = inputs[3]?.getAttribute("data-image") || "";
+
+    if (nama && harga) {
+      result.push({ nama, harga, kategori, image });
+    }
+  });
+
+  return result;
+}
+
+// ====================== ROOM ======================
+function tambahRoom(kategori) {
+  const containerId = {
+    hotel: "roomHotelContainer",
+    meeting: "meetingRoomContainer",
+    package: "packageContainer"
+  }[kategori];
+
+  if (!containerId) return;
+
+  const container = document.getElementById(containerId);
+  const wrapper = document.createElement("div");
+  wrapper.className = "room-form";
+
+  // Buat ID unik supaya tidak bentrok antar form
+  const uid = `${kategori}_${Date.now()}`;
+
+  wrapper.innerHTML = `
+    <input 
+      type="text" 
+      id="${uid}_nama" 
+      name="roomName[]" 
+      class="room-nama" 
+      placeholder="Name" 
+      autocomplete="off"
+    />
+
+    <input 
+      type="number" 
+      id="${uid}_harga" 
+      name="roomPrice[]" 
+      class="room-harga" 
+      placeholder="Price" 
+      min="0"
+      step="1000"
+      autocomplete="off"
+    />
+
+    <input 
+      type="number" 
+      id="${uid}_kapasitas" 
+      name="roomCapacity[]" 
+      class="room-kapasitas" 
+      placeholder="Capacity (Person)" 
+      min="1"
+      autocomplete="off"
+    />
+
+    <input 
+      type="number" 
+      id="${uid}_luas" 
+      name="roomSize[]" 
+      class="room-luas" 
+      placeholder="Room size (m²)" 
+      min="1"
+      autocomplete="off"
+    />
+
+    <textarea 
+      id="${uid}_deskripsi" 
+      name="roomDesc[]" 
+      class="room-deskripsi" 
+      placeholder="Notes"
+      rows="2"
+      autocomplete="off"
+    ></textarea>
+
+    <div class="gambar-preview-wrapper">
+      <img 
+        id="${uid}_preview" 
+        class="gambar-preview" 
+        alt="Room Preview"
+        style="display:none; max-width:120px; margin-top:6px; border-radius:6px;"
+      />
+      <button 
+        type="button"
+        class="hapus-gambar" 
+        onclick="hapusGambarRoom(this)" 
+        style="display:none;"
+      >×</button>
+    </div>
+
+    <button 
+      type="button"
+      id="${uid}_uploadBtn"
+      class="btn-upload-gambar room-image-upload" 
+      onclick="uploadGambarRoom(this)"
+    >🖼️ Upload Image</button>
+
+    <button 
+      type="button"
+      id="${uid}_hapusBtn"
+      class="btn-hapus-room" 
+      onclick="hapusFormRoom(this)"
+    >🗑️ Delete</button>
+
+    <hr>
+  `;
+
+  container.appendChild(wrapper);
+}
+
+
+function ambilSemuaRoom() {
+  const kategoriIds = [
+    { id: "roomHotelContainer", kategori: "hotel" },
+    { id: "meetingRoomContainer", kategori: "meeting" },
+    { id: "packageContainer", kategori: "package" }
+  ];
+  const hasil = [];
+  kategoriIds.forEach(({ id, kategori }) => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    const forms = container.querySelectorAll(".room-form");
+    forms.forEach(form => {
+      const nama = form.querySelector(".room-nama")?.value || "";
+      const harga = parseInt(form.querySelector(".room-harga")?.value || "0");
+      const kapasitas = parseInt(form.querySelector(".room-kapasitas")?.value || "0");
+      const luas = parseInt(form.querySelector(".room-luas")?.value || "0");
+      const deskripsi = form.querySelector(".room-deskripsi")?.value || "";
+      const image = form.querySelector(".room-image-upload")?.getAttribute("data-image") || "";
+
+      if (nama && harga) {
+        hasil.push({
+          id: "R" + Date.now() + Math.floor(Math.random() * 1000),
+          nama,
+          harga,
+          kapasitas,
+          luas,
+          deskripsi,
+          image,
+          kategori
+        });
       }
     });
-    return result;
-  }
+  });
+  return hasil;
+}
 
-  // ---------- ROOM ----------
-  function tambahRoom(kategori, data = {}) {
+function restoreRoomFromData(rooms = []) {
+  rooms.forEach(room => {
+    tambahRoom(room.kategori);
     const containerId = {
       hotel: "roomHotelContainer",
       meeting: "meetingRoomContainer",
       package: "packageContainer"
-    }[kategori];
-
-    if (!containerId) return;
+    }[room.kategori];
     const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const uidRoom = uid();
-    const wrapper = document.createElement("div");
-    wrapper.className = "room-form";
-    wrapper.dataset.roomUid = uidRoom;
-
-    wrapper.innerHTML = `
-      <input type="text" id="${uidRoom}_nama" name="roomName[]" class="room-nama" placeholder="Name" value="${data.nama || ""}" />
-      <input type="number" id="${uidRoom}_harga" name="roomPrice[]" class="room-harga" placeholder="Price" value="${data.harga || ""}" />
-      <input type="number" id="${uidRoom}_kapasitas" name="roomCapacity[]" class="room-kapasitas" placeholder="Capacity" value="${data.kapasitas || ""}" />
-      <input type="number" id="${uidRoom}_luas" name="roomSize[]" class="room-luas" placeholder="Room size (m²)" value="${data.luas || ""}" />
-      <textarea id="${uidRoom}_deskripsi" name="roomDesc[]" class="room-deskripsi" placeholder="Notes">${data.deskripsi || ""}</textarea>
-      <div class="gambar-preview-wrapper">
-        <img id="${uidRoom}_preview" class="gambar-preview" alt="Room Preview" style="display:${data.image ? "block" : "none"}; max-width:120px; margin-top:6px; border-radius:6px;" src="${data.image || ""}" />
-        <button type="button" class="hapus-gambar" style="display:${data.image ? "flex" : "none"};">×</button>
-      </div>
-      <button type="button" id="${uidRoom}_uploadBtn" class="btn-upload-gambar room-image-upload">🖼️ Upload Image</button>
-      <button type="button" id="${uidRoom}_hapusBtn" class="btn-hapus-room">🗑️ Delete</button>
-      <hr>
-    `;
-
-    // upload handler
-    wrapper.querySelector(`#${uidRoom}_uploadBtn`).addEventListener("click", (ev) => {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.style.display = "none";
-      input.onchange = function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          const preview = wrapper.querySelector(`#${uidRoom}_preview`);
-          const hapusBtn = wrapper.querySelector(".hapus-gambar");
-          preview.src = event.target.result;
-          preview.style.display = "block";
-          hapusBtn.style.display = "flex";
-          wrapper.querySelector(`#${uidRoom}_uploadBtn`).setAttribute("data-image", event.target.result);
-        };
-        reader.readAsDataURL(file);
-      };
-      document.body.appendChild(input);
-      input.click();
-      document.body.removeChild(input);
-    });
-
-    // hapus gambar
-    wrapper.querySelector(".hapus-gambar").addEventListener("click", (ev) => {
-      const preview = wrapper.querySelector(`#${uidRoom}_preview`);
-      preview.src = "";
-      preview.style.display = "none";
-      ev.currentTarget.style.display = "none";
-      wrapper.querySelector(`#${uidRoom}_uploadBtn`).removeAttribute("data-image");
-    });
-
-    // hapus form
-    wrapper.querySelector(`#${uidRoom}_hapusBtn`).addEventListener("click", () => {
-      wrapper.remove();
-      if (window._saveTimeout) clearTimeout(window._saveTimeout);
-      window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
-    });
-
-    container.appendChild(wrapper);
-  }
-
-  function ambilSemuaRoom() {
-    const kategoriIds = [
-      { id: "roomHotelContainer", kategori: "hotel" },
-      { id: "meetingRoomContainer", kategori: "meeting" },
-      { id: "packageContainer", kategori: "package" }
-    ];
-    const hasil = [];
-    kategoriIds.forEach(({ id, kategori }) => {
-      const container = document.getElementById(id);
-      if (!container) return;
-      const forms = container.querySelectorAll(".room-form");
-      forms.forEach(form => {
-        const nama = form.querySelector(".room-nama")?.value || "";
-        const harga = parseInt(form.querySelector(".room-harga")?.value || "0");
-        const kapasitas = parseInt(form.querySelector(".room-kapasitas")?.value || "0");
-        const luas = parseInt(form.querySelector(".room-luas")?.value || "0");
-        const deskripsi = form.querySelector(".room-deskripsi")?.value || "";
-        const image = form.querySelector(".room-image-upload")?.getAttribute("data-image") ||
-                      form.querySelector(".gambar-preview")?.src || "";
-
-        if (nama && harga >= 0) {
-          hasil.push({
-            id: "R" + Date.now() + Math.floor(Math.random() * 1000),
-            nama,
-            harga,
-            kapasitas,
-            luas,
-            deskripsi,
-            image,
-            kategori
-          });
-        }
-      });
-    });
-    return hasil;
-  }
-
-  function restoreRoomFromData(rooms = []) {
-    // clear containers first to avoid duplicates
-    const containers = ["roomHotelContainer", "meetingRoomContainer", "packageContainer"];
-    containers.forEach(id => {
-      const c = document.getElementById(id);
-      if (c) c.innerHTML = "";
-    });
-
-    rooms.forEach(room => {
-      tambahRoom(room.kategori, room);
-    });
-  }
-
-  // ---------- FLIPBOOK & IMAGE ----------
-  function renderImagePreview(tipe, url) {
-    // prevent duplicate preview in arrays
-    if (tipe === "ruangan") {
-      if (!flipbookRuanganImages.includes(url)) flipbookRuanganImages.push(url);
-    } else {
-      if (!flipbookMenuImages.includes(url)) flipbookMenuImages.push(url);
+    const forms = container.querySelectorAll(".room-form");
+    const lastForm = forms[forms.length - 1];
+    lastForm.querySelector(".room-nama").value = room.nama || "";
+    lastForm.querySelector(".room-harga").value = room.harga || "";
+    lastForm.querySelector(".room-kapasitas").value = room.kapasitas || "";
+    lastForm.querySelector(".room-luas").value = room.luas || "";
+    lastForm.querySelector(".room-deskripsi").value = room.deskripsi || "";
+    const preview = lastForm.querySelector(".gambar-preview");
+    const hapusBtn = lastForm.querySelector(".hapus-gambar");
+    const uploadBtn = lastForm.querySelector(".room-image-upload");
+    if (room.image) {
+      preview.src = room.image;
+      preview.style.display = "block";
+      hapusBtn.style.display = "flex";
+      uploadBtn.setAttribute("data-image", room.image);
     }
+  });
+}
 
-    const img = document.createElement("img");
-    img.src = url;
-    img.style.maxWidth = "100px";
-    img.style.margin = "5px";
-    img.style.borderRadius = "5px";
-    img.style.boxShadow = "0 1px 4px rgba(0,0,0,0.1)";
-
-    const wrapper = document.createElement("div");
-    wrapper.style.display = "inline-block";
-    wrapper.style.position = "relative";
-    wrapper.style.margin = "5px";
-
-    const btnHapus = document.createElement("button");
-    btnHapus.className = "btn-hapus-gambar";
-    btnHapus.setAttribute("aria-label", "Hapus Gambar");
-    btnHapus.innerHTML = "×";
-    btnHapus.style.position = "absolute";
-    btnHapus.style.top = "2px";
-    btnHapus.style.right = "2px";
-    btnHapus.onclick = () => {
-      wrapper.remove();
-      if (tipe === "ruangan") flipbookRuanganImages = flipbookRuanganImages.filter(s => s !== url);
-      else flipbookMenuImages = flipbookMenuImages.filter(s => s !== url);
-    };
-
-    wrapper.appendChild(img);
-    wrapper.appendChild(btnHapus);
-
-    const container = document.getElementById(tipe === "ruangan" ? "flipbookRuanganPreview" : "flipbookMenuPreview");
-    if (container) container.appendChild(wrapper);
-  }
-
-  function tambahGambar(tipe) {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.style.display = "none";
-    input.onchange = async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      try {
-        const url = await resizeIfNeeded(file);
-        renderImagePreview(tipe, url);
-      } catch (err) {
-        console.error(err);
-        alert("❌ Gagal memproses gambar.");
-      }
-    };
-    document.body.appendChild(input);
-    input.click();
-    document.body.removeChild(input);
-  }
-
-  // ---------- IMAGE RESIZE Helper ----------
-  async function resizeIfNeeded(file, targetSizeKB = 100, maxWidth = 1280) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = async () => {
-          try {
-            const scale = Math.min(maxWidth / img.width, 1);
-            const canvas = document.createElement("canvas");
-            canvas.width = img.width * scale;
-            canvas.height = img.height * scale;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            let quality = 0.9;
-            let dataUrl = canvas.toDataURL("image/jpeg", quality);
-            let sizeKB = Math.round((dataUrl.length * 3 / 4) / 1024);
-
-            while(sizeKB > targetSizeKB && quality > 0.1) {
-              quality -= 0.05;
-              dataUrl = canvas.toDataURL("image/jpeg", quality);
-              sizeKB = Math.round((dataUrl.length * 3 / 4) / 1024);
-            }
-
-            resolve(dataUrl);
-          } catch(err) {
-            reject(err);
-          }
-        };
-        img.onerror = () => reject(new Error("Image load error"));
-        img.src = e.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // ---------- nomor WA ----------
-  function tambahNomorWa() {
-    const container = document.getElementById("nomorWaContainer");
-    if (!container) return;
-
-    const count = container.querySelectorAll(".nomor-wa").length;
-    const uniqueId = `nomorWa${count + 1}`;
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.id = uniqueId;
-    input.name = uniqueId;
-    input.className = "nomor-wa";
-    input.placeholder = "Example: 6281234567890";
-    input.inputMode = "numeric";
-    input.autocomplete = "off";
-    input.pattern = "62[0-9]{8,}";
-    input.title = "Gunakan format: 6281234567890";
-
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/[^0-9]/g, "");
-    });
-
-    container.appendChild(input);
-  }
-
-  // ---------- slugify ----------
-  function slugify(text) {
-    return text.toString().toLowerCase().trim().replace(/\s+/g,'-').replace(/[^\w\-]+/g,'').replace(/\-\-+/g,'-');
-  }
-
-  // ====================== SIMPAN (form -> DB) ======================
-  async function simpanData() {
-    try {
-      showLoader();
-      const namaRestoran = document.getElementById("namaRestoran")?.value.trim() || "";
-      const restoAddress = document.getElementById("restoAddress")?.value.trim() || "";
-      const restoPhone = document.getElementById("restoPhone")?.value.trim() || "";
-      const logo = document.getElementById("previewLogo")?.src || "";
-      const nomorWaAdmin = Array.from(document.querySelectorAll(".nomor-wa")).map(i => i.value);
-
-      if (!restoPhone) {
-        alert("❌ Please input the restaurant phone number before saving!");
-        hideLoader();
-        return;
-      }
-      const restoId = document.getElementById("restoId")?.value || "resto-main";
-      const menuData = [
-        ...ambilMenu("menuFoodContainer"),
-        ...ambilMenu("menuSnackContainer"),
-        ...ambilMenu("menuDrinkContainer"),
-        ...ambilMenu("menuSpecialContainer")
-      ];
-
-      const promo = Array.isArray(menuPromo) ? menuPromo : [];
-      const flipRuangan = Array.isArray(flipbookRuanganImages) ? flipbookRuanganImages : [];
-      const flipMenu = Array.isArray(flipbookMenuImages) ? flipbookMenuImages : [];
-
-      const data = {
-        restoId,
-        namaRestoran,
-        restoAddress,
-        restoPhone,
-        logo,
-        nomorWaAdmin,
-        menuPromo: promo,
-        flipbookRuanganImages: flipRuangan,
-        flipbookMenuImages: flipMenu,
-        menu: menuData,
-        rooms: ambilSemuaRoom(),
-        menuVoucher: [] // keep structure
-      };
-
-      await saveDataToDB(data);
-
-      // ensure restoId hidden exists
-      let restoIdEl = document.getElementById("restoId");
-      if (!restoIdEl) {
-        restoIdEl = document.createElement("input");
-        restoIdEl.type = "hidden";
-        restoIdEl.id = "restoId";
-        document.body.appendChild(restoIdEl);
-      }
-      restoIdEl.value = restoId;
-
-      updateShareUI();
-      alert(`✅ All data saved successfully!: ${restoId}`);
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to save data.");
-    } finally {
-      hideLoader();
-    }
-  }
-
-  // Flag global untuk mencegah render ganda
-  window.sudahLoadData = window.sudahLoadData || false;
-
-  async function loadData(data) {
-    // data can be raw object
-    try {
-      showLoader();
-
-      // clear render containers to avoid duplicates (important)
-      clearRenderContainers();
-
-      // If array wrapper provided, use first element
-      if (Array.isArray(data)) data = data[0] || {};
-      if (!data || typeof data !== "object") {
-        console.warn("⚠️ Data kosong atau bukan object di loadData");
-        data = buatDataDefault();
-      }
-
-      // set form fields safely
-      const safeSet = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) el.value = value || "";
-      };
-
-      safeSet("namaRestoran", data.namaRestoran);
-      safeSet("restoAddress", data.restoAddress);
-      safeSet("restoPhone", data.restoPhone);
-
-      const preview = document.getElementById("previewLogo");
-      if (preview && data.logo) preview.src = data.logo;
-
-      // nomor WA
-      const container = document.getElementById("nomorWaContainer");
-      if (container && Array.isArray(data.nomorWaAdmin)) {
-        container.innerHTML = "";
-        data.nomorWaAdmin.forEach(v => {
-          tambahNomorWa();
-        });
-        const inputs = container.querySelectorAll(".nomor-wa");
-        data.nomorWaAdmin.forEach((v, i) => {
-          if (inputs[i]) inputs[i].value = v;
-        });
-      }
-
-      // PROMO
-      menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
-      if (typeof renderPromoUI === "function") renderPromoUI();
-
-      // MENU MAIN - clear done already, restore items
-      if (Array.isArray(data.menu)) {
-        // ensure we don't reuse old containers (already cleared)
-        data.menu.forEach((m) => {
-          // protect against malformed entries
-          const k = m.kategori || "food";
-          const nama = m.nama || "";
-          const harga = m.harga || 0;
-          const image = m.image || "";
-          tambahMenu(k, nama, harga, image);
-        });
-      }
-
-      // ROOMS
-      if (Array.isArray(data.rooms)) {
-        restoreRoomFromData(data.rooms);
-      }
-
-      // FLIPBOOK RUANGAN
-      flipbookRuanganImages = Array.isArray(data.flipbookRuanganImages) ? data.flipbookRuanganImages.slice() : [];
-      flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
-
-      // FLIPBOOK MENU
-      flipbookMenuImages = Array.isArray(data.flipbookMenuImages) ? data.flipbookMenuImages.slice() : [];
-      flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
-
-      // RESTO ID hidden
-      let restoIdEl = document.getElementById("restoId");
-      if (!restoIdEl) {
-        restoIdEl = document.createElement("input");
-        restoIdEl.type = "hidden";
-        restoIdEl.id = "restoId";
-        document.body.appendChild(restoIdEl);
-      }
-      restoIdEl.value = data.restoId || data.restoPhone || "";
-
-      console.log("✅ loadData selesai.");
-    } catch (err) {
-      console.error("❌ loadData gagal:", err);
-    } finally {
-      hideLoader();
-    }
-  }
-
-  // ====================== RESET & BACKUP & RESTORE ======================
-  async function resetData() {
-    if (!confirm("Are you sure you want to delete all data?")) return;
-    try {
-      await clearDataDB();
-      location.reload();
-    } catch(err) {
-      alert("❌ Failed to delete data: "+err.message);
-    }
-  }
-
-  async function backupData() {
-    try {
-      const db = await initDB();
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const allData = req.result || [];
-        if (allData.length === 0) {
-          alert("⚠️ Tidak ada data di database untuk di-backup!");
-          return;
-        }
-        const filename = `menuva-backup-${Date.now()}.json`;
-        const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        alert(`✅ Backup berhasil! File ${filename} siap diunduh.`);
-      };
-      req.onerror = (e) => { console.error("❌ Backup read error:", e); alert("❌ Backup gagal"); };
-    } catch (err) {
-      console.error("❌ Backup fatal error:", err);
-      alert("❌ Terjadi kesalahan: " + err.message);
-    }
-  }
-
-  function restoreDataFromFile(event) {
-    const file = event.target.files[0];
+function uploadGambarRoom(button) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.style.display = "none";
+  input.onchange = function (e) {
+    const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        let json = JSON.parse(e.target.result);
-        if (json.profile && typeof json.profile === "object") json = json.profile;
-        else if (json.data && typeof json.data === "object") json = json.data;
-        if (Array.isArray(json)) {
-          if (json.length === 0) throw new Error("File kosong");
-          json = json[0];
-        }
-        if (!json.restoId) {
-          json.restoId = json.restoPhone || (json.namaRestoran ? slugify(json.namaRestoran) : ("resto" + Date.now()));
-        }
-        if (!json.restoPhone) json.restoPhone = json.restoId;
-        await saveDataToDB(json);
-        alert("✅ Data restored successfully! Reloading...");
-        location.reload();
-      } catch (err) {
-        console.error("❌ Restore failed:", err);
-        alert("❌ Failed to restore JSON file. Lihat console untuk detail.");
-      }
+    reader.onload = function (event) {
+      const wrapper = button.closest(".room-form");
+      const preview = wrapper.querySelector(".gambar-preview");
+      const hapusBtn = wrapper.querySelector(".hapus-gambar");
+      const imageUrl = event.target.result;
+      preview.src = imageUrl;
+      preview.style.display = "block";
+      hapusBtn.style.display = "flex";
+      button.setAttribute("data-image", imageUrl);
     };
-    reader.readAsText(file);
-  }
+    reader.readAsDataURL(file);
+  };
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+}
 
-  // ====================== LINKS / QR / SHARE ======================
-  function generateDynamicLink(baseUrl, data) {
-    try {
-      const jsonData = JSON.stringify(data);
-      const encoded = encodeURIComponent(jsonData);
-      return `${baseUrl}?data=${encoded}`;
-    } catch (err) {
-      console.error("Gagal generate link:", err);
-      return null;
+function hapusGambarRoom(button) {
+  const wrapper = button.closest(".room-form");
+  const preview = wrapper.querySelector(".gambar-preview");
+  const uploadBtn = wrapper.querySelector(".room-image-upload");
+  preview.src = "";
+  preview.style.display = "none";
+  button.style.display = "none";
+  if (uploadBtn) uploadBtn.removeAttribute("data-image");
+}
+
+function hapusFormRoom(button) {
+  const form = button.closest(".room-form");
+  if (form) {
+    form.remove();
+    if (window._saveTimeout) clearTimeout(window._saveTimeout);
+    window._saveTimeout = setTimeout(() => { simpanData().catch(e=>console.error(e)); }, 300);
+  }
+}
+
+// ====================== UI: tampilkan list room (terpisah) ======================
+async function tampilkanListRoom() {
+  try {
+    const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
+    const data = await loadDataFromDB(restoId);
+    const listContainer = document.getElementById("listRuangan");
+    if (!listContainer) return;
+
+    listContainer.innerHTML = "";
+
+    if (!data || !Array.isArray(data.rooms) || data.rooms.length === 0) {
+      listContainer.innerHTML = "<p>Tidak ada ruangan yang tersedia.</p>";
+      return;
     }
+
+    data.rooms.forEach((room, index) => {
+      const item = document.createElement("div");
+      item.classList.add("room-card");
+      item.innerHTML = `
+        <strong>Ruangan ${index + 1}</strong><br>
+        🏷️ Nama: ${room.nama}<br>
+        💼 Kategori: ${room.kategori}<br>
+        💰 Harga: Rp${room.harga}<br>
+        👥 Kapasitas: ${room.kapasitas || "-"} orang<br>
+        📐 Luas: ${room.luas || "-"} m²<br>
+        📝 Catatan: ${room.deskripsi || "-"}
+        <hr>
+      `;
+      listContainer.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Failed to display room list:", err);
   }
+}
 
-  async function createMenuvaLink() {
-    try {
-      const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
-      const data = await loadDataFromDB(restoId);
-      const link = generateDynamicLink("https://menuva.github.io/view.html", data);
-      console.log("Dynamic Link:", link);
-      return link;
-    } catch (err) {
-      console.error("Error createMenuvaLink:", err);
-    }
-  }
+// ====================== NOMOR WA ======================
+function tambahNomorWa() {
+  const container = document.getElementById("nomorWaContainer");
+  if (!container) return;
 
-  function getCustomerLink() {
-    const restoId = document.getElementById("restoId")?.value;
-    if (!restoId) return null;
-    const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
-    return `${window.location.origin}${basePath}/menu.html?resto=${encodeURIComponent(restoId)}`;
-  }
+  // Hitung berapa input yang sudah ada untuk bikin id unik
+  const count = container.querySelectorAll(".nomor-wa").length;
+  const uniqueId = `nomorWa${count + 1}`;
 
-  function openCustomerPage() {
-    const link = getCustomerLink();
-    if (!link) return alert("❌ Please click Save All first");
-    window.open(link, "_blank");
-  }
+  const input = document.createElement("input");
+  input.type = "text";
+  input.id = uniqueId;
+  input.name = uniqueId;
+  input.className = "nomor-wa";
+  input.placeholder = "Example: 6281234567890";
+  input.inputMode = "numeric";
+  input.autocomplete = "off";
+  input.pattern = "62[0-9]{8,}";
+  input.title = "Gunakan format: 6281234567890";
 
-  function updateShareUI() {
-    const link = getCustomerLink();
-    if (!link) return;
-    const btnCopy = document.getElementById("btnSalinLink");
-    if (btnCopy) {
-      btnCopy.style.display = "inline-block";
-      btnCopy.onclick = () => {
-        navigator.clipboard.writeText(link).then(() => alert("✅ Link copied to clipboard")).catch(err => alert("❌ Failed to copy link: " + err));
-      };
-    }
-    const btnSee = document.getElementById("btnOpenCustomer");
-    if (btnSee) { btnSee.style.display = "inline-block"; btnSee.onclick = () => window.open(link, "_blank"); }
+  // Opsional: validasi langsung saat user mengetik
+  input.addEventListener("input", () => {
+    input.value = input.value.replace(/[^0-9]/g, ""); // hanya angka
+  });
 
-    const qrContainer = document.getElementById("qrcodePreview");
-    if (!qrContainer) return;
-    qrContainer.innerHTML = "";
-    if (typeof QRCode !== "undefined") {
-      QRCode.toCanvas(link, { width: 128 }, function (error, canvas) {
-        if (error) { console.error(error); qrContainer.textContent = "❌ Failed to generate QR"; return; }
-        qrContainer.appendChild(canvas);
-        const btnDownload = document.getElementById("btnDownloadQR");
-        if (btnDownload) {
-          btnDownload.style.display = "inline-block";
-          btnDownload.onclick = () => {
-            const a = document.createElement("a");
-            a.href = canvas.toDataURL("image/png");
-            a.download = `Resto-${Date.now()}-QRCode.png`;
-            a.click();
-          };
+  container.appendChild(input);
+}
+
+
+// ====================== IMAGE helper (resize) ======================
+async function resizeIfNeeded(file, targetSizeKB = 100, maxWidth = 1280) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const scale = Math.min(maxWidth / img.width, 1);
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          let quality = 0.9;
+          let dataUrl = canvas.toDataURL("image/jpeg", quality);
+          let sizeKB = Math.round((dataUrl.length * 3 / 4) / 1024);
+
+          while(sizeKB > targetSizeKB && quality > 0.1) {
+            quality -= 0.05;
+            dataUrl = canvas.toDataURL("image/jpeg", quality);
+            sizeKB = Math.round((dataUrl.length * 3 / 4) / 1024);
+          }
+
+          resolve(dataUrl);
+        } catch(err) {
+          reject(err);
         }
-        const btnPrint = document.getElementById("btnPrintQR");
-        if (btnPrint) {
-          btnPrint.style.display = "inline-block";
-          btnPrint.onclick = () => {
-            const dataUrl = canvas.toDataURL("image/png");
-            const w = window.open("");
-            w.document.write(`<img src="${dataUrl}" style="width:250px;height:250px;">`);
-            w.document.close();
-            w.print();
-          };
+      };
+      img.onerror = () => reject(new Error("Image load error"));
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// logo input listener
+document.getElementById("logoInput")?.addEventListener("change", async function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const logoUrl = await resizeIfNeeded(file, 100);
+    const preview = document.getElementById("previewLogo");
+    if (preview) preview.src = logoUrl;
+  } catch (err) {
+    console.error("Logo error:", err);
+    alert("❌ Failed to process logo image.");
+  }
+});
+
+// ====================== flipbook / preview helpers ======================
+function renderImagePreview(tipe, url) {
+  const img = document.createElement("img");
+  img.src = url;
+  img.style.maxWidth = "100px";
+  img.style.margin = "5px";
+  img.style.borderRadius = "5px";
+  img.style.boxShadow = "0 1px 4px rgba(0,0,0,0.1)";
+
+  const wrapper = document.createElement("div");
+  wrapper.style.display = "inline-block";
+  wrapper.style.position = "relative";
+  wrapper.style.margin = "5px";
+
+  const btnHapus = document.createElement("button");
+  btnHapus.className = "btn-hapus-gambar";
+  btnHapus.setAttribute("aria-label", "Hapus Gambar");
+  btnHapus.innerHTML = "×";
+  btnHapus.style.position = "absolute";
+  btnHapus.style.top = "2px";
+  btnHapus.style.right = "2px";
+  btnHapus.onclick = () => {
+    wrapper.remove();
+    if (tipe === "ruangan") flipbookRuanganImages = flipbookRuanganImages.filter(s => s !== url);
+    else flipbookMenuImages = flipbookMenuImages.filter(s => s !== url);
+  };
+
+  wrapper.appendChild(img);
+  wrapper.appendChild(btnHapus);
+
+  const container = document.getElementById(tipe === "ruangan" ? "flipbookRuanganPreview" : "flipbookMenuPreview");
+  if (container) container.appendChild(wrapper);
+}
+
+function tambahGambar(tipe) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.style.display = "none";
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const url = await resizeIfNeeded(file);
+      renderImagePreview(tipe, url);
+      if (tipe === "ruangan") flipbookRuanganImages.push(url);
+      else flipbookMenuImages.push(url);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Gagal memproses gambar.");
+    }
+  };
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+}
+
+// ====================== slugify ======================
+function slugify(text) {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
+}
+
+// ====================== SIMPAN (form -> DB) ======================
+async function simpanData() {
+  try {
+    showLoader();
+
+    const namaRestoran = document.getElementById("namaRestoran")?.value.trim() || "";
+    const restoAddress = document.getElementById("restoAddress")?.value.trim() || "";
+    const restoPhone = document.getElementById("restoPhone")?.value.trim() || "";
+    const logo = document.getElementById("previewLogo")?.src || "";
+    const nomorWaAdmin = Array.from(document.querySelectorAll(".nomor-wa")).map(i => i.value);
+
+    if (!restoPhone) {
+      alert("❌ Please input the restaurant phone number before saving!");
+      hideLoader();
+      return;
+    }
+    const restoId = document.getElementById("restoId")?.value || "resto-main";
+    const menuData = [
+      ...ambilMenu("menuFoodContainer"),
+      ...ambilMenu("menuSnackContainer"),
+      ...ambilMenu("menuDrinkContainer"),
+      ...ambilMenu("menuSpecialContainer")
+    ];
+
+    const promo = Array.isArray(menuPromo) ? menuPromo : [];
+    const flipRuangan = Array.isArray(flipbookRuanganImages) ? flipbookRuanganImages : [];
+    const flipMenu = Array.isArray(flipbookMenuImages) ? flipbookMenuImages : [];
+
+    const data = {
+      restoId,
+      namaRestoran,
+      restoAddress,
+      restoPhone,
+      logo,
+      nomorWaAdmin,
+      menuPromo: promo,
+      flipbookRuanganImages: flipRuangan,
+      flipbookMenuImages: flipMenu,
+      menu: menuData,
+      rooms: ambilSemuaRoom()
+    };
+
+    await saveDataToDB(data);
+
+    // sinkron hidden restoId (dipakai UI)
+    let restoIdEl = document.getElementById("restoId");
+    if (!restoIdEl) {
+      restoIdEl = document.createElement("input");
+      restoIdEl.type = "hidden";
+      restoIdEl.id = "restoId";
+      document.body.appendChild(restoIdEl);
+    }
+    restoIdEl.value = restoId;
+
+    updateShareUI();
+    alert(`✅ All data saved successfully!: ${restoId}`);
+  } catch (err) {
+    console.error(err);
+    alert("❌ Failed to save data.");
+  } finally {
+    hideLoader();
+  }
+}
+
+// Flag global buat cegah render dobel
+let sudahLoadData = false;
+
+async function loadData(data) {
+  // 🚫 Hindari render ganda
+  if (sudahLoadData) {
+    console.warn("⚠️ loadData() sudah pernah dijalankan, skip render ulang.");
+    return;
+  }
+  sudahLoadData = true;
+
+  try {
+    showLoader();
+
+    if (Array.isArray(data)) data = data[0] || {};
+    if (!data || typeof data !== "object") {
+      console.warn("⚠️ Data kosong atau bukan object di loadData");
+      return;
+    }
+
+    console.log("📦 Data di-load:", data);
+
+    // ====================== AMAN SET NILAI FORM ======================
+    const safeSet = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value || "";
+    };
+
+    safeSet("namaRestoran", data.namaRestoran);
+    safeSet("restoAddress", data.restoAddress);
+    safeSet("restoPhone", data.restoPhone);
+
+    const preview = document.getElementById("previewLogo");
+    if (preview && data.logo) preview.src = data.logo;
+
+    // ====================== NOMOR WA ADMIN ======================
+    const container = document.getElementById("nomorWaContainer");
+    if (container && Array.isArray(data.nomorWaAdmin)) {
+      container.innerHTML = ""; // clear dulu
+      data.nomorWaAdmin.forEach(() => tambahNomorWa());
+      const inputs = container.querySelectorAll(".nomor-wa");
+      data.nomorWaAdmin.forEach((v, i) => {
+        if (inputs[i]) inputs[i].value = v;
+      });
+    }
+
+    // ====================== MENU PROMO ======================
+    menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
+    if (typeof renderPromoUI === "function") renderPromoUI();
+
+    // ====================== MENU UTAMA ======================
+    const menuContainer = document.getElementById("menuContainer");
+    if (menuContainer) menuContainer.innerHTML = ""; // bersihkan dulu
+    if (Array.isArray(data.menu)) {
+      data.menu.forEach((m) => {
+        if (typeof tambahMenu === "function") {
+          tambahMenu(m.kategori, m.nama, m.harga, m.image);
         }
       });
-    } else {
-      qrContainer.textContent = link;
     }
+
+    // ====================== ROOMS ======================
+    if (Array.isArray(data.rooms) && typeof restoreRoomFromData === "function") {
+      restoreRoomFromData(data.rooms);
+    }
+
+    // ====================== FLIPBOOK RUANGAN ======================
+    const flipRuang = (data.flipbookRuanganImages || []).slice();
+    if (typeof renderImagePreview === "function") {
+      flipRuang.forEach((src) => renderImagePreview("ruangan", src));
+    }
+
+    // ====================== FLIPBOOK MENU ======================
+    const flipMenu = (data.flipbookMenuImages || []).slice();
+    if (typeof renderImagePreview === "function") {
+      flipMenu.forEach((src) => renderImagePreview("menu", src));
+    }
+
+    // ====================== RESTO ID ======================
+    let restoIdEl = document.getElementById("restoId");
+    if (!restoIdEl) {
+      restoIdEl = document.createElement("input");
+      restoIdEl.type = "hidden";
+      restoIdEl.id = "restoId";
+      document.body.appendChild(restoIdEl);
+    }
+    restoIdEl.value = data.restoId || data.restoPhone || "";
+
+    console.log("✅ loadData selesai & anti-duplikat.");
+  } catch (err) {
+    console.error("❌ loadData gagal:", err);
+  } finally {
+    hideLoader();
+  }
+}
+// ====================== RESET & BACKUP ======================
+async function resetData() {
+  if (!confirm("Are you sure you want to delete all data?")) return;
+  try {
+    await clearDataDB();
+    location.reload();
+  } catch(err) {
+    alert("❌ Failed to delete data: "+err.message);
+  }
+}
+
+async function backupData() {
+  try {
+    // pastikan db sudah siap
+    if (!window.db) {
+      window.db = await initDB();
+    }
+
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      const allData = req.result || [];
+      if (allData.length === 0) {
+        alert("⚠️ Tidak ada data di database untuk di-backup!");
+        return;
+      }
+
+      const filename = `menuva-backup-${Date.now()}.json`;
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(url);
+      alert(`✅ Backup berhasil! File ${filename} siap diunduh.`);
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ Gagal membaca data dari IndexedDB:", e);
+      alert("❌ Backup gagal: tidak bisa membaca data.");
+    };
+  } catch (err) {
+    console.error("❌ Backup fatal error:", err);
+    alert("❌ Terjadi kesalahan: " + err.message);
+  }
+}
+
+// ====================== Restore from file ======================
+function restoreDataFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      let json = JSON.parse(e.target.result);
+
+      // unwrap common wrappers
+      if (json.profile && typeof json.profile === "object") json = json.profile;
+      else if (json.data && typeof json.data === "object") json = json.data;
+
+      // if array -> pick first
+      if (Array.isArray(json)) {
+        if (json.length === 0) throw new Error("File kosong");
+        json = json[0];
+      }
+
+      // ensure restoId: prefer restoPhone, else nama slug, else timestamp
+      if (!json.restoId) {
+        json.restoId = json.restoPhone || (json.namaRestoran ? slugify(json.namaRestoran) : ("resto" + Date.now()));
+      }
+      // also ensure restoPhone exists
+      if (!json.restoPhone) json.restoPhone = json.restoId;
+
+      await saveDataToDB(json);
+
+      alert("✅ Data restored successfully! Reloading...");
+      location.reload();
+    } catch (err) {
+      console.error("❌ Restore failed:", err);
+      alert("❌ Failed to restore JSON file. Lihat console untuk detail.");
+    }
+  };
+  reader.readAsText(file);
+}
+// ====================== Links / QR helpers ======================
+function generateDynamicLink(baseUrl, data) {
+  try {
+    const jsonData = JSON.stringify(data);
+    const encoded = encodeURIComponent(jsonData);
+    return `${baseUrl}?data=${encoded}`;
+  } catch (err) {
+    console.error("Gagal generate link:", err);
+    return null;
+  }
+}
+
+async function createMenuvaLink() {
+  try {
+    const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
+    const data = await loadDataFromDB(restoId);
+    const link = generateDynamicLink("https://menuva.github.io/view.html", data);
+    console.log("Dynamic Link:", link);
+    return link;
+  } catch (err) {
+    console.error("Error createMenuvaLink:", err);
+  }
+}
+
+function getCustomerLink() {
+  const restoId = document.getElementById("restoId")?.value;
+  if (!restoId) return null;
+  const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+  return `${window.location.origin}${basePath}/menu.html?resto=${encodeURIComponent(restoId)}`;
+}
+
+function openCustomerPage() {
+  const link = getCustomerLink();
+  if (!link) return alert("❌ Please click Save All first");
+  window.open(link, "_blank");
+}
+
+// update share UI + QR generation (uses qrcode library)
+function updateShareUI() {
+  const link = getCustomerLink();
+  if (!link) return;
+
+  const btnCopy = document.getElementById("btnSalinLink");
+  if (btnCopy) {
+    btnCopy.style.display = "inline-block";
+    btnCopy.onclick = () => {
+      navigator.clipboard.writeText(link)
+        .then(() => alert("✅ Link copied to clipboard"))
+        .catch(err => alert("❌ Failed to copy link: " + err));
+    };
   }
 
-  // ====================== VOUCHER FUNCTIONS (from part2) ======================
-  async function initVoucherToggle() {
-    const toggleVoucherPage = document.getElementById("toggleVoucherPage");
-    const voucherForm = document.getElementById("voucherForm");
-    const voucherContainerBox = document.getElementById("voucherContainerBox");
+  const btnSee = document.getElementById("btnOpenCustomer");
+  if (btnSee) {
+    btnSee.style.display = "inline-block";
+    btnSee.onclick = () => window.open(link, "_blank");
+  }
 
-    if (!toggleVoucherPage || !voucherForm || !voucherContainerBox) {
-      console.warn("⚠️ Elemen voucher toggle/form/container tidak lengkap, skip initVoucherToggle()");
-      return;
+  const qrContainer = document.getElementById("qrcodePreview");
+  if (!qrContainer) return;
+  qrContainer.innerHTML = "";
+  if (typeof QRCode !== "undefined") {
+    QRCode.toCanvas(link, { width: 128 }, function (error, canvas) {
+      if (error) {
+        console.error(error);
+        qrContainer.textContent = "❌ Failed to generate QR";
+        return;
+      }
+      qrContainer.appendChild(canvas);
+
+      const btnDownload = document.getElementById("btnDownloadQR");
+      if (btnDownload) {
+        btnDownload.style.display = "inline-block";
+        btnDownload.onclick = () => {
+          const a = document.createElement("a");
+          a.href = canvas.toDataURL("image/png");
+          a.download = `Resto-${Date.now()}-QRCode.png`;
+          a.click();
+        };
+      }
+
+      const btnPrint = document.getElementById("btnPrintQR");
+      if (btnPrint) {
+        btnPrint.style.display = "inline-block";
+        btnPrint.onclick = () => {
+          const dataUrl = canvas.toDataURL("image/png");
+          const w = window.open("");
+          w.document.write(`<img src="${dataUrl}" style="width:250px;height:250px;">`);
+          w.document.close();
+          w.print();
+        };
+      }
+    });
+  } else {
+    // fallback: show link text
+    qrContainer.textContent = link;
+  }
+}
+// ====================== LOADER HANDLER (Modern & Center) ======================
+function showLoader() {
+  let loader = document.getElementById("loader");
+  if (!loader) {
+    loader = document.createElement("div");
+    loader.id = "loader";
+    loader.innerHTML = `
+      <div class="loader-overlay">
+        <div class="loader-content">
+          <div class="spinner"></div>
+          <p>Loading data...</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(loader);
+
+    // Tambahkan gaya modern (langsung di JS biar portable)
+    const style = document.createElement("style");
+    style.id = "loader-style";
+    style.textContent = `
+      #loader {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.45);
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      #loader.show {
+        opacity: 1;
+      }
+
+      .loader-content {
+        text-align: center;
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 1.1rem;
+        animation: fadeUp 0.6s ease;
+      }
+
+      .spinner {
+        width: 64px;
+        height: 64px;
+        border: 6px solid rgba(255,255,255,0.3);
+        border-top-color: #00d4ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px auto;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  loader.style.display = "flex";
+  requestAnimationFrame(() => loader.classList.add("show"));
+}
+
+function hideLoader() {
+  const loader = document.getElementById("loader");
+  if (loader) {
+    loader.classList.remove("show");
+    setTimeout(() => {
+      loader.style.display = "none";
+    }, 300);
+  }
+}
+
+  // ====================== CLEAR DB (fix) ======================
+async function clearDataDB() {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.clear();
+      req.onsuccess = () => {
+        console.log("🧹 Semua data dihapus dari IndexedDB");
+        resolve();
+      };
+      req.onerror = () => reject(req.error);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+</script>
+<script>
+let isLoadingFromDB = false;
+let voucherLoaded = false;
+
+document.addEventListener("DOMContentLoaded", async () => {
+  console.log("🚀 Init mulai...");
+  showLoader();
+
+  const timeout = setTimeout(() => {
+    console.warn("⚠️ Init terlalu lama, sembunyikan loader paksa.");
+    hideLoader();
+  }, 8000);
+
+  try {
+    // ===================== INIT DB =====================
+    const db = await initDB();
+    console.log("✅ IndexedDB siap");
+
+    // ===================== LOAD DATA UTAMA =====================
+    const data = await safeLoadDataFromDB();
+    if (data) {
+      await safeLoadData(data);
+      console.log("📦 Data diambil:", data);
+    } else {
+      console.warn("⚠️ Tidak ada data ditemukan di DB");
     }
 
-    const plan = localStorage.getItem("user_plan");
-    if (plan === "monthly") {
-      voucherContainerBox.style.display = "none";
-      return;
+    // ===================== TOGGLE SECTION =====================
+    await initAllToggles();
+
+    // ===================== FIXED BAR =====================
+    const fixbar = document.querySelector(".fixed-bar");
+    if (fixbar) {
+      const fixbarHeight = fixbar.offsetHeight;
+      document.body.style.paddingBottom = fixbarHeight + "px";
     }
 
-    const enabled = localStorage.getItem("page_voucher") === "true";
-    toggleVoucherPage.checked = enabled;
+    console.log("✅ Admin siap digunakan");
+  } catch (err) {
+    console.error("❌ Error saat init:", err);
+    alert("Terjadi kesalahan saat memuat data. Coba refresh halaman.");
+  } finally {
+    clearTimeout(timeout);
+    hideLoader();
+  }
+});
+
+
+// ===================== SAFE LOAD WRAPPER =====================
+async function safeLoadDataFromDB(id = 1) {
+  if (isLoadingFromDB) {
+    console.warn("⚠️ loadDataFromDB() di-skip, masih jalan");
+    return null;
+  }
+  isLoadingFromDB = true;
+  const data = await loadDataFromDB(id);
+  isLoadingFromDB = false;
+  return data;
+}
+
+async function safeLoadData(data) {
+  if (window.sudahLoadData) {
+    console.warn("⚠️ loadData() sudah pernah jalan, skip render ulang");
+    return;
+  }
+  window.sudahLoadData = true;
+  await loadData(data);
+}
+
+
+// ===================== TOGGLES MASTER =====================
+async function initAllToggles() {
+  await new Promise((resolve) => {
+    if (document.readyState === "complete") return resolve();
+    document.addEventListener("readystatechange", () => {
+      if (document.readyState === "complete") resolve();
+    });
+  });
+
+  initOrderToggle();
+  initRoomToggle();
+  await initVoucherToggle();
+}
+
+
+// ===================== ORDER TOGGLE =====================
+function initOrderToggle() {
+  const toggleOrderPage = document.getElementById("toggleOrderPage");
+  // FIXED: disinkronkan dengan HTML (id="orderToggleBox")
+  const orderContainerBox =
+    document.getElementById("orderContainerBox") ||
+    document.getElementById("orderToggleBox");
+
+  if (!toggleOrderPage) {
+    console.warn("⚠️ Elemen toggleOrderPage tidak ditemukan.");
+    return;
+  }
+  if (!orderContainerBox) {
+    console.warn("⚠️ Elemen orderContainerBox/orderToggleBox belum ada, coba lagi 300ms...");
+    return setTimeout(initOrderToggle, 300);
+  }
+
+  const saved = localStorage.getItem("page_order");
+  toggleOrderPage.checked = saved === "true";
+  orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
+
+  toggleOrderPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_order", enabled);
+    orderContainerBox.style.display = enabled ? "block" : "none";
+  });
+}
+
+
+// ===================== ROOM TOGGLE =====================
+function initRoomToggle() {
+  const toggleRoomPage = document.getElementById("toggleRoomPage");
+  const roomContainerBox = document.getElementById("roomContainerBox");
+
+  if (!toggleRoomPage || !roomContainerBox) {
+    console.warn("⚠️ Elemen toggleRoomPage atau roomContainerBox tidak ditemukan.");
+    return;
+  }
+
+  const saved = localStorage.getItem("page_room");
+  toggleRoomPage.checked = saved === "true";
+  roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
+
+  toggleRoomPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_room", enabled);
+    roomContainerBox.style.display = enabled ? "block" : "none";
+  });
+}
+
+
+// ===================== VOUCHER TOGGLE =====================
+async function initVoucherToggle() {
+  const toggleVoucherPage = document.getElementById("toggleVoucherPage");
+  const voucherForm = document.getElementById("voucherForm");
+  const voucherContainerBox = document.getElementById("voucherContainerBox");
+
+  if (!toggleVoucherPage || !voucherForm || !voucherContainerBox) {
+    console.warn("⚠️ Elemen voucher toggle/form/container tidak lengkap, skip initVoucherToggle()");
+    return;
+  }
+
+  const plan = localStorage.getItem("user_plan");
+  if (plan === "monthly") {
+    voucherContainerBox.style.display = "none";
+    return;
+  }
+
+  const enabled = localStorage.getItem("page_voucher") === "true";
+  toggleVoucherPage.checked = enabled;
+  voucherForm.style.display = enabled ? "block" : "none";
+
+  toggleVoucherPage.addEventListener("change", (e) => {
+    const enabled = e.target.checked;
+    localStorage.setItem("page_voucher", enabled);
     voucherForm.style.display = enabled ? "block" : "none";
+    if (!enabled) {
+      localStorage.removeItem("voucher");
+      renderVoucher();
+    }
+  });
 
-    toggleVoucherPage.onchange = (e) => {
-      const v = e.target.checked;
-      localStorage.setItem("page_voucher", v);
-      voucherForm.style.display = v ? "block" : "none";
-      if (!v) {
-        localStorage.removeItem("voucher");
+  await loadVoucherOnInit();
+}
+
+
+// ===================== LOAD VOUCHER =====================
+async function loadVoucherOnInit() {
+  if (voucherLoaded) {
+    console.warn("⚠️ loadVoucherOnInit() sudah pernah dijalankan, skip");
+    return;
+  }
+  voucherLoaded = true;
+
+  const fromLocal = localStorage.getItem("voucher");
+  if (fromLocal) {
+    const voucher = JSON.parse(fromLocal);
+    console.log("📦 Voucher dari localStorage:", voucher);
+    renderVoucher(voucher);
+    return;
+  }
+
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(1);
+
+    req.onsuccess = (e) => {
+      const data = e.target.result;
+      const voucher =
+        data?.menuVoucher && data.menuVoucher.length
+          ? data.menuVoucher[0]
+          : null;
+
+      if (voucher) {
+        console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
+        localStorage.setItem("voucher", JSON.stringify(voucher));
+        renderVoucher(voucher);
+      } else {
+        console.log("⚠️ Tidak ada voucher di DB");
         renderVoucher(null);
       }
     };
-
-    await loadVoucherOnInit();
+  } catch (err) {
+    console.error("❌ Gagal load voucher dari DB:", err);
   }
+}
 
-  async function loadVoucherOnInit() {
-    if (voucherLoaded) return;
-    voucherLoaded = true;
 
-    const fromLocal = localStorage.getItem("voucher");
-    if (fromLocal) {
-      try {
-        const voucher = JSON.parse(fromLocal);
-        renderVoucher(voucher);
-        return;
-      } catch (err) { console.warn("voucher local parse error", err); }
-    }
+// ===================== RENDER VOUCHER =====================
+function renderVoucher(voucher) {
+  const voucherPreview = document.getElementById("voucherPreview");
+  if (!voucherPreview) return;
 
-    try {
-      const db = await initDB();
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(1);
-      req.onsuccess = (e) => {
-        const data = e.target.result || {};
-        const voucher = (data.menuVoucher && data.menuVoucher.length) ? data.menuVoucher[0] : null;
-        if (voucher) {
-          localStorage.setItem("voucher", JSON.stringify(voucher));
-          renderVoucher(voucher);
-        } else {
-          renderVoucher(null);
-        }
-      };
-      req.onerror = (e) => console.error("Voucher read error", e);
-    } catch (err) {
-      console.error("❌ Gagal load voucher dari DB:", err);
-    }
-  }
-
-  function renderVoucher(voucher) {
-    const voucherPreview = document.getElementById("voucherPreview");
-    if (!voucherPreview) return;
-    if (voucher) {
-      voucherPreview.innerHTML = `
-        <p><strong>Kode Voucher:</strong> <span id="voucherCodeText">${voucher.code}</span> <button id="voucherCopyBtn">📋 Copy</button></p>
-        <p><strong>Diskon:</strong> ${voucher.discount}%</p>
-        <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
-      `;
-      document.getElementById("voucherCopyBtn")?.addEventListener("click", copyVoucherCode);
-    } else {
-      voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
-    }
-  }
-
-  function copyVoucherCode() {
-    const codeText = document.getElementById("voucherCodeText")?.innerText;
-    if (!codeText) return;
-    navigator.clipboard.writeText(codeText).then(() => alert("Kode voucher berhasil di-copy: " + codeText)).catch(err => console.error("Gagal copy", err));
-  }
-
-  // ====================== TOGGLES & INIT FLOW (part2) ======================
-  function initOrderToggle() {
-    const toggleOrderPage = document.getElementById("toggleOrderPage");
-    const orderContainerBox = document.getElementById("orderContainerBox") || document.getElementById("orderToggleBox");
-    if (!toggleOrderPage || !orderContainerBox) {
-      console.warn("⚠️ Order toggle elements missing");
-      return;
-    }
-    const saved = localStorage.getItem("page_order");
-    toggleOrderPage.checked = saved === "true";
-    orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
-    toggleOrderPage.onchange = (e) => {
-      const enabled = e.target.checked;
-      localStorage.setItem("page_order", enabled);
-      orderContainerBox.style.display = enabled ? "block" : "none";
-    };
-  }
-
-  function initRoomToggle() {
-    const toggleRoomPage = document.getElementById("toggleRoomPage");
-    const roomContainerBox = document.getElementById("roomContainerBox");
-    if (!toggleRoomPage || !roomContainerBox) { console.warn("⚠️ Room toggle missing"); return; }
-    const saved = localStorage.getItem("page_room");
-    toggleRoomPage.checked = saved === "true";
-    roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
-    toggleRoomPage.onchange = (e) => {
-      const enabled = e.target.checked;
-      localStorage.setItem("page_room", enabled);
-      roomContainerBox.style.display = enabled ? "block" : "none";
-    };
-  }
-
-  async function initAllToggles() {
-    await new Promise((resolve) => {
-      if (document.readyState === "complete") return resolve();
-      document.addEventListener("readystatechange", () => { if (document.readyState === "complete") resolve(); });
-    });
-    initOrderToggle();
-    initRoomToggle();
-    await initVoucherToggle();
-  }
-
-  // ====================== SAFE LOAD WRAPPERS & INIT ======================
-  async function safeLoadDataFromDB(id = 1) {
-    if (isLoadingFromDB) {
-      console.warn("⚠️ loadDataFromDB() di-skip, masih jalan");
-      return null;
-    }
-    isLoadingFromDB = true;
-    const data = await loadDataFromDB(id);
-    isLoadingFromDB = false;
-    return data;
-  }
-
-  async function safeLoadData(data) {
-    if (window.sudahLoadData) {
-      console.warn("⚠️ loadData() sudah pernah jalan, skip render ulang");
-      return;
-    }
-    window.sudahLoadData = true;
-    await loadData(data);
-  }
-
-  // ====================== INIT ON DOMContentLoaded (single entry) ======================
-  async function initAdminPage() {
-    console.log("🚀 Init mulai...");
-    showLoader();
-
-    const timeout = setTimeout(() => {
-      console.warn("⚠️ Init terlalu lama, sembunyikan loader paksa.");
-      hideLoader();
-    }, 8000);
-
-    try {
-      await initDB();
-      console.log("✅ IndexedDB siap");
-
-      const data = await safeLoadDataFromDB(1);
-      if (data) {
-        await safeLoadData(data);
-        console.log("📦 Data diambil:", data);
-      } else {
-        // if no data, set default state
-        console.warn("⚠️ Tidak ada data ditemukan di DB, isi default");
-        const def = buatDataDefault(1);
-        await saveDataToDB(def);
-        await safeLoadData(def);
-      }
-
-      await initAllToggles();
-
-      const fixbar = document.querySelector(".fixed-bar");
-      if (fixbar) document.body.style.paddingBottom = fixbar.offsetHeight + "px";
-
-      console.log("✅ Admin siap digunakan");
-    } catch (err) {
-      console.error("❌ Error saat init:", err);
-      alert("Terjadi kesalahan saat memuat data. Coba refresh halaman.");
-    } finally {
-      clearTimeout(timeout);
-      hideLoader();
-    }
-  }
-
-  // attach single DOMContentLoaded listener
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initAdminPage);
+  if (voucher) {
+    voucherPreview.innerHTML = `
+      <p>
+        <strong>Kode Voucher:</strong>
+        <span id="voucherCodeText">${voucher.code}</span>
+        <button onclick="copyVoucherCode()">📋 Copy</button>
+      </p>
+      <p><strong>Diskon:</strong> ${voucher.discount}%</p>
+      <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
+    `;
   } else {
-    // already ready
-    setTimeout(initAdminPage, 0);
+    voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
   }
+}
 
-  // Expose some helpers to global for UI buttons
-  window.simpanData = simpanData;
-  window.backupData = backupData;
-  window.resetData = resetData;
-  window.restoreDataFromFile = restoreDataFromFile;
-  window.tambahNomorWa = tambahNomorWa;
-  window.tambahPromo = tambahPromo;
-  window.tambahMenu = tambahMenu;
-  window.tambahRoom = tambahRoom;
-  window.tambahGambar = tambahGambar;
-  window.createMenuvaLink = createMenuvaLink;
-  window.openCustomerPage = openCustomerPage;
-  window.copyVoucherCode = copyVoucherCode;
+
+// ===================== COPY VOUCHER CODE =====================
+function copyVoucherCode() {
+  const codeText = document.getElementById("voucherCodeText")?.innerText;
+  if (!codeText) return;
+  navigator.clipboard.writeText(codeText)
+    .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
+    .catch(err => console.error("Gagal copy", err));
 }
 </script>
-
 </body>
 </html>
-
-
-
-
-
-
-
