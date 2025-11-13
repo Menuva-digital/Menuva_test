@@ -2157,20 +2157,33 @@ async function saveVoucher() {
     // Pastikan struktur voucher array sudah ada
     if (!data.menuVoucher) data.menuVoucher = [];
 
-    // Hapus voucher lama, biar hanya 1 voucher aktif
-    data.menuVoucher = [{
+    // 🔍 Cek apakah kode sudah ada, kalau ada kita update, kalau belum tambahkan
+    const existingIndex = data.menuVoucher.findIndex(v => v.code === code);
+
+    const voucherObj = {
       code,
       discount,
-      expiry
-    }];
+      expiry,
+      createdAt: new Date().toISOString()
+    };
 
-    // Simpan kembali seluruh data ke DB
+    if (existingIndex !== -1) {
+      // Update voucher lama
+      data.menuVoucher[existingIndex] = voucherObj;
+      console.log("♻️ Voucher diperbarui:", voucherObj);
+    } else {
+      // Tambahkan voucher baru
+      data.menuVoucher.push(voucherObj);
+      console.log("🆕 Voucher baru disimpan:", voucherObj);
+    }
+
+    // 💾 Simpan kembali seluruh data ke DB
     await saveDataToDB(data);
-    console.log("✅ Voucher berhasil disimpan ke IndexedDB:", data.menuVoucher[0]);
+    console.log("✅ Semua voucher tersimpan ke IndexedDB:", data.menuVoucher);
 
     // Update UI & cache local
-    localStorage.setItem("voucher", JSON.stringify(data.menuVoucher[0]));
-    renderVoucher(data.menuVoucher[0]);
+    localStorage.setItem("voucher", JSON.stringify(data.menuVoucher));
+    renderVoucher(data.menuVoucher);
     alert("✅ Voucher berhasil disimpan!");
 
     // Sembunyikan form setelah disimpan
@@ -2188,6 +2201,3 @@ async function saveVoucher() {
 
 </body>
 </html>
-
-
-
