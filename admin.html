@@ -2107,35 +2107,49 @@ async function loadVoucherOnInit() {
 
 
 // ===================== RENDER VOUCHER =====================
-function renderVoucher(voucher) {
+function renderVoucher(voucherData) {
   const voucherPreview = document.getElementById("voucherPreview");
   if (!voucherPreview) return;
 
-  if (voucher) {
-    voucherPreview.innerHTML = `
-      <p>
-        <strong>Kode Voucher:</strong>
-        <span id="voucherCodeText">${voucher.code}</span>
-        <button onclick="copyVoucherCode()">📋 Copy</button>
-      </p>
-      <p><strong>Diskon:</strong> ${voucher.discount}%</p>
-      <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
-    `;
-  } else {
+  // Kalau tidak ada voucher sama sekali
+  if (!voucherData || voucherData.length === 0) {
     voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
+    return;
   }
+
+  // Render semua voucher yang belum expired
+  const today = new Date();
+  let activeVouchers = voucherData.filter(v => new Date(v.expiry) >= today);
+
+  if (activeVouchers.length === 0) {
+    voucherPreview.innerHTML = "<em>Tidak ada voucher yang masih berlaku</em>";
+    return;
+  }
+
+  let html = "<h3>Voucher Aktif</h3>";
+  activeVouchers.forEach(voucher => {
+    html += `
+      <div class="voucher-item" style="border:1px solid #ccc; padding:8px; margin:8px 0; border-radius:8px;">
+        <p><strong>Kode Voucher:</strong> 
+          <span class="voucher-code">${voucher.code}</span>
+          <button onclick="copyVoucherCode('${voucher.code}')">📋 Copy</button>
+        </p>
+        <p><strong>Diskon:</strong> ${voucher.discount}%</p>
+        <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
+      </div>
+    `;
+  });
+
+  voucherPreview.innerHTML = html;
 }
-
-
 // ===================== COPY VOUCHER CODE =====================
-function copyVoucherCode() {
-  const codeText = document.getElementById("voucherCodeText")?.innerText;
+function copyVoucherCode(codeText) {
   if (!codeText) return;
   navigator.clipboard.writeText(codeText)
     .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
     .catch(err => console.error("Gagal copy", err));
 }
- 
+
 </script>
  <script>
 // ===================== SAVE VOUCHER (sinkron dengan MenuvaDB) =====================
@@ -2201,3 +2215,4 @@ async function saveVoucher() {
 
 </body>
 </html>
+
