@@ -2138,29 +2138,55 @@ function copyVoucherCode() {
  
 </script>
  <script>
+// ===================== SAVE VOUCHER (sinkron dengan MenuvaDB) =====================
 async function saveVoucher() {
+  const code = document.getElementById("voucherCode").value.trim();
+  const discount = parseFloat(document.getElementById("voucherDiscount").value);
+  const expiry = document.getElementById("voucherExpiry").value;
+
+  if (!code || isNaN(discount) || !expiry) {
+    alert("⚠️ Harap isi semua kolom voucher!");
+    return;
+  }
+
   try {
-    const code = document.getElementById("voucherCode").value.trim();
-    const discount = parseFloat(document.getElementById("voucherDiscount").value);
-    const expiry = document.getElementById("voucherExpiry").value;
+    // Ambil data utama dari IndexedDB
+    const data = await loadDataFromDB(1);
+    console.log("🧾 [DEBUG] Data sebelum update voucher:", data);
 
-    if (!code || isNaN(discount) || !expiry) {
-      alert("Harap isi semua data voucher!");
-      return;
-    }
+    // Pastikan struktur voucher array sudah ada
+    if (!data.menuVoucher) data.menuVoucher = [];
 
-    // Simpan ke IndexedDB
-    await saveDataToDB("voucher", { code, discount, expiry });
+    // Hapus voucher lama, biar hanya 1 voucher aktif
+    data.menuVoucher = [{
+      code,
+      discount,
+      expiry
+    }];
 
-    alert("Voucher berhasil disimpan!");
-    renderVoucher({ code, discount, expiry });
+    // Simpan kembali seluruh data ke DB
+    await saveDataToDB(data);
+    console.log("✅ Voucher berhasil disimpan ke IndexedDB:", data.menuVoucher[0]);
+
+    // Update UI & cache local
+    localStorage.setItem("voucher", JSON.stringify(data.menuVoucher[0]));
+    renderVoucher(data.menuVoucher[0]);
+    alert("✅ Voucher berhasil disimpan!");
+
+    // Sembunyikan form setelah disimpan
+    const form = document.getElementById("voucherForm");
+    if (form) form.style.display = "none";
+    const toggle = document.getElementById("toggleVoucherPage");
+    if (toggle) toggle.checked = false;
   } catch (err) {
-    console.error("Gagal menyimpan voucher:", err);
-    alert("Terjadi kesalahan saat menyimpan voucher.");
+    console.error("❌ Gagal menyimpan voucher:", err);
+    alert("❌ Gagal menyimpan voucher ke database!");
   }
 }
+
 </script>
 
 </body>
 </html>
+
 
