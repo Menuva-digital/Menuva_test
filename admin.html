@@ -279,7 +279,19 @@
       transition: opacity 0.3s ease;
     }
     .btn-upload-gambar:hover { opacity: 0.85; }
-  
+    .fixed-bar {
+      position: fixed !important;
+      bottom: 0;
+      left: 0;
+      width: 100vw;
+      background: linear-gradient(135deg, #003366, #003366);
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      padding: 10px 20px;
+      z-index: 9999;
+    }
     /* Style umum untuk tombol aksi penting */
 .btn-action {
   display: inline-block;
@@ -385,511 +397,282 @@ button {
   background: linear-gradient(135deg, #b91c1c, #7f1d1d);
   transform: scale(1.05);
 }
- .setting-card {
-    background: linear-gradient(135deg, #ffffff, #f9fafb);
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-  }
-  .setting-card h2 {
-    font-size: 18px;
-    margin: 0 0 12px;
-    color: #1e293b;
-  }
-
-  /* Switch toggle elegan */
-  .switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 32px;
-    margin-right: 10px;
-  }
-  .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    inset: 0;
-    background-color: #cbd5e1;
-    transition: .4s;
-    border-radius: 32px;
-  }
-  .slider:before {
-    position: absolute;
-    content: "";
-    height: 24px;
-    width: 24px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-  }
-  input:checked + .slider {
-    background: linear-gradient(135deg, #2563eb, #1e40af);
-  }
-  input:checked + .slider:before {
-    transform: translateX(28px);
-  }
-
-  .setting-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #334155;
-    vertical-align: middle;
-  }
-
-    /* Tombol simpan voucher */
-  #saveVoucherBtn {
-    background: linear-gradient(135deg, #b8860b, #ffd700);
-    color: #1a1a1a;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
-  }
-  #saveVoucherBtn:hover {
-    background: linear-gradient(135deg, #ffd700, #ffcc33);
-    transform: translateY(-2px);
-  }
-
-  /* Tombol copy voucher */
-  #voucherPreview button {
-    background: linear-gradient(135deg, #b8860b, #ffd700);
-    color: #1a1a1a;
-    font-size: 14px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
-  #voucherPreview button:hover {
-    background: linear-gradient(135deg, #ffd700, #ffcc33);
-    transform: translateY(-2px);
-  }
-  .fixed-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-around;
-  background: linear-gradient(135deg, #003366, #003366);
-  padding: 6px 0;
-  border-top: 1px solid #ddd;
-  z-index: 1000;
-}
-
-.nav-btn {
-  flex: 1;
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 4px 0;
-  font-size: 14px;
-  transition: color 0.3s ease;
-}
-
-/* standby putih */
-.nav-btn .icon,
-.nav-btn .label {
-  color: #ffffff; /* putih */
-  transition: color 0.3s ease;
-}
-
-.nav-btn .icon {
-  font-size: 20px;
-  line-height: 1;
-}
-
-.nav-btn .label {
-  font-size: 11px;
-  margin-top: 2px;
-}
-
-/* hover emas */
-.nav-btn:hover .icon,
-.nav-btn:hover .label {
-  color: #FFD700; /* emas */
-}
-
-/* aktif (misal ditekan) boleh kasih efek lain */
-.nav-btn:active .icon,
-.nav-btn:active .label {
-  color: #FFA500; /* oranye keemasan */
-}
 
   </style>
 </head>
 <body>
-<div class="menuva-logo">
-  <img src="menuva-logo.png" alt="Logo Menuva">
-  <br>
-  <p style="color: white;">Digital Solution For Restaurant, Hotel, & Cafe's</p>
-</div>
 
-<div class="section">
-  <h2>📇 Business Identity</h2>
-  
-  <label for="logoInput">Your Business Logo</label>
-  <input type="file" id="logoInput" name="logoInput" accept="image/*" />
-
-  <img id="previewLogo" src="" alt="Logo Restoran" style="max-height: 80px; margin-top: 10px;" />
-
-  <label for="namaRestoran">Your Business Name</label>
-  <input type="text" id="namaRestoran" name="namaRestoran" placeholder="Your Business Name" />
-
-  <label for="restoAddress">Your Business Address</label>
-  <input id="restoAddress" name="restoAddress" type="text" placeholder="Jl. Sudirman No. 10, Jakarta" />
-
-  <label for="restoPhone">Phone Number</label>
-  <input id="restoPhone" name="restoPhone" type="text" placeholder="08xx-xxxx-xxxx" />
-</div>
-
-<div class="section">
-  <h2>🔥 Menu Promo</h2>
-  <div id="promoContainer"></div>
-  <button class="btn-orange" onclick="tambahPromo()">+ Add Promo Menu</button>
-</div>
-
-<div class="section">
-  <h2>📋 SPECIAL MENU</h2>
-  <div id="menuSpecialContainer"></div>
-  <button class="btn-success" onclick="tambahMenu('special')">+ Add Special Menu</button>
-</div>
-
-<div class="section">
-  <h2>📋 FOOD MENU</h2>
-  <div id="menuFoodContainer"></div>
-  <button class="btn-success" onclick="tambahMenu('food')">+ Add Menu</button>
-</div>
-
-<div class="section">
-  <h2>📋 SNACK & DESSERT</h2>
-  <div id="menuSnackContainer"></div>
-  <button class="btn-success" onclick="tambahMenu('snack')">+ Add Menu</button>
-</div>
-
-<div class="section">
-  <h2>📋 DRINK</h2>
-  <div id="menuDrinkContainer"></div>
-  <button class="btn-success" onclick="tambahMenu('drink')">+ Add Menu</button>
-</div>
-
-<div class="section-box" id="waContainerBox">
-  <h3>📱 Admin WhatsApp Number (Order/Reservation Recipient)</h3>
-  <div id="nomorWaContainer">
-    <label for="waNumber1" class="sr-only">WhatsApp Number</label>
-    <input type="text" id="waNumber1" name="waNumber[]" class="nomor-wa" placeholder="Example: 6281234567890">
-  </div>
-  <button onclick="tambahNomorWa()">+ Add WA Number</button>
-</div>
-
-<div class="section">
-  <h2>📸 Room Gallery</h2>
-  <button onclick="tambahGambar('ruangan')">+ Add Room Image</button>
-  <input type="file" id="flipbookRuanganUpload" name="flipbookRuanganUpload" accept="image/*" multiple style="display:none;" />
-  <div id="flipbookRuanganPreview"></div>
-</div>
-
-<div class="section">
-  <h2>📖 Restaurant Menu</h2>
-  <button onclick="tambahGambar('menu')">+ Add Menu Image</button>
-  <input type="file" id="flipbookMenuUpload" name="flipbookMenuUpload" accept="image/*" multiple style="display:none;" />
-  <div id="flipbookMenuPreview"></div>
-</div>
-
-<div class="setting-card" id="orderToggleBox">
-  <h2>⚙️ Reservation & Delivery Setting</h2>
-  <label class="switch">
-    <input type="checkbox" id="toggleOrderPage" name="toggleOrderPage">
-    <span class="slider"></span>
-  </label>
-  <span class="setting-label">Enable/Disable Reservation & Delivery Page</span>
-</div>
-
-<div class="setting-card" id="roomToggleBox">
-  <h2>⚙️ Room Page Setting</h2>
-  <label class="switch">
-    <input type="checkbox" id="toggleRoomPage" name="toggleRoomPage">
-    <span class="slider"></span>
-  </label>
-  <span class="setting-label">Enable/Disable Room Page.</span>
-</div>
-
-<div class="section-box" id="roomContainerBox">
-  <h2>🏨 Room / Packages</h2>
-  <div class="room-section">
-    <h3>🛏️ Room Hotel</h3>
-    <button onclick="tambahRoom('hotel')" class="btn-tambah-room">+ Add Hotel Room</button>
-    <div id="roomHotelContainer"></div>
-  </div>
-  <div class="room-section">
-    <h3>💼 Meeting Room</h3>
-    <button onclick="tambahRoom('meeting')" class="btn-tambah-room">+ Add Meeting Room</button>
-    <div id="meetingRoomContainer"></div>
-  </div>
-  <div class="room-section">
-    <h3>🎁 Packages</h3>
-    <button onclick="tambahRoom('package')" class="btn-tambah-room">+ Add Packages</button>
-    <div id="packageContainer"></div>
-  </div>
-</div>
-
-<div class="section-box" id="voucherContainerBox">
-  <h2>🎟️ Voucher Diskon</h2>
-  <label class="switch">
-    <input type="checkbox" id="toggleVoucherPage" name="toggleVoucherPage">
-    <span class="slider round"></span>
-  </label>
-
-  <div id="voucherForm" style="margin-top:15px; display:none;">
-    <label for="voucherCode">Voucher Code</label>
-    <input type="text" id="voucherCode" name="voucherCode" placeholder="Kode Voucher">
-
-    <label for="voucherDiscount">Discount (%)</label>
-    <input type="number" id="voucherDiscount" name="voucherDiscount" placeholder="Diskon (%)">
-
-    <label for="voucherExpiry">Expiry Date</label>
-    <input type="date" id="voucherExpiry" name="voucherExpiry">
-
-    <button id="saveVoucherBtn" onclick="saveVoucher()">💾 Save Voucher Code</button>
+  <div class="menuva-logo">
+    <img src="menuva-logo.png" alt="Logo Menuva">
+    <br>
+    <p style="color: white;">Digital Solution For Restaurant, Hotel, & Cafe's</p>
   </div>
 
-  <div id="voucherPreview"></div>
-</div>
+  <div class="section">
+    <h2>📇 Business Identity</h2>
+    <label for="logoInput">Your Business Logo</label>
+    <input type="file" id="logoInput" accept="image/*" />
+    <img id="previewLogo" src="" alt="Logo Restoran" style="max-height: 80px; margin-top: 10px;" />
+    <input type="text" id="namaRestoran" placeholder="Your Business Name" />
+    <label for="restoAddress">Your Business Address</label>
+    <input id="restoAddress" type="text" placeholder="Jl. Sudirman No. 10, Jakarta" />
+    <label for="restoPhone">Phone Number</label>
+    <input id="restoPhone" type="text" placeholder="08xx-xxxx-xxxx" />
+  </div>
 
-<hr>
+  <div class="section">
+    <h2>🔥 Menu Promo</h2>
+    <div id="promoContainer"></div>
+    <button class="btn-orange" onclick="tambahPromo()">+ Add Promo Menu</button>
+  </div>
 
-<div class="section">
-  <button class="btn-simpan" onclick="simpanData()">💾 Save All</button>
-  <input type="hidden" id="restoId" name="restoId" />
+  <div class="section">
+    <h2>📋 SPECIAL MENU</h2>
+    <div id="menuSpecialContainer"></div>
+    <button class="btn-success" onclick="tambahMenu('special')">+ Add Special Menu</button>
+  </div>
+
+  <div class="section">
+    <h2>📋 FOOD MENU</h2>
+    <div id="menuFoodContainer"></div>
+    <button class="btn-success" onclick="tambahMenu('food')">+ Add Menu</button>
+  </div>
+
+  <div class="section">
+    <h2>📋 SNACK & DESSERT</h2>
+    <div id="menuSnackContainer"></div>
+    <button class="btn-success" onclick="tambahMenu('snack')">+ Add Menu</button>
+  </div>
+
+  <div class="section">
+    <h2>📋 DRINK</h2>
+    <div id="menuDrinkContainer"></div>
+    <button class="btn-success" onclick="tambahMenu('drink')">+ Add Menu</button>
+  </div>
+
+  <div class="section-box" id="waContainerBox">
+    <h3>📱 Admin WhatsApp Number (Order/Reservation Recipient)</h3>
+    <div id="nomorWaContainer">
+      <input type="text" class="nomor-wa" placeholder="Example: 6281234567890">
+    </div>
+    <button onclick="tambahNomorWa()">+ Add WA Number</button>
+  </div>
+
+  <div class="section">
+    <h2>📸 Room Gallery</h2>
+    <button onclick="tambahGambar('ruangan')">+ Add Room Image</button>
+    <input type="file" id="flipbookRuanganUpload" accept="image/*" multiple style="display:none;" />
+    <div id="flipbookRuanganPreview"></div>
+  </div>
+
+  <div class="section">
+    <h2>📖 Restaurant Menu</h2>
+    <button onclick="tambahGambar('menu')">+ Add Menu Image</button>
+    <input type="file" id="flipbookMenuUpload" accept="image/*" multiple style="display:none;" />
+    <div id="flipbookMenuPreview"></div>
+  </div>
+
+  <div class="section-box" id="roomContainerBox">
+    <h2>🏨 Room / Packages</h2>
+    <div class="room-section">
+      <h3>🛏️ Room Hotel</h3>
+      <button onclick="tambahRoom('hotel')" class="btn-tambah-room">+ Add Hotel Room</button>
+      <div id="roomHotelContainer"></div>
+    </div>
+    <div class="room-section">
+      <h3>💼 Meeting Room</h3>
+      <button onclick="tambahRoom('meeting')" class="btn-tambah-room">+ Add Meeting Room</button>
+      <div id="meetingRoomContainer"></div>
+    </div>
+    <div class="room-section">
+      <h3>🎁 Packages</h3>
+      <button onclick="tambahRoom('package')" class="btn-tambah-room">+ Add Packages</button>
+      <div id="packageContainer"></div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="section">
+    <button class="btn-simpan" onclick="simpanData()">💾 Save All</button>
+   
+   <input type="hidden" id="restoId" />
 
   <button id="btnOpenCustomer" class="btn-orange" onclick="openCustomerPage()">👁️ See Customer Page</button>
+
   <button id="btnSalinLink" class="btn-teal" style="display:none;">📋 Copy Link to Share with Customers</button>
 
   <div id="qrcodePreview" style="margin-top:10px;"></div>
 
   <button id="btnDownloadQR" class="btn-purple" style="margin-top:10px; display:none;">⬇️ Download QR Code</button>
+
   <button id="btnPrintQR" class="btn-red" style="margin-top:5px; display:none;">🖨️ Print QR Code</button>
 
-  <div class="section">
-    <h2>🔁 Backup & Restore Data</h2>
-    <button id="btnBackup" class="btn-blue" onclick="backupData()">📦 Backup Data</button>
-    <div id="backupDownloadLink" style="margin-top:10px;"></div>
 
-    <label for="restoreInput" style="margin-top: 20px; display: block;">📂 Select JSON File to Restore:</label>
-    <input type="file" id="restoreInput" name="restoreInput" accept=".json" onchange="restoreDataFromFile(event)" />
-  </div>
-  
-  <!-- Panduan -->
-  <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
-    <strong>Panduan Penggunaan:</strong><br>
-    PENTING!!<br>
-    🔹 Klik <strong>⬇️ Backup Data</strong> untuk menyimpan semua data restoran ke file <strong>.json</strong>.<br>
-    🔹 Simpan file tersebut dengan baik.<br>
-    🔹 Klik <strong>📂 Pilih File</strong> untuk me-restore data.<br>
-    ⚠️ Proses restore menggantikan seluruh data saat ini.<br>
-  </div>
-
-  <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
-    <strong>User Guide:</strong><br>
-    IMPORTANT!!<br>
-    🔹 Click <strong>⬇️ Backup Data</strong> to save all data.<br>
-    🔹 Keep the file safe.<br>
-    🔹 Click <strong>📂 Choose File</strong> to restore data.<br>
-    ⚠️ The restore process replaces all existing data.<br>
-  </div>
-
-  <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
+    <div class="section">
+      <h2>🔁 Backup & Restore Data</h2>
+     <button id="btnBackup" class="btn-blue" onclick="backupData()">📦 Backup Data</button>
+      <div id="backupDownloadLink" style="margin-top:10px;"></div>
+      <label for="restoreInput" style="margin-top: 20px; display: block;">
+        📂 Select JSON File to Restore:
+      </label>
+      <input type="file" id="restoreInput" accept=".json" onchange="restoreDataFromFile(event)" />
+    </div>
+<!-- Tambahin loader di HTML -->
+<div id="loader" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+  background:rgba(255,255,255,0.7); z-index:9999; text-align:center; padding-top:20%;">
+  <div style="font-size:20px; font-weight:bold; color:#007bff;">⏳ Loading...</div>
 </div>
- <script>
-console.log("Admin Script Version: 2025-11-07-STABLE");
 
-// ====================== GLOBAL DB HANDLER ======================
-let dbReady = null;
+    <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
+      <strong>Panduan Penggunaan:</strong><br>
+      PENTING!!<br>
+      🔹 Klik <strong>⬇️ Backup Data</strong> untuk menyimpan semua data restoran ke file berformat <strong>.json</strong>.<br>
+      🔹 Simpan file tersebut dengan baik dan aman di perangkat Anda.<br>
+      🔹 Klik <strong>📂 Pilih File</strong> untuk me-restore data dari file <strong>.json</strong> hasil backup.<br>
+      ⚠️ Proses restore akan menggantikan seluruh data yang ada saat ini dan tidak bisa dibatalkan.<br>
+      💡 Gunakan fitur ini sebelum mengganti perangkat atau membersihkan data browser.
+    </div>
+    <div style="background: #fef9e7; padding: 10px; border-left: 5px solid #f1c40f; margin-top: 10px; font-size: 14px;">
+      <strong>User Guide:</strong><br>
+      IMPORTANT!!<br>
+      🔹 Click <strong>⬇️ Backup Data</strong> to save all restaurant data into a <strong>.json</strong> file.<br>
+      🔹 Keep the file safe and secure on your device.<br>
+      🔹 Click <strong>📂 Choose File</strong> to restore data from the backup <strong>.json</strong> file.<br>
+      ⚠️ The restore process will replace all existing data and cannot be undone.<br>
+      💡 Use this feature before switching devices or clearing your browser data.
+    </div>
+  </div>
+
+</body>
+</html>
+
+<script>
+console.log("Admin Script Version: 2025-09-15-FINAL");
+
 const DB_NAME = "MenuvaDB";
 const STORE_NAME = "menuvaData";
-const DB_VERSION = 9;
+const DB_VERSION = 9; // naikin kalau perlu perubahan schema lagi
 
-let dbInstance = null;
-
-  // Tes sederhana: apakah IndexedDB berfungsi di HP?
-if (!window.indexedDB) {
-  alert("⚠️ Browser ini tidak mendukung IndexedDB!");
-} else {
-  const test = indexedDB.open("TestDB_Check");
-  test.onerror = (e) => {
-    console.error("❌ IndexedDB gagal dibuka:", e.target.error);
-    alert("IndexedDB gagal dibuka di HP! Kemungkinan masalah izin browser.");
-  };
-  test.onsuccess = () => {
-    console.log("✅ IndexedDB bisa dibuka di perangkat ini");
-    test.result.close();
-    indexedDB.deleteDatabase("TestDB_Check");
-  };
-}
-
-let dbPromise = null; // 🔒 lock promise untuk mencegah race condition
-
-async function initDB() {
-  if (dbInstance) {
-    console.log("♻️ [DEBUG] Reuse DB instance:", DB_NAME);
-    return dbInstance;
-  }
-
-  // Jika sedang dalam proses membuka DB, tunggu promise yang sama
-  if (dbPromise) {
-    console.log("⏳ [DEBUG] initDB sedang dibuka, tunggu...");
-    return dbPromise;
-  }
-
-  console.groupCollapsed("🟢 [DEBUG] initDB() dipanggil");
-  console.trace("📍 Asal pemanggilan initDB()");
-  console.groupEnd();
-
-  dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = (e) => {
-      console.log("⚙️ [DEBUG] onupgradeneeded:", DB_NAME);
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-
-    request.onsuccess = (e) => {
-      console.log("✅ [DEBUG] initDB sukses:", DB_NAME);
-      dbInstance = e.target.result;
-      resolve(dbInstance);
-      dbPromise = null; // reset lock
-    };
-
-    request.onerror = (e) => {
-      console.error("❌ [DEBUG] initDB gagal:", e.target.error);
-      reject(e.target.error);
-      dbPromise = null; // reset lock meski gagal
-    };
-  });
-
-  return dbPromise;
-}
-
-async function getDB() {
-  console.log("🟢 [DEBUG] getDB() dipanggil...");
-  if (dbInstance) {
-    console.log("✅ [DEBUG] getDB pakai instance lama");
-    return dbInstance;
-  }
-
+// ====================== Init DB ======================
+let db;
+function initDB() {
   return new Promise((resolve, reject) => {
+    if (db) return resolve(db);
+
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onerror = () => {
+      console.error("IndexedDB open error:", req.error);
+      reject(req.error);
+    };
+
     req.onupgradeneeded = (e) => {
-      const db = e.target.result;
+      db = e.target.result;
+      // buat objectStore baru jika belum ada
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        console.log("🧱 [DEBUG] Membuat store baru:", STORE_NAME);
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+        db.createObjectStore(STORE_NAME, { keyPath: "restoId" });
+        console.log("🆕 ObjectStore dibuat dengan keyPath 'restoId'");
+      } else {
+        console.log("ℹ️ ObjectStore already exists:", STORE_NAME);
       }
     };
 
     req.onsuccess = (e) => {
-      dbInstance = e.target.result;
-      console.log("✅ [DEBUG] getDB sukses:", dbInstance.name);
-      resolve(dbInstance);
-    };
-
-    req.onerror = (e) => {
-      console.error("❌ [DEBUG] getDB gagal:", e.target.error);
-      reject(e.target.error);
+      db = e.target.result;
+      resolve(db);
     };
   });
 }
 
-// ====================== SAVE DATA ======================
+// ================== SAVE ==================
 async function saveDataToDB(data) {
-  if (!data || typeof data !== "object") throw new Error("Invalid data");
-
-  // 💡 Gunakan ID tetap = 1 agar tidak membuat banyak record
-  const recordId = 1;
-  const record = { id: recordId, ...data };
-
-  console.groupCollapsed("💾 [TRACE] saveDataToDB()");
-  console.log("📦 Data diterima untuk disimpan:", record);
-
-  const db = await getDB();
-
+  await initDB();
   return new Promise((resolve, reject) => {
+    if (!data || typeof data !== "object") return reject(new Error("Invalid data"));
+
+    // pastikan restoId ada (safety)
+    const restoId = data.restoId || data.restoPhone || null;
+    if (!restoId) return reject(new Error("❌ restoId kosong saat save"));
+
+    // pastikan properti restoId secara eksplisit ada pada object yang disimpan
+    const payload = { ...data, restoId };
+
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-
-    // Langsung replace data lama (jika ada)
-    const req = store.put(record);
+    const req = store.put(payload);
 
     req.onsuccess = () => {
-      console.log("✅ [OK] Data berhasil disimpan di IndexedDB:", record);
-      console.groupEnd();
-      resolve(record);
+      console.log("✅ Data saved", payload);
+      resolve(payload);
     };
-
-    req.onerror = (e) => {
-      console.error("❌ [ERROR] Gagal simpan ke DB:", e.target.error);
-      console.groupEnd();
-      reject(e.target.error);
+    req.onerror = () => {
+      console.error("❌ Gagal save:", req.error);
+      reject(req.error);
     };
   });
 }
 
-// ====================== LOAD DATA ======================
-async function loadDataFromDB(id = 1) {
-  // ⏳ Sedikit delay agar IndexedDB siap
-  await new Promise((res) => setTimeout(res, 300));
+// ================== LOAD ==================
+// Jika restoId diberikan -> ambil dengan key.
+// Jika restoId null -> kembalikan first record (useful for single-tenant installs / migration).
+async function loadDataFromDB(restoId = null) {
+  await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
 
-  try {
-    const db = await getDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(id);
+    // jika restoId valid, langsung get by key
+    if (restoId) {
+      try {
+        const req = store.get(restoId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => {
+          console.warn("get by key error:", req.error);
+          resolve(null);
+        };
+      } catch (err) {
+        console.error("get by key exception:", err);
+        resolve(null);
+      }
+      return;
+    }
 
-      req.onsuccess = (e) => {
-        const data = e.target.result;
-        if (data) {
-          resolve(data);
-        } else {
-          console.warn("⚠️ Tidak ada data ditemukan, tapi tidak menimpa data lama");
-          resolve({ id: 1, namaRestoran: "", menu: [] });
-        }
+    // restoId tidak diberikan -> fallback: ambil semua dan return first record (jika ada)
+    try {
+      const allReq = store.getAll();
+      allReq.onsuccess = () => {
+        const all = allReq.result || [];
+        if (all.length === 0) return resolve(null);
+        // prefer record that has restoId, else just return first
+        const firstWithKey = all.find(r => r && (r.restoId || r.restoPhone));
+        resolve(firstWithKey || all[0]);
       };
-
-      req.onerror = (e) => {
-        console.error("❌ Gagal load dari IndexedDB:", e.target.error);
-        resolve({ id: 1, namaRestoran: "", menu: [] });
+      allReq.onerror = () => {
+        console.warn("getAll error:", allReq.error);
+        resolve(null);
       };
-    });
-  } catch (err) {
-    console.error("❌ initDB gagal:", err);
-    return { id: 1, namaRestoran: "", menu: [] };
-  }
+    } catch (err) {
+      console.error("getAll exception:", err);
+      resolve(null);
+    }
+  });
 }
 
-// ===== Helper internal: bikin struktur default =====
-function buatDataDefault(id = 1) {
-  return {
-    id,
-    namaRestoran: "",
-    restoAddress: "",
-    restoPhone: "",
-    menuPromo: [],
-    menu: [],
-    rooms: [],
-    nomorWaAdmin: [],
-    flipbookRuanganImages: [],
-    flipbookMenuImages: [],
-  };
+// ====================== CLEAR DB ======================
+function clearDataDB() {
+  return new Promise(async (resolve, reject) => {
+    await initDB();
+    try {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.clear();
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 // ====================== Variabel Global ======================
@@ -902,53 +685,30 @@ function renderPromoUI() {
   const container = document.getElementById("promoContainer");
   if (!container) return;
   container.innerHTML = "";
-
-  // daftar kategori promo (bisa disesuaikan)
-  const promoCategories = ["PROMO", "DISKON", "SPECIAL", "EVENT"];
-
   menuPromo.forEach((promo, index) => {
     const div = document.createElement("div");
     div.className = "menu-item";
-
-    const optionsHTML = promoCategories
-      .map(cat => `<option value="${cat}" ${promo.kategori === cat ? "selected" : ""}>${cat}</option>`)
-      .join("");
-
     div.innerHTML = `
-      <input type="text" id="promoName_${index}" name="promoName[]" placeholder="Promo Name"
-        value="${promo.namaPromo || ""}" onchange="updatePromo(${index}, 'namaPromo', this.value)">
-      
-      <input type="file" id="promoImage_${index}" name="promoImage[]" accept="image/*"
-        onchange="uploadPromoImage(event, ${index})">
+      <input type="text" placeholder="Promo Name" value="${promo.namaPromo || ""}" onchange="updatePromo(${index}, 'namaPromo', this.value)">
+      <input type="file" accept="image/*" onchange="uploadPromoImage(event, ${index})">
       <img id="promoImgPreview${index}" src="${promo.image || ""}" style="max-height:80px; margin:5px 0">
-      
-      <input type="text" id="promoDesc_${index}" name="promoDesc[]" placeholder="Description Promo"
-        value="${promo.deskripsi || ""}" onchange="updatePromo(${index}, 'deskripsi', this.value)">
-      
-      <input type="number" id="promoPrice_${index}" name="promoPrice[]" placeholder="Promo Price"
-        value="${promo.harga || ""}" onchange="updatePromo(${index}, 'harga', this.value)">
-      
-      <select id="promoCat_${index}" name="promoCat[]" onchange="updatePromo(${index}, 'kategori', this.value)">
-        ${optionsHTML}
-      </select>
-      
-      <input type="date" id="promoDate_${index}" name="promoDate[]"
-        value="${promo.tanggalAkhir || ""}" onchange="updatePromo(${index}, 'tanggalAkhir', this.value)">
-      
+      <input type="text" placeholder="Deskription Promo" value="${promo.deskripsi || ""}" onchange="updatePromo(${index}, 'deskripsi', this.value)">
+      <input type="number" placeholder="Promo Price" value="${promo.harga || ""}" onchange="updatePromo(${index}, 'harga', this.value)">
+      <input type="text" placeholder="Kategori Promo" value="${promo.kategori || ""}" onchange="updatePromo(${index}, 'kategori', this.value)">
+      <input type="date" value="${promo.tanggalAkhir || ""}" onchange="updatePromo(${index}, 'tanggalAkhir', this.value)">
       <button class="btn-danger" onclick="hapusPromo(${index})">Delete Promo List</button>
     `;
-
     container.appendChild(div);
   });
 }
 
-  function tambahPromo(promo = {}) {
+function tambahPromo(promo = {}) {
   menuPromo.push({
     namaPromo: promo.namaPromo || "",
     image: promo.image || "",
     deskripsi: promo.deskripsi || "",
     harga: promo.harga || "",
-    kategori: promo.kategori || "PROMO", // default category
+    kategori: promo.kategori || "",
     tanggalAkhir: promo.tanggalAkhir || ""
   });
   renderPromoUI();
@@ -993,18 +753,18 @@ function tambahMenu(kategori = "food", nama = "", harga = "", image = "") {
   const div = document.createElement("div");
   div.className = "menu-item";
   div.innerHTML = `
-  <input type="text" id="menuName_${Date.now()}" name="menuName[]" placeholder="Menu Name" value="${nama}" />
-  <input type="number" id="menuPrice_${Date.now()}" name="menuPrice[]" placeholder="Price" value="${harga}" />
-  <select id="menuCat_${Date.now()}" name="menuCat[]">
-    <option value="food" ${kategori === "food" ? "selected" : ""}>Food</option>
-    <option value="snack" ${kategori === "snack" ? "selected" : ""}>Snack</option>
-    <option value="drink" ${kategori === "drink" ? "selected" : ""}>Drink</option>
-    <option value="special" ${kategori === "special" ? "selected" : ""}>Special</option>
-  </select>
-  <input type="file" id="menuImage_${Date.now()}" name="menuImage[]" accept="image/*" onchange="uploadMenuImage(event, this)" data-image="${image}">
-  <img class="menuPreview" src="${image}" style="max-height:80px; margin:5px 0; ${image ? "" : "display:none"}">
-  <button class="btn-danger" onclick="this.parentElement.remove()">Delete</button>
-`;
+    <input type="text" placeholder="Menu Name" value="${nama}" />
+    <input type="number" placeholder="Price" value="${harga}" />
+    <select>
+      <option value="food" ${kategori === "food" ? "selected" : ""}>Food</option>
+      <option value="snack" ${kategori === "snack" ? "selected" : ""}>Snack</option>
+      <option value="drink" ${kategori === "drink" ? "selected" : ""}>Drink</option>
+      <option value="special" ${kategori === "special" ? "selected" : ""}>Special</option>
+    </select>
+    <input type="file" accept="image/*" onchange="uploadMenuImage(event, this)" data-image="${image}">
+    <img class="menuPreview" src="${image}" style="max-height:80px; margin:5px 0; ${image ? "" : "display:none"}">
+    <button class="btn-danger" onclick="this.parentElement.remove()">Delete</button>
+  `;
   container.appendChild(div);
 }
 
@@ -1048,101 +808,26 @@ function tambahRoom(kategori) {
     meeting: "meetingRoomContainer",
     package: "packageContainer"
   }[kategori];
-
   if (!containerId) return;
-
   const container = document.getElementById(containerId);
   const wrapper = document.createElement("div");
   wrapper.className = "room-form";
-
-  // Buat ID unik supaya tidak bentrok antar form
-  const uid = `${kategori}_${Date.now()}`;
-
   wrapper.innerHTML = `
-    <input 
-      type="text" 
-      id="${uid}_nama" 
-      name="roomName[]" 
-      class="room-nama" 
-      placeholder="Name" 
-      autocomplete="off"
-    />
-
-    <input 
-      type="number" 
-      id="${uid}_harga" 
-      name="roomPrice[]" 
-      class="room-harga" 
-      placeholder="Price" 
-      min="0"
-      step="1000"
-      autocomplete="off"
-    />
-
-    <input 
-      type="number" 
-      id="${uid}_kapasitas" 
-      name="roomCapacity[]" 
-      class="room-kapasitas" 
-      placeholder="Capacity (Person)" 
-      min="1"
-      autocomplete="off"
-    />
-
-    <input 
-      type="number" 
-      id="${uid}_luas" 
-      name="roomSize[]" 
-      class="room-luas" 
-      placeholder="Room size (m²)" 
-      min="1"
-      autocomplete="off"
-    />
-
-    <textarea 
-      id="${uid}_deskripsi" 
-      name="roomDesc[]" 
-      class="room-deskripsi" 
-      placeholder="Notes"
-      rows="2"
-      autocomplete="off"
-    ></textarea>
-
+    <input type="text" class="room-nama" placeholder="Name" />
+    <input type="number" class="room-harga" placeholder="Price" />
+    <input type="number" class="room-kapasitas" placeholder="Capacity (Person)" />
+    <input type="number" class="room-luas" placeholder="room size (m²)" />
+    <textarea class="room-deskripsi" placeholder="notes"></textarea>
     <div class="gambar-preview-wrapper">
-      <img 
-        id="${uid}_preview" 
-        class="gambar-preview" 
-        alt="Room Preview"
-        style="display:none; max-width:120px; margin-top:6px; border-radius:6px;"
-      />
-      <button 
-        type="button"
-        class="hapus-gambar" 
-        onclick="hapusGambarRoom(this)" 
-        style="display:none;"
-      >×</button>
+      <img class="gambar-preview" style="display:none; max-width:120px; margin-top:6px;" />
+      <button class="hapus-gambar" onclick="hapusGambarRoom(this)" style="display:none;">×</button>
     </div>
-
-    <button 
-      type="button"
-      id="${uid}_uploadBtn"
-      class="btn-upload-gambar room-image-upload" 
-      onclick="uploadGambarRoom(this)"
-    >🖼️ Upload Image</button>
-
-    <button 
-      type="button"
-      id="${uid}_hapusBtn"
-      class="btn-hapus-room" 
-      onclick="hapusFormRoom(this)"
-    >🗑️ Delete</button>
-
+    <button class="btn-upload-gambar room-image-upload" onclick="uploadGambarRoom(this)">🖼️ Upload Image</button>
+    <button class="btn-hapus-room" onclick="hapusFormRoom(this)">🗑️ Delete</button>
     <hr>
   `;
-
   container.appendChild(wrapper);
 }
-
 
 function ambilSemuaRoom() {
   const kategoriIds = [
@@ -1292,30 +977,12 @@ async function tampilkanListRoom() {
 function tambahNomorWa() {
   const container = document.getElementById("nomorWaContainer");
   if (!container) return;
-
-  // Hitung berapa input yang sudah ada untuk bikin id unik
-  const count = container.querySelectorAll(".nomor-wa").length;
-  const uniqueId = `nomorWa${count + 1}`;
-
   const input = document.createElement("input");
   input.type = "text";
-  input.id = uniqueId;
-  input.name = uniqueId;
   input.className = "nomor-wa";
   input.placeholder = "Example: 6281234567890";
-  input.inputMode = "numeric";
-  input.autocomplete = "off";
-  input.pattern = "62[0-9]{8,}";
-  input.title = "Gunakan format: 6281234567890";
-
-  // Opsional: validasi langsung saat user mengetik
-  input.addEventListener("input", () => {
-    input.value = input.value.replace(/[^0-9]/g, ""); // hanya angka
-  });
-
   container.appendChild(input);
 }
-
 
 // ====================== IMAGE helper (resize) ======================
 async function resizeIfNeeded(file, targetSizeKB = 100, maxWidth = 1280) {
@@ -1453,7 +1120,9 @@ async function simpanData() {
       hideLoader();
       return;
     }
-    const restoId = document.getElementById("restoId")?.value || "resto-main";
+
+    const restoId = restoPhone;
+
     const menuData = [
       ...ambilMenu("menuFoodContainer"),
       ...ambilMenu("menuSnackContainer"),
@@ -1501,85 +1170,87 @@ async function simpanData() {
   }
 }
 
-// Flag global buat cegah render dobel
-let sudahLoadData = false;
-
-async function loadData(data) {
-  // 🚫 Hindari render ganda
-  if (sudahLoadData) {
-    console.warn("⚠️ loadData() sudah pernah dijalankan, skip render ulang.");
-    return;
-  }
-  sudahLoadData = true;
-
+// ====================== LOAD (DB -> form) ======================
+async function loadData() {
   try {
     showLoader();
 
-    if (Array.isArray(data)) data = data[0] || {};
-    if (!data || typeof data !== "object") {
-      console.warn("⚠️ Data kosong atau bukan object di loadData");
+    await initDB();
+
+    // prioritas: hidden restoId (dari simpan), lalu input restoPhone
+    const restoIdCandidate = document.getElementById("restoId")?.value
+      || document.getElementById("restoPhone")?.value
+      || null;
+
+    const data = await loadDataFromDB(restoIdCandidate);
+    if (!data) {
+      console.warn("⚠️ Tidak ada data tersimpan di DB");
       return;
     }
+    console.log("📦 Data berhasil di-load dari DB:", data);
 
-    console.log("📦 Data di-load:", data);
-
-    // ====================== AMAN SET NILAI FORM ======================
-    const safeSet = (id, value) => {
+    // clear UI containers to avoid duplicates
+    const clearIds = [
+      "promoContainer","menuFoodContainer","menuSnackContainer",
+      "menuDrinkContainer","menuSpecialContainer","roomHotelContainer",
+      "meetingRoomContainer","packageContainer","flipbookRuanganPreview",
+      "flipbookMenuPreview","listRuangan"
+    ];
+    clearIds.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.value = value || "";
-    };
+      if (el) el.innerHTML = "";
+    });
 
-    safeSet("namaRestoran", data.namaRestoran);
-    safeSet("restoAddress", data.restoAddress);
-    safeSet("restoPhone", data.restoPhone);
+    // reset arrays
+    menuPromo = [];
+    flipbookRuanganImages = [];
+    flipbookMenuImages = [];
 
-    const preview = document.getElementById("previewLogo");
-    if (preview && data.logo) preview.src = data.logo;
+    // isi form admin
+    document.getElementById("namaRestoran").value = data.namaRestoran || "";
+    document.getElementById("restoAddress").value = data.restoAddress || "";
+    document.getElementById("restoPhone").value = data.restoPhone || "";
 
-    // ====================== NOMOR WA ADMIN ======================
-    const container = document.getElementById("nomorWaContainer");
-    if (container && Array.isArray(data.nomorWaAdmin)) {
-      container.innerHTML = ""; // clear dulu
-      data.nomorWaAdmin.forEach(() => tambahNomorWa());
-      const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v, i) => {
-        if (inputs[i]) inputs[i].value = v;
-      });
+    if (data.logo) {
+      const preview = document.getElementById("previewLogo");
+      if (preview) preview.src = data.logo;
+      console.log("🖼️ Logo berhasil di-load");
     }
 
-    // ====================== MENU PROMO ======================
-    menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
-    if (typeof renderPromoUI === "function") renderPromoUI();
+    // nomor WA
+    if (Array.isArray(data.nomorWaAdmin)) {
+      const container = document.getElementById("nomorWaContainer");
+      if (container) {
+        container.innerHTML = "";
+        data.nomorWaAdmin.forEach(() => tambahNomorWa());
+        const inputs = container.querySelectorAll(".nomor-wa");
+        data.nomorWaAdmin.forEach((v,i)=> inputs[i].value = v);
+      }
+    }
 
-    // ====================== MENU UTAMA ======================
-    const menuContainer = document.getElementById("menuContainer");
-    if (menuContainer) menuContainer.innerHTML = ""; // bersihkan dulu
+    // promo
+    if (Array.isArray(data.menuPromo)) {
+      menuPromo = data.menuPromo.slice();
+      renderPromoUI();
+    }
+
+    // menu
     if (Array.isArray(data.menu)) {
-      data.menu.forEach((m) => {
-        if (typeof tambahMenu === "function") {
-          tambahMenu(m.kategori, m.nama, m.harga, m.image);
-        }
-      });
+      data.menu.forEach(m => tambahMenu(m.kategori, m.nama, m.harga, m.image));
     }
 
-    // ====================== ROOMS ======================
-    if (Array.isArray(data.rooms) && typeof restoreRoomFromData === "function") {
+    // rooms
+    if (Array.isArray(data.rooms)) {
       restoreRoomFromData(data.rooms);
     }
 
-    // ====================== FLIPBOOK RUANGAN ======================
-    const flipRuang = (data.flipbookRuanganImages || []).slice();
-    if (typeof renderImagePreview === "function") {
-      flipRuang.forEach((src) => renderImagePreview("ruangan", src));
-    }
+    // flipbook
+    flipbookRuanganImages = (data.flipbookRuanganImages || []).slice();
+    flipbookRuanganImages.forEach(src => renderImagePreview("ruangan", src));
+    flipbookMenuImages = (data.flipbookMenuImages || []).slice();
+    flipbookMenuImages.forEach(src => renderImagePreview("menu", src));
 
-    // ====================== FLIPBOOK MENU ======================
-    const flipMenu = (data.flipbookMenuImages || []).slice();
-    if (typeof renderImagePreview === "function") {
-      flipMenu.forEach((src) => renderImagePreview("menu", src));
-    }
-
-    // ====================== RESTO ID ======================
+    // sinkron hidden restoId
     let restoIdEl = document.getElementById("restoId");
     if (!restoIdEl) {
       restoIdEl = document.createElement("input");
@@ -1589,13 +1260,14 @@ async function loadData(data) {
     }
     restoIdEl.value = data.restoId || data.restoPhone || "";
 
-    console.log("✅ loadData selesai & anti-duplikat.");
+    console.log("✅ loadData Done");
   } catch (err) {
-    console.error("❌ loadData gagal:", err);
+    console.error("❌ loadData Failed:", err);
   } finally {
     hideLoader();
   }
 }
+
 // ====================== RESET & BACKUP ======================
 async function resetData() {
   if (!confirm("Are you sure you want to delete all data?")) return;
@@ -1609,44 +1281,28 @@ async function resetData() {
 
 async function backupData() {
   try {
-    // pastikan db sudah siap
-    if (!window.db) {
-      window.db = await initDB();
+    const restoId = document.getElementById("restoId")?.value || document.getElementById("restoPhone")?.value || null;
+    const data = await loadDataFromDB(restoId);
+    if (!data) {
+      alert("No data to backup!");
+      return;
     }
 
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.getAll();
+    const filename = `menuva-backup-${Date.now()}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
 
-    req.onsuccess = () => {
-      const allData = req.result || [];
-      if (allData.length === 0) {
-        alert("⚠️ Tidak ada data di database untuk di-backup!");
-        return;
-      }
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-      const filename = `menuva-backup-${Date.now()}.json`;
-      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      URL.revokeObjectURL(url);
-      alert(`✅ Backup berhasil! File ${filename} siap diunduh.`);
-    };
-
-    req.onerror = (e) => {
-      console.error("❌ Gagal membaca data dari IndexedDB:", e);
-      alert("❌ Backup gagal: tidak bisa membaca data.");
-    };
+    alert(`✅ Backup successful! File ${filename} ready to-download.`);
   } catch (err) {
-    console.error("❌ Backup fatal error:", err);
-    alert("❌ Terjadi kesalahan: " + err.message);
+    alert("❌ Backup failed: " + err.message);
+    console.error(err);
   }
 }
 
@@ -1687,6 +1343,14 @@ function restoreDataFromFile(event) {
   };
   reader.readAsText(file);
 }
+
+// ====================== INIT ======================
+window.addEventListener("DOMContentLoaded", async () => {
+  await initDB();
+  await loadData();
+  tampilkanListRoom();
+});
+
 // ====================== Links / QR helpers ======================
 function generateDynamicLink(baseUrl, data) {
   try {
@@ -1785,350 +1449,32 @@ function updateShareUI() {
     qrContainer.textContent = link;
   }
 }
-// ====================== LOADER HANDLER (Modern & Center) ======================
+
+// ====================== Loader ======================
 function showLoader() {
-  let loader = document.getElementById("loader");
-  if (!loader) {
-    loader = document.createElement("div");
-    loader.id = "loader";
-    loader.innerHTML = `
-      <div class="loader-overlay">
-        <div class="loader-content">
-          <div class="spinner"></div>
-          <p>Loading data...</p>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(loader);
-
-    // Tambahkan gaya modern (langsung di JS biar portable)
-    const style = document.createElement("style");
-    style.id = "loader-style";
-    style.textContent = `
-      #loader {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0,0,0,0.45);
-        z-index: 9999;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
-
-      #loader.show {
-        opacity: 1;
-      }
-
-      .loader-content {
-        text-align: center;
-        color: #fff;
-        font-family: 'Segoe UI', sans-serif;
-        font-size: 1.1rem;
-        animation: fadeUp 0.6s ease;
-      }
-
-      .spinner {
-        width: 64px;
-        height: 64px;
-        border: 6px solid rgba(255,255,255,0.3);
-        border-top-color: #00d4ff;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 16px auto;
-      }
-
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-
-      @keyframes fadeUp {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  loader.style.display = "flex";
-  requestAnimationFrame(() => loader.classList.add("show"));
+  const el = document.getElementById("loader");
+  if (el) el.style.display = "block";
 }
-
 function hideLoader() {
-  const loader = document.getElementById("loader");
-  if (loader) {
-    loader.classList.remove("show");
-    setTimeout(() => {
-      loader.style.display = "none";
-    }, 300);
-  }
-}
-
-  // ====================== CLEAR DB (fix) ======================
-async function clearDataDB() {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.clear();
-      req.onsuccess = () => {
-        console.log("🧹 Semua data dihapus dari IndexedDB");
-        resolve();
-      };
-      req.onerror = () => reject(req.error);
-    } catch (err) {
-      reject(err);
-    }
-  });
+  const el = document.getElementById("loader");
+  if (el) el.style.display = "none";
 }
 </script>
+
+<div class="fixed-bar">
+  <button onclick="window.location.href='index.html'" class="btn-success">🔒 Logout</button>
+  <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
+</div>
+
+</body>
 <script>
-let isLoadingFromDB = false;
-let voucherLoaded = false;
-
-document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 Init mulai...");
-  showLoader();
-
-  const timeout = setTimeout(() => {
-    console.warn("⚠️ Init terlalu lama, sembunyikan loader paksa.");
-    hideLoader();
-  }, 8000);
-
-  try {
-    // ===================== INIT DB =====================
-    const db = await initDB();
-    console.log("✅ IndexedDB siap");
-
-    // ===================== LOAD DATA UTAMA =====================
-    const data = await safeLoadDataFromDB();
-    if (data) {
-      await safeLoadData(data);
-      console.log("📦 Data diambil:", data);
-    } else {
-      console.warn("⚠️ Tidak ada data ditemukan di DB");
-    }
-
-    // ===================== TOGGLE SECTION =====================
-    await initAllToggles();
-
-    // ===================== FIXED BAR =====================
+  window.addEventListener("load", function() {
     const fixbar = document.querySelector(".fixed-bar");
     if (fixbar) {
       const fixbarHeight = fixbar.offsetHeight;
-      document.body.style.paddingBottom = fixbarHeight + "px";
-    }
-
-    console.log("✅ Admin siap digunakan");
-  } catch (err) {
-    console.error("❌ Error saat init:", err);
-    alert("Terjadi kesalahan saat memuat data. Coba refresh halaman.");
-  } finally {
-    clearTimeout(timeout);
-    hideLoader();
-  }
-});
-
-
-// ===================== SAFE LOAD WRAPPER =====================
-async function safeLoadDataFromDB(id = 1) {
-  if (isLoadingFromDB) {
-    console.warn("⚠️ loadDataFromDB() di-skip, masih jalan");
-    return null;
-  }
-  isLoadingFromDB = true;
-  const data = await loadDataFromDB(id);
-  isLoadingFromDB = false;
-  return data;
-}
-
-async function safeLoadData(data) {
-  if (window.sudahLoadData) {
-    console.warn("⚠️ loadData() sudah pernah jalan, skip render ulang");
-    return;
-  }
-  window.sudahLoadData = true;
-  await loadData(data);
-}
-
-
-// ===================== TOGGLES MASTER =====================
-async function initAllToggles() {
-  await new Promise((resolve) => {
-    if (document.readyState === "complete") return resolve();
-    document.addEventListener("readystatechange", () => {
-      if (document.readyState === "complete") resolve();
-    });
-  });
-
-  initOrderToggle();
-  initRoomToggle();
-  await initVoucherToggle();
-}
-
-
-// ===================== ORDER TOGGLE =====================
-function initOrderToggle() {
-  const toggleOrderPage = document.getElementById("toggleOrderPage");
-  // FIXED: disinkronkan dengan HTML (id="orderToggleBox")
-  const orderContainerBox =
-    document.getElementById("orderContainerBox") ||
-    document.getElementById("orderToggleBox");
-
-  if (!toggleOrderPage) {
-    console.warn("⚠️ Elemen toggleOrderPage tidak ditemukan.");
-    return;
-  }
-  if (!orderContainerBox) {
-    console.warn("⚠️ Elemen orderContainerBox/orderToggleBox belum ada, coba lagi 300ms...");
-    return setTimeout(initOrderToggle, 300);
-  }
-
-  const saved = localStorage.getItem("page_order");
-  toggleOrderPage.checked = saved === "true";
-  orderContainerBox.style.display = toggleOrderPage.checked ? "block" : "none";
-
-  toggleOrderPage.addEventListener("change", (e) => {
-    const enabled = e.target.checked;
-    localStorage.setItem("page_order", enabled);
-    orderContainerBox.style.display = enabled ? "block" : "none";
-  });
-}
-
-
-// ===================== ROOM TOGGLE =====================
-function initRoomToggle() {
-  const toggleRoomPage = document.getElementById("toggleRoomPage");
-  const roomContainerBox = document.getElementById("roomContainerBox");
-
-  if (!toggleRoomPage || !roomContainerBox) {
-    console.warn("⚠️ Elemen toggleRoomPage atau roomContainerBox tidak ditemukan.");
-    return;
-  }
-
-  const saved = localStorage.getItem("page_room");
-  toggleRoomPage.checked = saved === "true";
-  roomContainerBox.style.display = toggleRoomPage.checked ? "block" : "none";
-
-  toggleRoomPage.addEventListener("change", (e) => {
-    const enabled = e.target.checked;
-    localStorage.setItem("page_room", enabled);
-    roomContainerBox.style.display = enabled ? "block" : "none";
-  });
-}
-
-
-// ===================== VOUCHER TOGGLE =====================
-async function initVoucherToggle() {
-  const toggleVoucherPage = document.getElementById("toggleVoucherPage");
-  const voucherForm = document.getElementById("voucherForm");
-  const voucherContainerBox = document.getElementById("voucherContainerBox");
-
-  if (!toggleVoucherPage || !voucherForm || !voucherContainerBox) {
-    console.warn("⚠️ Elemen voucher toggle/form/container tidak lengkap, skip initVoucherToggle()");
-    return;
-  }
-
-  const plan = localStorage.getItem("user_plan");
-  if (plan === "monthly") {
-    voucherContainerBox.style.display = "none";
-    return;
-  }
-
-  const enabled = localStorage.getItem("page_voucher") === "true";
-  toggleVoucherPage.checked = enabled;
-  voucherForm.style.display = enabled ? "block" : "none";
-
-  toggleVoucherPage.addEventListener("change", (e) => {
-    const enabled = e.target.checked;
-    localStorage.setItem("page_voucher", enabled);
-    voucherForm.style.display = enabled ? "block" : "none";
-    if (!enabled) {
-      localStorage.removeItem("voucher");
-      renderVoucher();
+      document.body.style.paddingBottom = fixbarHeight + 0 + "px"; 
+      // +20 biar ada ruang ekstra
     }
   });
-
-  await loadVoucherOnInit();
-}
-
-
-// ===================== LOAD VOUCHER =====================
-async function loadVoucherOnInit() {
-  if (voucherLoaded) {
-    console.warn("⚠️ loadVoucherOnInit() sudah pernah dijalankan, skip");
-    return;
-  }
-  voucherLoaded = true;
-
-  const fromLocal = localStorage.getItem("voucher");
-  if (fromLocal) {
-    const voucher = JSON.parse(fromLocal);
-    console.log("📦 Voucher dari localStorage:", voucher);
-    renderVoucher(voucher);
-    return;
-  }
-
-  try {
-    const db = await initDB();
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(1);
-
-    req.onsuccess = (e) => {
-      const data = e.target.result;
-      const voucher =
-        data?.menuVoucher && data.menuVoucher.length
-          ? data.menuVoucher[0]
-          : null;
-
-      if (voucher) {
-        console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
-        localStorage.setItem("voucher", JSON.stringify(voucher));
-        renderVoucher(voucher);
-      } else {
-        console.log("⚠️ Tidak ada voucher di DB");
-        renderVoucher(null);
-      }
-    };
-  } catch (err) {
-    console.error("❌ Gagal load voucher dari DB:", err);
-  }
-}
-
-
-// ===================== RENDER VOUCHER =====================
-function renderVoucher(voucher) {
-  const voucherPreview = document.getElementById("voucherPreview");
-  if (!voucherPreview) return;
-
-  if (voucher) {
-    voucherPreview.innerHTML = `
-      <p>
-        <strong>Kode Voucher:</strong>
-        <span id="voucherCodeText">${voucher.code}</span>
-        <button onclick="copyVoucherCode()">📋 Copy</button>
-      </p>
-      <p><strong>Diskon:</strong> ${voucher.discount}%</p>
-      <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
-    `;
-  } else {
-    voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
-  }
-}
-
-
-// ===================== COPY VOUCHER CODE =====================
-function copyVoucherCode() {
-  const codeText = document.getElementById("voucherCodeText")?.innerText;
-  if (!codeText) return;
-  navigator.clipboard.writeText(codeText)
-    .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
-    .catch(err => console.error("Gagal copy", err));
-}
 </script>
-</body>
 </html>
