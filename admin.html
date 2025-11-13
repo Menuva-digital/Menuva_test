@@ -2137,9 +2137,30 @@ function copyVoucherCode() {
 }
  
 </script>
- 
+ <script>
+async function saveVoucher() {
+  try {
+    const code = document.getElementById("voucherCode").value.trim();
+    const discount = parseFloat(document.getElementById("voucherDiscount").value);
+    const expiry = document.getElementById("voucherExpiry").value;
+
+    if (!code || isNaN(discount) || !expiry) {
+      alert("Harap isi semua data voucher!");
+      return;
+    }
+
+    // Simpan ke IndexedDB
+    await saveDataToDB("voucher", { code, discount, expiry });
+
+    alert("Voucher berhasil disimpan!");
+    renderVoucher({ code, discount, expiry });
+  } catch (err) {
+    console.error("Gagal menyimpan voucher:", err);
+    alert("Terjadi kesalahan saat menyimpan voucher.");
+  }
+}
+</script>
+
 </body>
 </html>
-
-
 
