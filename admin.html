@@ -839,6 +839,12 @@ async function saveDataToDB(data) {
       const store = tx.objectStore(STORE_NAME);
 
       console.log("💽 Menyimpan data ke DB...");
+
+      if (!Array.isArray(record.menuVoucher)) {
+      console.warn("⚠️ menuVoucher tidak ditemukan saat save — dibuat array kosong agar tidak hilang.");
+      record.menuVoucher = [];
+      }
+      
       const req = store.put(record);
 
       req.onsuccess = () => {
@@ -892,15 +898,7 @@ async function saveDataToDB(data) {
 
       if (!result) {
         console.warn("⚠️ Data DB kosong, membuat data default.");
-        result = {
-          id: 1,
-          restoId: "",
-          namaRestoran: "",
-          restoAddress: "",
-          restoPhone: "",
-          menuData: [],
-          menuVoucher: []  // PENTING ❗
-        };
+       result = buatDataDefault(1);
       }
 
       // 🔥 FIX PALING PENTING
@@ -926,9 +924,12 @@ async function saveDataToDB(data) {
 function buatDataDefault(id = 1) {
   return {
     id,
+    restoId: "",
     namaRestoran: "",
     restoAddress: "",
     restoPhone: "",
+    menuData: [],
+    menuVoucher: [],   // 🔥 WAJIB ADA
     menuPromo: [],
     menu: [],
     rooms: [],
@@ -1512,18 +1513,19 @@ async function simpanData() {
     const flipMenu = Array.isArray(flipbookMenuImages) ? flipbookMenuImages : [];
 
     const data = {
-      restoId,
-      namaRestoran,
-      restoAddress,
-      restoPhone,
-      logo,
-      nomorWaAdmin,
-      menuPromo: promo,
-      flipbookRuanganImages: flipRuangan,
-      flipbookMenuImages: flipMenu,
-      menu: menuData,
-      rooms: ambilSemuaRoom()
-    };
+  restoId,
+  namaRestoran,
+  restoAddress,
+  restoPhone,
+  logo,
+  nomorWaAdmin,
+  menuPromo: promo,
+  menuVoucher: Array.isArray(window.menuVoucher) ? window.menuVoucher : [],
+  flipbookRuanganImages: flipRuangan,
+  flipbookMenuImages: flipMenu,
+  menu: menuData,
+  rooms: ambilSemuaRoom()
+};
 
     await saveDataToDB(data);
 
@@ -1593,20 +1595,20 @@ async function loadData(data) {
       });
     }
 
-    // ====================== MENU PROMO ======================
-    menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
-    if (typeof renderPromoUI === "function") renderPromoUI();
+  // ====================== MENU PROMO ======================
+menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
+if (typeof renderPromoUI === "function") renderPromoUI();
 
-    // ====================== MENU UTAMA ======================
-    const menuContainer = document.getElementById("menuContainer");
-    if (menuContainer) menuContainer.innerHTML = ""; // bersihkan dulu
-    if (Array.isArray(data.menu)) {
-      data.menu.forEach((m) => {
-        if (typeof tambahMenu === "function") {
-          tambahMenu(m.kategori, m.nama, m.harga, m.image);
-        }
-      });
-    }
+// ====================== MENU VOUCHER ======================
+window.menuVoucher = Array.isArray(data.menuVoucher) ? data.menuVoucher.slice() : [];
+
+if (typeof renderVoucher === "function") {
+  renderVoucher(window.menuVoucher);
+}
+
+// ====================== MENU UTAMA ======================
+const menuContainer = document.getElementById("menuContainer");
+if (menuContainer) menuContainer.innerHTML = ""; // bersihkan dulu
 
     // ====================== ROOMS ======================
     if (Array.isArray(data.rooms) && typeof restoreRoomFromData === "function") {
@@ -2277,6 +2279,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
