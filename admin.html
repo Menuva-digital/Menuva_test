@@ -2225,20 +2225,25 @@ async function saveVoucher() {
     renderVoucher(data.menuVoucher);
     alert("✅ Voucher berhasil disimpan!");
 
+    // Tutup form setelah save, TAPI JANGAN sentuh toggle!
     const form = document.getElementById("voucherForm");
     if (form) form.style.display = "none";
-    const toggle = document.getElementById("toggleVoucherPage");
-    if (toggle) toggle.checked = false;
+
+    // ❌ Hapus ini
+    // const toggle = document.getElementById("toggleVoucherPage");
+    // if (toggle) toggle.checked = false;
 
   } catch (err) {
     console.error("❌ Gagal menyimpan voucher:", err);
     alert("❌ Gagal menyimpan voucher ke database!");
   }
 }
+
 </script>
 
 </body>
 </html>
+
 
 
 
