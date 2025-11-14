@@ -881,9 +881,8 @@ async function saveDataToDB(data) {
   });
 }
 
-   async function loadDataFromDB(id = 1) {
+  async function loadDataFromDB(id = 1) {
   console.groupCollapsed("📥 [TRACE] loadDataFromDB()");
-
   const db = await getDB();
   const tx = db.transaction(STORE_NAME, "readonly");
   const store = tx.objectStore(STORE_NAME);
@@ -894,20 +893,28 @@ async function saveDataToDB(data) {
     req.onsuccess = () => {
       let result = req.result;
 
-      console.log("📦 Data mentah dari DB:", result);
+      console.log("📦 Data dari DB:", result);
 
       if (!result) {
-        console.warn("⚠️ Data DB kosong, membuat data default.");
-       result = buatDataDefault(1);
+        console.warn("⚠️ DB kosong, membuat default.");
+        result = buatDataDefault(1);
       }
 
-      // 🔥 FIX PALING PENTING
+      // Pastikan voucher aman
       if (!Array.isArray(result.menuVoucher)) {
-        console.warn("⚠️ menuVoucher bukan array, MEMPERTAHANKAN DATA LAMA jika ada!");
         result.menuVoucher = req.result?.menuVoucher || [];
       }
 
-      console.log("📦 Data final setelah validasi:", result);
+      // ⛑️ PERBAIKAN PALING PENTING
+      // Pastikan FLIPBOOK SELALU BERBENTUK ARRAY
+      if (!Array.isArray(result.flipbookRuanganImages)) {
+        result.flipbookRuanganImages = [];
+      }
+      if (!Array.isArray(result.flipbookMenuImages)) {
+        result.flipbookMenuImages = [];
+      }
+
+      console.log("📦 Data setelah fix:", result);
       console.groupEnd();
       resolve(result);
     };
@@ -1553,9 +1560,8 @@ async function simpanData() {
 let sudahLoadData = false;
 
 async function loadData(data) {
-  // 🚫 Hindari render ganda
   if (sudahLoadData) {
-    console.warn("⚠️ loadData() sudah pernah dijalankan, skip render ulang.");
+    console.warn("⚠️ loadData sudah pernah jalan.");
     return;
   }
   sudahLoadData = true;
@@ -1564,14 +1570,9 @@ async function loadData(data) {
     showLoader();
 
     if (Array.isArray(data)) data = data[0] || {};
-    if (!data || typeof data !== "object") {
-      console.warn("⚠️ Data kosong atau bukan object di loadData");
-      return;
-    }
 
-    console.log("📦 Data di-load:", data);
+    console.log("📦 Data load:", data);
 
-    // ====================== AMAN SET NILAI FORM ======================
     const safeSet = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.value = value || "";
@@ -1581,51 +1582,48 @@ async function loadData(data) {
     safeSet("restoAddress", data.restoAddress);
     safeSet("restoPhone", data.restoPhone);
 
-    const preview = document.getElementById("previewLogo");
-    if (preview && data.logo) preview.src = data.logo;
-
-    // ====================== NOMOR WA ADMIN ======================
-    const container = document.getElementById("nomorWaContainer");
-    if (container && Array.isArray(data.nomorWaAdmin)) {
-      container.innerHTML = ""; // clear dulu
-      data.nomorWaAdmin.forEach(() => tambahNomorWa());
-      const inputs = container.querySelectorAll(".nomor-wa");
-      data.nomorWaAdmin.forEach((v, i) => {
-        if (inputs[i]) inputs[i].value = v;
-      });
+    if (data.logo && document.getElementById("previewLogo")) {
+      document.getElementById("previewLogo").src = data.logo;
     }
 
-  // ====================== MENU PROMO ======================
-menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
-if (typeof renderPromoUI === "function") renderPromoUI();
+    // ====================== NOMOR WA ======================
+    const container = document.getElementById("nomorWaContainer");
+    if (container && Array.isArray(data.nomorWaAdmin)) {
+      container.innerHTML = "";
+      data.nomorWaAdmin.forEach(() => tambahNomorWa());
+      const inputs = container.querySelectorAll(".nomor-wa");
+      data.nomorWaAdmin.forEach((v, i) => (inputs[i].value = v));
+    }
 
-// ====================== MENU VOUCHER ======================
-window.menuVoucher = Array.isArray(data.menuVoucher) ? data.menuVoucher.slice() : [];
+    // ====================== MENU PROMO ======================
+    menuPromo = Array.isArray(data.menuPromo) ? data.menuPromo.slice() : [];
+    if (typeof renderPromoUI === "function") renderPromoUI();
 
-if (typeof renderVoucher === "function") {
-  renderVoucher(window.menuVoucher);
-}
-
-// ====================== MENU UTAMA ======================
-const menuContainer = document.getElementById("menuContainer");
-if (menuContainer) menuContainer.innerHTML = ""; // bersihkan dulu
+    // ====================== VOUCHER ======================
+    window.menuVoucher = Array.isArray(data.menuVoucher) ? data.menuVoucher.slice() : [];
+    if (typeof renderVoucher === "function") renderVoucher(window.menuVoucher);
 
     // ====================== ROOMS ======================
     if (Array.isArray(data.rooms) && typeof restoreRoomFromData === "function") {
       restoreRoomFromData(data.rooms);
     }
 
-    // ====================== FLIPBOOK RUANGAN ======================
-    const flipRuang = (data.flipbookRuanganImages || []).slice();
-    if (typeof renderImagePreview === "function") {
-      flipRuang.forEach((src) => renderImagePreview("ruangan", src));
-    }
+    // ====================== FLIPBOOK PERBAIKAN UTAMA ======================
+    const flipRuang = Array.isArray(data.flipbookRuanganImages)
+      ? data.flipbookRuanganImages.slice()
+      : [];
 
-    // ====================== FLIPBOOK MENU ======================
-    const flipMenu = (data.flipbookMenuImages || []).slice();
-    if (typeof renderImagePreview === "function") {
-      flipMenu.forEach((src) => renderImagePreview("menu", src));
-    }
+    const flipMenu = Array.isArray(data.flipbookMenuImages)
+      ? data.flipbookMenuImages.slice()
+      : [];
+
+    // Delay kecil supaya DOM siap sebelum gambar di-render
+    setTimeout(() => {
+      if (typeof renderImagePreview === "function") {
+        flipRuang.forEach(src => renderImagePreview("ruangan", src));
+        flipMenu.forEach(src => renderImagePreview("menu", src));
+      }
+    }, 50);
 
     // ====================== RESTO ID ======================
     let restoIdEl = document.getElementById("restoId");
@@ -1637,13 +1635,14 @@ if (menuContainer) menuContainer.innerHTML = ""; // bersihkan dulu
     }
     restoIdEl.value = data.restoId || data.restoPhone || "";
 
-    console.log("✅ loadData selesai & anti-duplikat.");
+    console.log("✅ loadData selesai tanpa duplikat & flipbook aman.");
   } catch (err) {
     console.error("❌ loadData gagal:", err);
   } finally {
     hideLoader();
   }
 }
+
 // ====================== RESET & BACKUP ======================
 async function resetData() {
   if (!confirm("Are you sure you want to delete all data?")) return;
@@ -1954,7 +1953,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // ===================== LOAD DATA UTAMA =====================
     const data = await safeLoadDataFromDB();
     if (data) {
-      await safeLoadData(data);
+      await safe(data);
       console.log("📦 Data diambil:", data);
     } else {
       console.warn("⚠️ Tidak ada data ditemukan di DB");
@@ -2279,6 +2278,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
