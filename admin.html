@@ -874,43 +874,52 @@ async function saveDataToDB(data) {
     };
   });
 }
-   
-async function loadDataFromDB(id = 1) {
-  await new Promise((res) => setTimeout(res, 200));
 
-  try {
-    const db = await getDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(id);
+   async function loadDataFromDB(id = 1) {
+  console.groupCollapsed("📥 [TRACE] loadDataFromDB()");
 
-      req.onsuccess = (e) => {
-        let data = e.target.result;
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAME, "readonly");
+  const store = tx.objectStore(STORE_NAME);
 
-        if (!data) {
-          console.warn("⚠️ Tidak ada data DB. Membuat struktur awal.");
-          data = { id: 1, namaRestoran: "", menu: [], menuVoucher: [] };
-        }
+  return new Promise((resolve, reject) => {
+    const req = store.get(id);
 
-        // PATCH: Pastikan menuVoucher SELALU ADA
-        if (!Array.isArray(data.menuVoucher)) {
-          console.warn("⚠️ menuVoucher hilang atau bukan array — membuat array kosong.");
-          data.menuVoucher = [];
-        }
+    req.onsuccess = () => {
+      let result = req.result;
 
-        resolve(data);
-      };
+      console.log("📦 Data mentah dari DB:", result);
 
-      req.onerror = (e) => {
-        console.error("❌ Gagal load DB:", e.target.error);
-        resolve({ id: 1, namaRestoran: "", menu: [], menuVoucher: [] });
-      };
-    });
-  } catch (err) {
-    console.error("❌ initDB gagal:", err);
-    return { id: 1, namaRestoran: "", menu: [], menuVoucher: [] };
-  }
+      if (!result) {
+        console.warn("⚠️ Data DB kosong, membuat data default.");
+        result = {
+          id: 1,
+          restoId: "",
+          namaRestoran: "",
+          restoAddress: "",
+          restoPhone: "",
+          menuData: [],
+          menuVoucher: []  // PENTING ❗
+        };
+      }
+
+      // 🔥 FIX PALING PENTING
+      if (!Array.isArray(result.menuVoucher)) {
+        console.warn("⚠️ menuVoucher bukan array, MEMPERTAHANKAN DATA LAMA jika ada!");
+        result.menuVoucher = req.result?.menuVoucher || [];
+      }
+
+      console.log("📦 Data final setelah validasi:", result);
+      console.groupEnd();
+      resolve(result);
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ Gagal load DB:", e.target.error);
+      console.groupEnd();
+      reject(e.target.error);
+    };
+  });
 }
 
 // ===== Helper internal: bikin struktur default =====
@@ -2268,6 +2277,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
