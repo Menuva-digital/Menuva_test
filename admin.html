@@ -2070,14 +2070,22 @@ async function loadVoucherOnInit() {
   }
   voucherLoaded = true;
 
+  // ==== CEK LOCALSTORAGE TERLEBIH DAHULU ====
   const fromLocal = localStorage.getItem("voucher");
   if (fromLocal) {
-    const voucher = JSON.parse(fromLocal);
-    console.log("📦 Voucher dari localStorage:", voucher);
-    renderVoucher(voucher);
+    let voucherData;
+    try {
+      voucherData = JSON.parse(fromLocal);
+    } catch (e) {
+      voucherData = fromLocal;
+    }
+
+    console.log("📦 Voucher dari localStorage:", voucherData);
+    renderVoucher(voucherData);
     return;
   }
 
+  // ==== LOAD DARI INDEXEDDB ====
   try {
     const db = await initDB();
     const tx = db.transaction(STORE_NAME, "readonly");
@@ -2086,67 +2094,105 @@ async function loadVoucherOnInit() {
 
     req.onsuccess = (e) => {
       const data = e.target.result;
-      const voucher =
-        data?.menuVoucher && data.menuVoucher.length
-          ? data.menuVoucher[0]
-          : null;
 
-      if (voucher) {
-        console.log("📦 Voucher ditemukan di IndexedDB:", voucher);
-        localStorage.setItem("voucher", JSON.stringify(voucher));
-        renderVoucher(voucher);
+      // Normalisasi jadi ARRAY
+      let vouchers = [];
+      if (Array.isArray(data?.menuVoucher)) {
+        vouchers = data.menuVoucher;
+      } else if (data?.menuVoucher) {
+        vouchers = [data.menuVoucher];
+      }
+
+      if (vouchers.length) {
+        console.log("📦 Voucher ditemukan di IndexedDB:", vouchers);
+
+        // Simpan ke localStorage sebagai array supaya konsisten
+        localStorage.setItem("voucher", JSON.stringify(vouchers));
+
+        renderVoucher(vouchers);
       } else {
         console.log("⚠️ Tidak ada voucher di DB");
         renderVoucher(null);
       }
     };
+
+    req.onerror = () => {
+      console.error("❌ Gagal get voucher dari IndexedDB");
+      renderVoucher(null);
+    };
+
   } catch (err) {
     console.error("❌ Gagal load voucher dari DB:", err);
+    renderVoucher(null);
   }
 }
-
 
 // ===================== RENDER VOUCHER =====================
 function renderVoucher(voucherData) {
   const voucherPreview = document.getElementById("voucherPreview");
   if (!voucherPreview) return;
 
-  // Kalau tidak ada voucher sama sekali
-  if (!voucherData || voucherData.length === 0) {
+  // Normalisasi: jika satu object → ubah jadi array, jika null → jadi []
+  let vouchers = [];
+  if (!voucherData) vouchers = [];
+  else if (Array.isArray(voucherData)) vouchers = voucherData;
+  else if (typeof voucherData === 'object') vouchers = [voucherData];
+  else {
+    // jika yang masuk string (misal dari localStorage yang belum di-JSON.parse), coba parse
+    try {
+      const parsed = JSON.parse(voucherData);
+      vouchers = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+    } catch (e) {
+      vouchers = [];
+    }
+  }
+
+  // Filter voucher yang masih berlaku (expiry valid dan >= hari ini)
+  const today = new Date();
+  vouchers = vouchers.filter(v => {
+    if (!v || !v.expiry) return false;
+    const expiryDate = new Date(v.expiry);
+    return isFinite(expiryDate.getTime()) && expiryDate >= today;
+  });
+
+  if (vouchers.length === 0) {
     voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
     return;
   }
 
-  // Render semua voucher yang belum expired
-  const today = new Date();
-  let activeVouchers = voucherData.filter(v => new Date(v.expiry) >= today);
-
-  if (activeVouchers.length === 0) {
-    voucherPreview.innerHTML = "<em>Tidak ada voucher yang masih berlaku</em>";
-    return;
-  }
-
   let html = "<h3>Voucher Aktif</h3>";
-  activeVouchers.forEach(voucher => {
+  vouchers.forEach(voucher => {
     html += `
       <div class="voucher-item" style="border:1px solid #ccc; padding:8px; margin:8px 0; border-radius:8px;">
-        <p><strong>Kode Voucher:</strong> 
-          <span class="voucher-code">${voucher.code}</span>
-          <button onclick="copyVoucherCode('${voucher.code}')">📋 Copy</button>
+        <p><strong>Kode Voucher:</strong>
+          <span class="voucher-code">${voucher.code || ''}</span>
+          <button type="button" onclick="copyVoucherCode('${voucher.code || ''}')">📋 Copy</button>
         </p>
-        <p><strong>Diskon:</strong> ${voucher.discount}%</p>
-        <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
+        <p><strong>Diskon:</strong> ${typeof voucher.discount !== 'undefined' ? voucher.discount : '-'}%</p>
+        <p><strong>Berlaku sampai:</strong> ${voucher.expiry || '-'}</p>
       </div>
     `;
   });
 
   voucherPreview.innerHTML = html;
 }
+
 // ===================== COPY VOUCHER CODE =====================
 function copyVoucherCode(codeText) {
-  if (!codeText) return;
-  navigator.clipboard.writeText(codeText)
-    .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
+  // Jika diberikan langsung, pakai itu
+  if (codeText && typeof codeText === 'string') {
+    navigator.clipboard.writeText(codeText)
+      .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
+      .catch(err => console.error("Gagal copy", err));
+    return;
+  }
+
+  // Jika tidak ada parameter, coba cari elemen di DOM (kompatibel dengan versi lama)
+  const fallback = document.getElementById("voucherCodeText") || document.querySelector(".voucher-code");
+  const text = fallback ? (fallback.innerText || fallback.textContent) : null;
+  if (!text) return;
+  navigator.clipboard.writeText(text)
+    .then(() => alert("Kode voucher berhasil di-copy: " + text))
     .catch(err => console.error("Gagal copy", err));
 }
 
@@ -2215,4 +2261,5 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
