@@ -990,48 +990,65 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
- /* ------------------ VOUCHER -------------------- */
+
 /* ------------------ VOUCHER (with smooth fade) -------------------- */
+  function getActiveVoucherList() {
+  const raw = localStorage.getItem("voucher");
+  if (!raw) return [];
+
+  let list;
+  try {
+    list = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+
+  // Normalisasi → selalu array
+  return Array.isArray(list) ? list : [list];
+}
+
+function findVoucher(codeInput) {
+  const list = getActiveVoucherList();
+  if (!codeInput) return null;
+
+  const now = new Date();
+
+  return list.find(v =>
+    v.code &&
+    v.code.toLowerCase() === codeInput.toLowerCase() &&
+    new Date(v.expiry) >= now
+  ) || null;
+}
+
 function applyVoucherAndUpdateSummary() {
   const cartTotalEl = document.getElementById('cartTotal');
   const grandTotalEl = document.getElementById('grandTotal');
   const discountRow = document.getElementById('discountRow');
   const voucherDiscountEl = document.getElementById('voucherDiscount');
-
-  if (!cartTotalEl || !grandTotalEl) return;
+  const inputCode = (document.getElementById('voucherInput')?.value || '').trim();
 
   const rawTotal = cleanNumber(cartTotalEl.dataset.raw) || 0;
   let discount = 0;
 
-  // ✅ ambil voucher aktif dari localStorage (bukan sekali pakai)
-  const voucher = JSON.parse(localStorage.getItem('voucher') || 'null');
-  const inputCode = (document.getElementById('voucherInput')?.value || '').trim();
+  const voucher = findVoucher(inputCode);
 
   let voucherValid = false;
-
-  if (voucher && inputCode && voucher.code === inputCode) {
-    const now = new Date();
-    const expiry = new Date(voucher.expiry);
-
-    if (now <= expiry) {
-      discount = rawTotal * (parseFloat(voucher.discount || 0) / 100);
-      voucherValid = true;
-      showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${voucher.discount}%`, 'success');
-    } else {
-      showToast('⚠️ Voucher sudah kadaluarsa.', 'warning');
-    }
+  if (voucher) {
+    discount = rawTotal * (voucher.discount / 100);
+    voucherValid = true;
+    activeVoucherData = voucher;
+    showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${voucher.discount}%`, 'success');
   } else if (inputCode) {
-    showToast('❌ Kode voucher salah.', 'error');
+    showToast('❌ Kode voucher salah atau kadaluarsa.', 'error');
+    activeVoucherData = null;
   }
 
   const newTotal = Math.max(0, rawTotal - discount);
 
-  // ✅ update tampilan total
   cartTotalEl.textContent = formatWithActive(rawTotal);
-  if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive(discount);
-  if (grandTotalEl) grandTotalEl.textContent = formatWithActive(newTotal);
+  voucherDiscountEl.textContent = formatWithActive(discount);
+  grandTotalEl.textContent = formatWithActive(newTotal);
 
-  // ✅ efek animasi
   if (discountRow) {
     if (voucherValid && discount > 0) {
       discountRow.style.display = 'flex';
@@ -1045,30 +1062,36 @@ function applyVoucherAndUpdateSummary() {
   }
 }
 
-  function initVoucherInput(){
-    const voucherInput = document.getElementById('voucherInput');
-    const voucherMessage = document.getElementById('voucherMessage');
-    if (!voucherInput || !voucherMessage) return;
-    const apply = ()=>{
-      const code = voucherInput.value.trim();
-      const stored = JSON.parse(localStorage.getItem("voucher") || "null");
-      if (stored && code.length > 0 && code.toUpperCase() === (stored.code||'').toUpperCase()) {
-        activeVoucherData = stored;
-        voucherMessage.textContent = `✅ Voucher applied: ${stored.discount}% off`;
-        voucherMessage.style.color = 'green';
-      } else if (code.length > 0) {
-        activeVoucherData = null;
-        voucherMessage.textContent = '❌ Invalid voucher code';
-        voucherMessage.style.color = 'red';
-      } else {
-        activeVoucherData = null;
-        voucherMessage.textContent = '';
-      }
-      applyVoucherAndUpdateSummary();
-      saveVoucherToStorage();
-    };
-    ['input','keyup','change','blur'].forEach(evt=> voucherInput.addEventListener(evt, apply));
-  }
+ function initVoucherInput(){
+  const voucherInput = document.getElementById('voucherInput');
+  const voucherMessage = document.getElementById('voucherMessage');
+
+  if (!voucherInput || !voucherMessage) return;
+
+  const apply = ()=>{
+    const code = voucherInput.value.trim();
+    const voucher = findVoucher(code);
+
+    if (voucher) {
+      activeVoucherData = voucher;
+      voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
+      voucherMessage.style.color = 'green';
+    } else if (code.length > 0) {
+      activeVoucherData = null;
+      voucherMessage.textContent = '❌ Invalid voucher code';
+      voucherMessage.style.color = 'red';
+    } else {
+      voucherMessage.textContent = '';
+      activeVoucherData = null;
+    }
+
+    applyVoucherAndUpdateSummary();
+    saveVoucherToStorage();
+  };
+
+  ['input','keyup','change','blur']
+    .forEach(evt=> voucherInput.addEventListener(evt, apply));
+}
 
   function saveVoucherToStorage() {
   if (!activeVoucherData) {
@@ -1420,6 +1443,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
