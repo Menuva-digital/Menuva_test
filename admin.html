@@ -851,8 +851,7 @@ async function saveDataToDB(data) {
 
 // ====================== LOAD DATA ======================
 async function loadDataFromDB(id = 1) {
-  // ⏳ Sedikit delay agar IndexedDB siap
-  await new Promise((res) => setTimeout(res, 300));
+  await new Promise((res) => setTimeout(res, 200));
 
   try {
     const db = await getDB();
@@ -862,23 +861,54 @@ async function loadDataFromDB(id = 1) {
       const req = store.get(id);
 
       req.onsuccess = (e) => {
-        const data = e.target.result;
-        if (data) {
+        let data = e.target.result;
+
+        // Jika record tidak ada → buat struktur lengkap
+        if (!data) {
+          console.warn("⚠️ Tidak ada record ID=1, membuat default...");
+          data = {
+            id: 1,
+            namaRestoran: "",
+            menu: [],
+            menuData: [],
+            menuVoucher: [],   // 🔥 WAJIB ADA
+            adminData: {}
+          };
           resolve(data);
-        } else {
-          console.warn("⚠️ Tidak ada data ditemukan, tapi tidak menimpa data lama");
-          resolve({ id: 1, namaRestoran: "", menu: [] });
+          return;
         }
+
+        // Perbaikan: pastikan field selalu ada
+        if (!Array.isArray(data.menuVoucher)) data.menuVoucher = [];
+        if (!Array.isArray(data.menuData)) data.menuData = [];
+        if (!Array.isArray(data.menu)) data.menu = [];
+        if (typeof data.adminData !== "object") data.adminData = {};
+
+        resolve(data);
       };
 
       req.onerror = (e) => {
         console.error("❌ Gagal load dari IndexedDB:", e.target.error);
-        resolve({ id: 1, namaRestoran: "", menu: [] });
+        resolve({
+          id: 1,
+          namaRestoran: "",
+          menu: [],
+          menuData: [],
+          menuVoucher: [],
+          adminData: {}
+        });
       };
     });
   } catch (err) {
     console.error("❌ initDB gagal:", err);
-    return { id: 1, namaRestoran: "", menu: [] };
+    return {
+      id: 1,
+      namaRestoran: "",
+      menu: [],
+      menuData: [],
+      menuVoucher: [],
+      adminData: {}
+    };
   }
 }
 
@@ -2219,7 +2249,7 @@ async function saveVoucher() {
     await saveDataToDB(data);
 
     // Simpan cache
-    localStorage.setItem("menuva_voucher", JSON.stringify(data.menuVoucher));
+    localStorage.setItem("menuva_voucher", JSON.stringify(data.menuVoucher || []));
 
     renderVoucher(data.menuVoucher);
     alert("✅ Voucher berhasil disimpan!");
@@ -2237,3 +2267,4 @@ async function saveVoucher() {
 
 </body>
 </html>
+
