@@ -2026,7 +2026,6 @@ function initRoomToggle() {
   });
 }
 
-
 // ===================== VOUCHER TOGGLE =====================
 async function initVoucherToggle() {
   const toggleVoucherPage = document.getElementById("toggleVoucherPage");
@@ -2052,8 +2051,10 @@ async function initVoucherToggle() {
     const enabled = e.target.checked;
     localStorage.setItem("page_voucher", enabled);
     voucherForm.style.display = enabled ? "block" : "none";
+
     if (!enabled) {
-      localStorage.removeItem("voucher");
+      // Hapus cache voucher
+      localStorage.removeItem("menuva_voucher");
       renderVoucher();
     }
   });
@@ -2061,8 +2062,7 @@ async function initVoucherToggle() {
   await loadVoucherOnInit();
 }
 
-
-// ===================== LOAD VOUCHER =====================
+  // ===================== LOAD VOUCHER =====================
 async function loadVoucherOnInit() {
   if (voucherLoaded) {
     console.warn("⚠️ loadVoucherOnInit() sudah pernah dijalankan, skip");
@@ -2071,17 +2071,19 @@ async function loadVoucherOnInit() {
   voucherLoaded = true;
 
   // ==== CEK LOCALSTORAGE TERLEBIH DAHULU ====
-  const fromLocal = localStorage.getItem("voucher");
+  const fromLocal = localStorage.getItem("menuva_voucher");
   if (fromLocal) {
-    let voucherData;
+    let vouchers;
+
     try {
-      voucherData = JSON.parse(fromLocal);
+      vouchers = JSON.parse(fromLocal);
+      if (!Array.isArray(vouchers)) vouchers = [vouchers];
     } catch (e) {
-      voucherData = fromLocal;
+      vouchers = [];
     }
 
-    console.log("📦 Voucher dari localStorage:", voucherData);
-    renderVoucher(voucherData);
+    console.log("📦 Voucher dari localStorage:", vouchers);
+    renderVoucher(vouchers);
     return;
   }
 
@@ -2095,59 +2097,46 @@ async function loadVoucherOnInit() {
     req.onsuccess = (e) => {
       const data = e.target.result;
 
-      // Normalisasi jadi ARRAY
       let vouchers = [];
-      if (Array.isArray(data?.menuVoucher)) {
-        vouchers = data.menuVoucher;
-      } else if (data?.menuVoucher) {
-        vouchers = [data.menuVoucher];
-      }
+      if (Array.isArray(data?.menuVoucher)) vouchers = data.menuVoucher;
+      else if (data?.menuVoucher) vouchers = [data.menuVoucher];
 
       if (vouchers.length) {
         console.log("📦 Voucher ditemukan di IndexedDB:", vouchers);
 
-        // Simpan ke localStorage sebagai array supaya konsisten
-        localStorage.setItem("voucher", JSON.stringify(vouchers));
+        // Simpan ke localStorage sebagai array
+        localStorage.setItem("menuva_voucher", JSON.stringify(vouchers));
 
         renderVoucher(vouchers);
       } else {
         console.log("⚠️ Tidak ada voucher di DB");
-        renderVoucher(null);
+        renderVoucher([]);
       }
     };
 
     req.onerror = () => {
       console.error("❌ Gagal get voucher dari IndexedDB");
-      renderVoucher(null);
+      renderVoucher([]);
     };
 
   } catch (err) {
     console.error("❌ Gagal load voucher dari DB:", err);
-    renderVoucher(null);
+    renderVoucher([]);
   }
 }
-
+  
 // ===================== RENDER VOUCHER =====================
 function renderVoucher(voucherData) {
   const voucherPreview = document.getElementById("voucherPreview");
   if (!voucherPreview) return;
 
-  // Normalisasi: jika satu object → ubah jadi array, jika null → jadi []
+  // Normalisasi
   let vouchers = [];
   if (!voucherData) vouchers = [];
   else if (Array.isArray(voucherData)) vouchers = voucherData;
-  else if (typeof voucherData === 'object') vouchers = [voucherData];
-  else {
-    // jika yang masuk string (misal dari localStorage yang belum di-JSON.parse), coba parse
-    try {
-      const parsed = JSON.parse(voucherData);
-      vouchers = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-    } catch (e) {
-      vouchers = [];
-    }
-  }
+  else if (typeof voucherData === "object") vouchers = [voucherData];
 
-  // Filter voucher yang masih berlaku (expiry valid dan >= hari ini)
+  // Filter voucher yang masih berlaku
   const today = new Date();
   vouchers = vouchers.filter(v => {
     if (!v || !v.expiry) return false;
@@ -2165,11 +2154,11 @@ function renderVoucher(voucherData) {
     html += `
       <div class="voucher-item" style="border:1px solid #ccc; padding:8px; margin:8px 0; border-radius:8px;">
         <p><strong>Kode Voucher:</strong>
-          <span class="voucher-code">${voucher.code || ''}</span>
-          <button type="button" onclick="copyVoucherCode('${voucher.code || ''}')">📋 Copy</button>
+          <span class="voucher-code">${voucher.code}</span>
+          <button type="button" onclick="copyVoucherCode('${voucher.code}')">📋 Copy</button>
         </p>
-        <p><strong>Diskon:</strong> ${typeof voucher.discount !== 'undefined' ? voucher.discount : '-'}%</p>
-        <p><strong>Berlaku sampai:</strong> ${voucher.expiry || '-'}</p>
+        <p><strong>Diskon:</strong> ${voucher.discount}%</p>
+        <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
       </div>
     `;
   });
@@ -2198,7 +2187,7 @@ function copyVoucherCode(codeText) {
 
 </script>
  <script>
-// ===================== SAVE VOUCHER (sinkron dengan MenuvaDB) =====================
+// ===================== SAVE VOUCHER =====================
 async function saveVoucher() {
   const code = document.getElementById("voucherCode").value.trim();
   const discount = parseFloat(document.getElementById("voucherDiscount").value);
@@ -2210,14 +2199,9 @@ async function saveVoucher() {
   }
 
   try {
-    // Ambil data utama dari IndexedDB
     const data = await loadDataFromDB(1);
-    console.log("🧾 [DEBUG] Data sebelum update voucher:", data);
-
-    // Pastikan struktur voucher array sudah ada
     if (!data.menuVoucher) data.menuVoucher = [];
 
-    // 🔍 Cek apakah kode sudah ada, kalau ada kita update, kalau belum tambahkan
     const existingIndex = data.menuVoucher.findIndex(v => v.code === code);
 
     const voucherObj = {
@@ -2228,38 +2212,33 @@ async function saveVoucher() {
     };
 
     if (existingIndex !== -1) {
-      // Update voucher lama
       data.menuVoucher[existingIndex] = voucherObj;
-      console.log("♻️ Voucher diperbarui:", voucherObj);
     } else {
-      // Tambahkan voucher baru
       data.menuVoucher.push(voucherObj);
-      console.log("🆕 Voucher baru disimpan:", voucherObj);
     }
 
-    // 💾 Simpan kembali seluruh data ke DB
     await saveDataToDB(data);
-    console.log("✅ Semua voucher tersimpan ke IndexedDB:", data.menuVoucher);
 
-    // Update UI & cache local
-    localStorage.setItem("voucher", JSON.stringify(data.menuVoucher));
+    // Simpan cache
+    localStorage.setItem("menuva_voucher", JSON.stringify(data.menuVoucher));
+
     renderVoucher(data.menuVoucher);
     alert("✅ Voucher berhasil disimpan!");
 
-    // Sembunyikan form setelah disimpan
     const form = document.getElementById("voucherForm");
     if (form) form.style.display = "none";
     const toggle = document.getElementById("toggleVoucherPage");
     if (toggle) toggle.checked = false;
+
   } catch (err) {
     console.error("❌ Gagal menyimpan voucher:", err);
     alert("❌ Gagal menyimpan voucher ke database!");
   }
 }
-
 </script>
 
 </body>
 </html>
+
 
 
