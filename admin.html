@@ -815,39 +815,66 @@ async function getDB() {
   });
 }
 
-// ====================== SAVE DATA ======================
+// ====================== SAVE DATA SUPER DEBUG VERSION ======================
 async function saveDataToDB(data) {
   if (!data || typeof data !== "object") throw new Error("Invalid data");
 
-  // 💡 Gunakan ID tetap = 1 agar tidak membuat banyak record
   const recordId = 1;
   const record = { id: recordId, ...data };
 
-  console.groupCollapsed("💾 [TRACE] saveDataToDB()");
-  console.log("📦 Data diterima untuk disimpan:", record);
+  console.group("💾 [SAVE DEBUG] saveDataToDB() DIPANGGIL");
+  console.log("➡️ Data MASUK untuk disimpan:", JSON.parse(JSON.stringify(record)));
 
   const db = await getDB();
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
+    const txCheck = db.transaction(STORE_NAME, "readonly");
+    const storeCheck = txCheck.objectStore(STORE_NAME);
+    const checkReq = storeCheck.get(recordId);
 
-    // Langsung replace data lama (jika ada)
-    const req = store.put(record);
+    checkReq.onsuccess = () => {
+      console.log("📂 Isi DB SEBELUM SAVE:", JSON.parse(JSON.stringify(checkReq.result)));
 
-    req.onsuccess = () => {
-      console.log("✅ [OK] Data berhasil disimpan di IndexedDB:", record);
-      console.groupEnd();
-      resolve(record);
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+
+      console.log("💽 Menyimpan data ke DB...");
+      const req = store.put(record);
+
+      req.onsuccess = () => {
+        console.log("✅ DB BERHASIL DISIMPAN");
+
+        // Load lagi setelah save untuk cek apakah ketimpa
+        const txAfter = db.transaction(STORE_NAME, "readonly");
+        const storeAfter = txAfter.objectStore(STORE_NAME);
+        const afterReq = storeAfter.get(recordId);
+
+        afterReq.onsuccess = () => {
+          console.log("📦 Isi DB SETELAH SAVE:", JSON.parse(JSON.stringify(afterReq.result)));
+          console.groupEnd();
+          resolve(record);
+        };
+
+        afterReq.onerror = () => {
+          console.error("❌ Gagal membaca ulang DB setelah save");
+          console.groupEnd();
+          resolve(record);
+        };
+      };
+
+      req.onerror = (e) => {
+        console.error("❌ ERROR saat save:", e.target.error);
+        console.groupEnd();
+        reject(e.target.error);
+      };
     };
 
-    req.onerror = (e) => {
-      console.error("❌ [ERROR] Gagal simpan ke DB:", e.target.error);
-      console.groupEnd();
-      reject(e.target.error);
+    checkReq.onerror = () => {
+      console.warn("⚠️ Tidak bisa membaca data DB sebelum save");
     };
   });
 }
+
 
 // ====================== LOAD DATA ======================
 async function loadDataFromDB(id = 1) {
@@ -2267,4 +2294,5 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
