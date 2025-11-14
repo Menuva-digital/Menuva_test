@@ -1953,7 +1953,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // ===================== LOAD DATA UTAMA =====================
     const data = await safeLoadDataFromDB();
     if (data) {
-      await safe(data);
+      await safeLoadData(data);
       console.log("📦 Data diambil:", data);
     } else {
       console.warn("⚠️ Tidak ada data ditemukan di DB");
@@ -2278,6 +2278,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
