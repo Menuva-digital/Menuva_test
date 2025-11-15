@@ -472,56 +472,37 @@ button {
   bottom: 0;
   left: 0;
   right: 0;
+  height: 70px;
+  background: #ffffff;
+  border-top: 1px solid #ddd;
   display: flex;
   justify-content: space-around;
-  background: linear-gradient(135deg, #003366, #003366);
-  padding: 6px 0;
-  border-top: 1px solid #ddd;
-  z-index: 1000;
-}
-
-.nav-btn {
-  flex: 1;
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 4px 0;
-  font-size: 14px;
-  transition: color 0.3s ease;
+  z-index: 999;
 }
 
-/* standby putih */
-.nav-btn .icon,
-.nav-btn .label {
-  color: #ffffff; /* putih */
-  transition: color 0.3s ease;
+.nav-item {
+  flex: 1;
+  text-align: center;
+  padding: 6px 0;
+  cursor: pointer;
+  user-select: none;
 }
 
-.nav-btn .icon {
-  font-size: 20px;
-  line-height: 1;
+.icon {
+  font-size: 24px;
+  color: #444;
 }
 
-.nav-btn .label {
-  font-size: 11px;
-  margin-top: 2px;
+.label {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #333;
 }
 
-/* hover emas */
-.nav-btn:hover .icon,
-.nav-btn:hover .label {
-  color: #FFD700; /* emas */
+.nav-item:active {
+  background: #f5f5f5;
 }
-
-/* aktif (misal ditekan) boleh kasih efek lain */
-.nav-btn:active .icon,
-.nav-btn:active .label {
-  color: #FFA500; /* oranye keemasan */
-}
-
   </style>
 </head>
 <body>
@@ -2285,6 +2266,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
