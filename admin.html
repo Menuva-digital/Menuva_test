@@ -707,11 +707,24 @@ button {
   <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
 </div>
 
-   <div class="fixed-bar">
-    <button onclick="window.location.href='index.html'" class="btn-success">🔒 Logout</button>
-    <button onclick="window.location.href='recieves.html'" class="btn-warning">📦 Receives</button>
-  </div>
-  
+<div class="nav-item">
+  <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M17 16l4-4m0 0l-4-4m4 4H7"/>
+  </svg>
+  <div class="label">Logout</div>
+</div>
+
+<div class="nav-item">
+  <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 7v10a2 2 0 002 2h12a2 2 0 002-2V7m-16 0l2-3h12l2 3"/>
+  </svg>
+  <div class="label">Receives</div>
+</div>
+
  <script>
 console.log("Admin Script Version: 2025-11-07-STABLE");
 
@@ -2278,6 +2291,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
