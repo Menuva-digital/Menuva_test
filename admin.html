@@ -778,11 +778,19 @@ async function initDB() {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (e) => {
-      console.log("⚙️ [DEBUG] onupgradeneeded:", DB_NAME);
       const db = e.target.result;
+
+      // Store utama (sebelumnya sudah ada)
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
+
+      // 🔥 Store baru untuk menampung order tamu
+      if (!db.objectStoreNames.contains("orders")) {
+        db.createObjectStore("orders", { keyPath: "id" });
+      }
+
+      console.log("⚙️ onupgradeneeded selesai, store lengkap:", db.objectStoreNames);
     };
 
     request.onsuccess = (e) => {
@@ -2310,20 +2318,18 @@ function updateReceiveBadge(count) {
 // =============== CEK JUMLAH ORDER BARU ===============
 async function cekOrderBaru() {
   try {
-    const db = await initDB();  // pastikan fungsi initDB milik lu sudah ada
+    const db = await initDB();
     const tx = db.transaction("orders", "readonly");
     const store = tx.objectStore("orders");
 
     const allOrders = await store.getAll();
 
-    // hitung order yang status nya "new"
     const newOrders = allOrders.filter(o => o.status === "new").length;
 
-    // update badge
     updateReceiveBadge(newOrders);
 
   } catch (err) {
-    console.error("Gagal cek order baru: ", err);
+    console.error("Error cek order baru:", err);
   }
 }
 
@@ -2339,3 +2345,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
