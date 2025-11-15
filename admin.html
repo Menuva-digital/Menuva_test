@@ -715,12 +715,12 @@ button {
 </div>
 
 <div class="fixed-bar">
- <div class="nav-item" onclick="window.location.href='recieves.html'">
-  <div class="icon-wrapper">
-    <ion-icon name="cube-outline" class="icon"></ion-icon>
-    <span id="receiveBadge" class="badge">0</span>
-  </div>
-  <div class="label">Receives</div>
+<div class="nav-item" onclick="markViewedAndGo()">
+    <div class="icon-wrapper">
+        <ion-icon name="cube-outline" class="icon"></ion-icon>
+        <span id="receiveBadge" class="badge">0</span>
+    </div>
+    <div class="label">Receives</div>
 </div>
 
    <div class="nav-item" onclick="window.location.href='index.html'">
@@ -728,6 +728,21 @@ button {
     <div class="label">Logout</div>
   </div>
 </div>
+  
+<script>
+function markViewedAndGo() {
+  localStorage.setItem("lastViewedOrderTime", Date.now());
+  window.location.href = "recieves.html";
+}
+</script>
+  
+<script>
+ function playSoundNotif() {
+  const audio = new Audio("beep.mp3");
+  audio.volume = 1.0; // full sound
+  audio.play().catch(err => console.warn("Sound blocked:", err));
+}
+</script>
 
  <script>
 console.log("Admin Script Version: 2025-11-07-STABLE");
@@ -2301,7 +2316,7 @@ async function saveVoucher() {
 }
 </script>
 <script>
-// =============== FUNGSI UPDATE BADGE ===============
+// =============== UPDATE BADGE ===============
 function updateReceiveBadge(count) {
   const badge = document.getElementById("receiveBadge");
 
@@ -2315,11 +2330,11 @@ function updateReceiveBadge(count) {
   }
 }
 
-// =============== BACA ORDER DARI STORE YANG BENAR ===============
+// =============== CEK ORDER BARU ===============
 async function cekOrderBaru() {
   try {
     const db = await initDB();
-    const tx = db.transaction("ordersData", "readonly"); // ✅ FIX
+    const tx = db.transaction("ordersData", "readonly");
     const store = tx.objectStore("ordersData");
 
     const req = store.getAll();
@@ -2327,39 +2342,48 @@ async function cekOrderBaru() {
     req.onsuccess = () => {
       const allOrders = req.result || [];
 
-      // Hitung yang masih aktif (status: "active")
-      const newOrders = allOrders.filter(o => o.status === "active").length;
+      const lastViewed = Number(localStorage.getItem("lastViewedOrderTime") || 0);
+      
+      // Order yang lebih baru dari lastViewed
+      const newOrders = allOrders.filter(o => {
+        const t = new Date(o.orderTime).getTime();
+        return t > lastViewed;
+      });
 
-      updateReceiveBadge(newOrders);
+      updateReceiveBadge(newOrders.length);
+
+      // 🔥 Bunyi kalau ada order baru DAN sebelumnya badge belum ada
+      if (newOrders.length > 0) {
+        playSoundNotif();
+      }
     };
 
     req.onerror = (e) => {
-      console.error("❌ Gagal membaca orders:", e.target.error);
+      console.error("Gagal membaca orders:", e.target.error);
     };
 
   } catch (err) {
-    console.error("❌ Error cek order baru:", err);
+    console.error("Error cek order baru:", err);
   }
 }
 
-// =============== JALANKAN SAAT HALAMAN DIBUKA ===============
-document.addEventListener("DOMContentLoaded", () => {
-  cekOrderBaru();
-});
+// =============== RUN SAAT HALAMAN DIBUKA ===============
+document.addEventListener("DOMContentLoaded", cekOrderBaru);
 
-// =============== REALTIME UPDATE LEWAT BROADCASTCHANNEL ===============
+// =============== LISTEN REALTIME ===============
 try {
   const bc = new BroadcastChannel("menuvaOrders");
 
   bc.onmessage = (msg) => {
     if (msg.data?.type === "newOrder") {
-      cekOrderBaru(); // 🔥 real-time update
+      playSoundNotif();   // 🔔 bunyi
+      cekOrderBaru();     // 🔄 update badge
     }
   };
 } catch (e) {
-  console.warn("⚠️ BroadcastChannel tidak support:", e);
+  console.warn("BroadcastChannel tidak support:", e);
 }
 </script>
-
 </body>
 </html>
+
