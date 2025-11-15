@@ -2319,7 +2319,7 @@ async function saveVoucher() {
 }
 </script>
 <script>
-// =============== UPDATE BADGE ===============
+// ======================= UPDATE BADGE =======================
 function updateReceiveBadge(count) {
   const badge = document.getElementById("receiveBadge");
 
@@ -2333,68 +2333,59 @@ function updateReceiveBadge(count) {
   }
 }
 
-// =============== CEK ORDER BARU ===============
+// ======================= CEK ORDER NEW =======================
 async function cekOrderBaru() {
   try {
     const db = await initDB();
-    const tx = db.transaction("ordersData", "readonly");
-    const store = tx.objectStore("ordersData");
+    const tx = db.transaction("orders", "readonly");
+    const store = tx.objectStore("orders");
 
-    const req = store.getAll();
+    const allOrders = await store.getAll();
+    const newOrders = allOrders.filter(o => o.status === "new").length;
 
-    req.onsuccess = () => {
-      const allOrders = req.result || [];
+    updateReceiveBadge(newOrders);
 
-      // Waktu terakhir admin melihat halaman receives
-      let lastViewed = Number(localStorage.getItem("lastViewedOrderTime") || 0);
-
-      // ⛔ PREVENT BUG
-      // Jika lastViewed = 0 (artinya belum pernah buka receives),
-      // kita set ke 1 Januari 2020 — jadi order pertama tetap muncul badge
-      if (!lastViewed) {
-        lastViewed = 1577836800000;
-      }
-
-      // Filter order yang masuk setelah lastViewed
-      const newOrders = allOrders.filter(o => {
-        const t = new Date(o.orderTime).getTime();
-        return t > lastViewed;
-      });
-
-      // Update badge
-      updateReceiveBadge(newOrders.length);
-    };
-
-    req.onerror = (e) => {
-      console.error("Gagal membaca orders:", e.target.error);
-    };
+    // 🔔 mainkan suara kalau ada order NEW
+    if (newOrders > 0) {
+      const snd = new Audio("beep.mp3");
+      snd.play().catch(() => {});
+    }
 
   } catch (err) {
     console.error("Error cek order baru:", err);
   }
 }
 
-// =============== RUN SAAT HALAMAN DIBUKA ===============
-document.addEventListener("DOMContentLoaded", cekOrderBaru);
+// ======================= HILANGKAN BADGE SAAT DIKLIK =======================
+document.addEventListener("DOMContentLoaded", () => {
+  cekOrderBaru();
 
-// =============== LISTEN REALTIME ===============
-try {
-  const bc = new BroadcastChannel("menuvaOrders");
+  const btn = document.getElementById("btnReceives");
+  if (btn) {
+    btn.addEventListener("click", async () => {
 
-  bc.onmessage = (msg) => {
-    if (msg.data?.type === "newOrder") {
-      // Bunyi notif
-      playSoundNotif();
+      // update semua NEW → READ
+      const db = await initDB();
+      const tx = db.transaction("orders", "readwrite");
+      const store = tx.objectStore("orders");
 
-      // Update badge
-      cekOrderBaru();
-    }
-  };
-} catch (e) {
-  console.warn("BroadcastChannel tidak support:", e);
-}
+      const allOrders = await store.getAll();
+
+      allOrders.forEach(o => {
+        if (o.status === "new") {
+          o.status = "read";
+          store.put(o);
+        }
+      });
+
+      updateReceiveBadge(0); // langsung hilangin badge
+    });
+  }
+});
 </script>
+
 </body>
 </html>
+
 
 
