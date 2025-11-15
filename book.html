@@ -1179,12 +1179,12 @@ async function sendOrder() {
     discountPercent,
     voucherCode,
     grandTotal,
-    status: "active",
+    status: "new",
     orderTime: now.toLocaleString("id-ID", { dateStyle: "short", timeStyle: "medium" })
   };
 
   try {
-    await initDB();
+    const db = await initDB();
     const tx = db.transaction("ordersData", "readwrite");
     const store = tx.objectStore("ordersData");
     const req = store.add(orderData);
@@ -1443,23 +1443,4 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
