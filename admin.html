@@ -475,7 +475,7 @@ button {
   left: 0;
   right: 0;
   height: 70px;
-  background: #ffffff;
+  background: linear-gradient(135deg, #003366, #003366);
   border-top: 1px solid #ddd;
   display: flex;
   justify-content: space-around;
@@ -483,28 +483,36 @@ button {
   z-index: 999;
 }
 
-.nav-item {
+  .nav-item {
   flex: 1;
   text-align: center;
   padding: 6px 0;
   cursor: pointer;
   user-select: none;
+  transition: 0.2s ease;
 }
 
-.icon {
+.nav-item .icon {
   font-size: 24px;
   color: #444;
+  transition: color 0.2s ease;
 }
 
-.label {
+.nav-item .label {
   margin-top: 4px;
   font-size: 12px;
   color: #333;
+  transition: color 0.2s ease;
 }
 
-.nav-item:active {
-  background: #f5f5f5;
+/* 🔥 Hover / sentuh → jadi emas */
+.nav-item:hover .icon,
+.nav-item:active .icon,
+.nav-item:hover .label,
+.nav-item:active .label {
+  color: #d4af37; /* warna emas */
 }
+
   </style>
 </head>
 <body>
@@ -691,14 +699,14 @@ button {
 </div>
 
 <div class="fixed-bar">
-  <div class="nav-item" onclick="window.location.href='index.html'">
-    <ion-icon name="log-out-outline" class="icon"></ion-icon>
-    <div class="label">Logout</div>
-  </div>
-
   <div class="nav-item" onclick="window.location.href='recieves.html'">
     <ion-icon name="cube-outline" class="icon"></ion-icon>
     <div class="label">Receives</div>
+  </div>
+
+   <div class="nav-item" onclick="window.location.href='index.html'">
+    <ion-icon name="log-out-outline" class="icon"></ion-icon>
+    <div class="label">Logout</div>
   </div>
 </div>
 
@@ -2268,6 +2276,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
