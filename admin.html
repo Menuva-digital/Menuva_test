@@ -729,24 +729,6 @@ button {
   </div>
 </div>
   
-<script>
-function markViewedAndGo() {
-  // Catat waktu terakhir admin membuka receives
-  localStorage.setItem("lastViewedOrderTime", Date.now());
-
-  // Setelah itu baru pindah halaman
-  window.location.href = "recieves.html";
-}
-</script>
-  
-<script>
- function playSoundNotif() {
-  const audio = new Audio("beep.mp3");
-  audio.volume = 1.0; // full sound
-  audio.play().catch(err => console.warn("Sound blocked:", err));
-}
-</script>
-
  <script>
 console.log("Admin Script Version: 2025-11-07-STABLE");
 
@@ -2319,7 +2301,20 @@ async function saveVoucher() {
 }
 </script>
 <script>
-// ======================= FUNGSI UPDATE BADGE =======================
+/* ============================================================
+   🔥 1. HELPER: getAll() versi Promise (WAJIB)
+============================================================ */
+function idbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/* ============================================================
+   🔥 2. UPDATE BADGE (TAMPILKAN / SEMBUNYIKAN)
+============================================================ */
 function updateReceiveBadge(count) {
   const badge = document.getElementById("receiveBadge");
   if (!badge) return;
@@ -2332,62 +2327,82 @@ function updateReceiveBadge(count) {
   }
 }
 
-// ======================= CEK ORDER BARU =======================
+/* ============================================================
+   🔥 3. PLAY SOUND NOTIF
+============================================================ */
+function playNotifSound() {
+  const audio = new Audio("beep.mp3");
+  audio.volume = 1.0;
+  audio.play().catch(err => console.warn("Sound blocked:", err));
+}
+
+/* ============================================================
+   🔥 4. CEK ORDER BARU (status = "new")
+============================================================ */
 async function cekOrderBaru() {
   try {
     const db = await initDB();
     const tx = db.transaction("ordersData", "readonly");
     const store = tx.objectStore("ordersData");
 
-    const allOrders = await store.getAll();
-
-    // cari order status "new"
+    const allOrders = await idbGetAll(store); // <-- FIX
     const newOrders = allOrders.filter(o => o.status === "new").length;
 
     updateReceiveBadge(newOrders);
 
-    // 🔔 mainkan suara jika ada order baru
+    // Mainkan suara hanya bila jumlah NEW > 0
     if (newOrders > 0) {
-      const audio = new Audio("beep.mp3");
-      audio.volume = 1.0;
-      audio.play().catch(() => {});
+      playNotifSound();
     }
 
   } catch (err) {
-    console.error("Error cek order baru:", err);
+    console.error("❌ Error cek order baru:", err);
   }
 }
 
-// ======================= HAPUS BADGE SAAT TOMBOL DIKLIK =======================
-document.addEventListener("DOMContentLoaded", () => {
-  cekOrderBaru();      // cek saat halaman dibuka
-  setInterval(cekOrderBaru, 5000); // auto cek tiap 5 detik
+/* ============================================================
+   🔥 5. UBAH SEMUA NEW -> READ (SAAT TOMBOL RECEIVES DIKLIK)
+============================================================ */
+async function markOrdersAsRead() {
+  try {
+    const db = await initDB();
+    const tx = db.transaction("ordersData", "readwrite");
+    const store = tx.objectStore("ordersData");
 
-  // klik tombol Receives
-  const navItem = document.querySelector(".nav-item[onclick='markViewedAndGo()']");
-  if (navItem) {
-    navItem.addEventListener("click", async () => {
-      const db = await initDB();
-      const tx = db.transaction("ordersData", "readwrite");
-      const store = tx.objectStore("ordersData");
+    const allOrders = await idbGetAll(store); // <-- FIX
 
-      const allOrders = await store.getAll();
-      allOrders.forEach(o => {
-        if (o.status === "new") {
-          o.status = "read";
-          store.put(o);
-        }
-      });
-
-      updateReceiveBadge(0); // langsung hilangkan badge
+    allOrders.forEach(o => {
+      if (o.status === "new") {
+        o.status = "read";
+        store.put(o);
+      }
     });
+
+    updateReceiveBadge(0); // Hilangkan badge
+
+  } catch (err) {
+    console.error("❌ Error markOrdersAsRead:", err);
   }
+}
+
+/* ============================================================
+   🔥 6. KLIK TOMBOL RECEIVES → Reset badge + masuk receives.html
+============================================================ */
+function markViewedAndGo() {
+  markOrdersAsRead();
+  window.location.href = "recieves.html";
+}
+
+/* ============================================================
+   🔥 7. JALANKAN SAAT HALAMAN ADMIN DIBUKA
+============================================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  cekOrderBaru();
+
+  // Auto-check setiap 10 detik (opsional)
+  // setInterval(cekOrderBaru, 10000);
 });
 </script>
 
 </body>
 </html>
-
-
-
-
