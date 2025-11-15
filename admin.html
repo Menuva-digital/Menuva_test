@@ -2301,9 +2301,19 @@ async function saveVoucher() {
 }
 </script>
 <script>
-/* ============================================================
-   🔥 1. HELPER: getAll() versi Promise (WAJIB)
-============================================================ */
+// =========================== UNLOCK AUDIO =============================
+let audioUnlocked = false;
+window.addEventListener("click", () => { audioUnlocked = true; });
+
+// =========================== PLAY SOUND ===============================
+function playNotifSound() {
+  if (!audioUnlocked) return; // cegah error autoplay
+  const audio = new Audio("beep.mp3");
+  audio.volume = 1;
+  audio.play().catch(err => console.warn("Sound blocked:", err));
+}
+
+// =========================== HELPERS ==================================
 function idbGetAll(store) {
   return new Promise((resolve, reject) => {
     const req = store.getAll();
@@ -2312,9 +2322,6 @@ function idbGetAll(store) {
   });
 }
 
-/* ============================================================
-   🔥 2. UPDATE BADGE (TAMPILKAN / SEMBUNYIKAN)
-============================================================ */
 function updateReceiveBadge(count) {
   const badge = document.getElementById("receiveBadge");
   if (!badge) return;
@@ -2327,82 +2334,60 @@ function updateReceiveBadge(count) {
   }
 }
 
-/* ============================================================
-   🔥 3. PLAY SOUND NOTIF
-============================================================ */
-function playNotifSound() {
-  const audio = new Audio("beep.mp3");
-  audio.volume = 1.0;
-  audio.play().catch(err => console.warn("Sound blocked:", err));
-}
-
-/* ============================================================
-   🔥 4. CEK ORDER BARU (status = "new")
-============================================================ */
+// =========================== CEK ORDER NEW ============================
 async function cekOrderBaru() {
   try {
     const db = await initDB();
     const tx = db.transaction("ordersData", "readonly");
     const store = tx.objectStore("ordersData");
 
-    const allOrders = await idbGetAll(store); // <-- FIX
-    const newOrders = allOrders.filter(o => o.status === "new").length;
+    const all = await idbGetAll(store);
+    const newCount = all.filter(o => o.status === "new").length;
 
-    updateReceiveBadge(newOrders);
+    updateReceiveBadge(newCount);
 
-    // Mainkan suara hanya bila jumlah NEW > 0
-    if (newOrders > 0) {
-      playNotifSound();
-    }
+    if (newCount > 0) playNotifSound();
 
   } catch (err) {
-    console.error("❌ Error cek order baru:", err);
+    console.error("❌ cekOrderBaru error:", err);
   }
 }
 
-/* ============================================================
-   🔥 5. UBAH SEMUA NEW -> READ (SAAT TOMBOL RECEIVES DIKLIK)
-============================================================ */
+// ===================== UBAH NEW → READ SAAT DIKLIK ====================
 async function markOrdersAsRead() {
   try {
     const db = await initDB();
     const tx = db.transaction("ordersData", "readwrite");
     const store = tx.objectStore("ordersData");
 
-    const allOrders = await idbGetAll(store); // <-- FIX
+    const all = await idbGetAll(store);
 
-    allOrders.forEach(o => {
+    all.forEach(o => {
       if (o.status === "new") {
         o.status = "read";
         store.put(o);
       }
     });
 
-    updateReceiveBadge(0); // Hilangkan badge
+    updateReceiveBadge(0);
 
   } catch (err) {
-    console.error("❌ Error markOrdersAsRead:", err);
+    console.error("❌ markOrdersAsRead error:", err);
   }
 }
 
-/* ============================================================
-   🔥 6. KLIK TOMBOL RECEIVES → Reset badge + masuk receives.html
-============================================================ */
 function markViewedAndGo() {
   markOrdersAsRead();
   window.location.href = "recieves.html";
 }
 
-/* ============================================================
-   🔥 7. JALANKAN SAAT HALAMAN ADMIN DIBUKA
-============================================================ */
+// =========================== START ===================================
 document.addEventListener("DOMContentLoaded", () => {
   cekOrderBaru();
-
-  // Auto-check setiap 10 detik (opsional)
-  // setInterval(cekOrderBaru, 10000);
+  // setInterval(cekOrderBaru, 3000); // OPSIONAL
 });
 </script>
 
 </body>
 </html>
+
