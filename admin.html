@@ -2301,19 +2301,41 @@ async function saveVoucher() {
 }
 </script>
 <script>
-// =========================== UNLOCK AUDIO =============================
-let audioUnlocked = false;
-window.addEventListener("click", () => { audioUnlocked = true; });
+/* ============================================================
+   1. PRELOAD + UNLOCK AUDIO (ANTI AUTOPLAY BLOCK)
+============================================================ */
+let notifAudio;
 
-// =========================== PLAY SOUND ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  notifAudio = new Audio("beep.mp3");
+  notifAudio.load();
+
+  // Unlock audio ENOUGH sekali klik
+  const unlock = () => {
+    notifAudio.play().then(() => {
+      notifAudio.pause();
+      notifAudio.currentTime = 0;
+    }).catch(()=>{});
+    document.body.removeEventListener("click", unlock);
+  };
+  document.body.addEventListener("click", unlock);
+
+  cekOrderBaru();
+  // setInterval(cekOrderBaru, 3000); // opsional
+});
+
+/* ============================================================
+   2. PLAY SOUND
+============================================================ */
 function playNotifSound() {
-  if (!audioUnlocked) return; // cegah error autoplay
-  const audio = new Audio("beep.mp3");
-  audio.volume = 1;
-  audio.play().catch(err => console.warn("Sound blocked:", err));
+  if (!notifAudio) return;
+  notifAudio.currentTime = 0;
+  notifAudio.play().catch(err => console.warn("Sound blocked:", err));
 }
 
-// =========================== HELPERS ==================================
+/* ============================================================
+   3. HELPERS
+============================================================ */
 function idbGetAll(store) {
   return new Promise((resolve, reject) => {
     const req = store.getAll();
@@ -2334,7 +2356,11 @@ function updateReceiveBadge(count) {
   }
 }
 
-// =========================== CEK ORDER NEW ============================
+/* ============================================================
+   4. CEK ORDER NEW (dengan deteksi perubahan biar ga spam suara)
+============================================================ */
+let lastCount = 0;
+
 async function cekOrderBaru() {
   try {
     const db = await initDB();
@@ -2346,14 +2372,21 @@ async function cekOrderBaru() {
 
     updateReceiveBadge(newCount);
 
-    if (newCount > 0) playNotifSound();
+    // Mainkan suara hanya ketika jumlah new bertambah
+    if (newCount > lastCount) {
+      playNotifSound();
+    }
+
+    lastCount = newCount;
 
   } catch (err) {
     console.error("❌ cekOrderBaru error:", err);
   }
 }
 
-// ===================== UBAH NEW → READ SAAT DIKLIK ====================
+/* ============================================================
+   5. UBAH NEW → READ KETIKA DIBUKA
+============================================================ */
 async function markOrdersAsRead() {
   try {
     const db = await initDB();
@@ -2362,32 +2395,29 @@ async function markOrdersAsRead() {
 
     const all = await idbGetAll(store);
 
-    all.forEach(o => {
+    for (const o of all) {
       if (o.status === "new") {
         o.status = "read";
         store.put(o);
       }
-    });
+    }
 
     updateReceiveBadge(0);
+    lastCount = 0;
 
   } catch (err) {
     console.error("❌ markOrdersAsRead error:", err);
   }
 }
 
+/* ============================================================
+   6. Pindah Halaman menerima pesanan
+============================================================ */
 function markViewedAndGo() {
   markOrdersAsRead();
-  window.location.href = "recieves.html";
+  window.location.href = "recieves.html"; // sesuai permintaan
 }
-
-// =========================== START ===================================
-document.addEventListener("DOMContentLoaded", () => {
-  cekOrderBaru();
-  // setInterval(cekOrderBaru, 3000); // OPSIONAL
-});
 </script>
 
 </body>
 </html>
-
