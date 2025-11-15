@@ -785,10 +785,10 @@ async function initDB() {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
 
-      // 🔥 Store baru untuk menampung order tamu
-      if (!db.objectStoreNames.contains("orders")) {
-        db.createObjectStore("orders", { keyPath: "id" });
-      }
+      // 🔥 Store order sesuai yang dipakai customer
+     if (!db.objectStoreNames.contains("ordersData")) {
+      db.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
+       }
 
       console.log("⚙️ onupgradeneeded selesai, store lengkap:", db.objectStoreNames);
     };
@@ -2300,7 +2300,7 @@ async function saveVoucher() {
   }
 }
 </script>
-  <script>
+<script>
 // =============== FUNGSI UPDATE BADGE ===============
 function updateReceiveBadge(count) {
   const badge = document.getElementById("receiveBadge");
@@ -2315,34 +2315,51 @@ function updateReceiveBadge(count) {
   }
 }
 
-// =============== CEK JUMLAH ORDER BARU ===============
+// =============== BACA ORDER DARI STORE YANG BENAR ===============
 async function cekOrderBaru() {
   try {
     const db = await initDB();
-    const tx = db.transaction("orders", "readonly");
-    const store = tx.objectStore("orders");
+    const tx = db.transaction("ordersData", "readonly"); // ✅ FIX
+    const store = tx.objectStore("ordersData");
 
-    const allOrders = await store.getAll();
+    const req = store.getAll();
 
-    const newOrders = allOrders.filter(o => o.status === "new").length;
+    req.onsuccess = () => {
+      const allOrders = req.result || [];
 
-    updateReceiveBadge(newOrders);
+      // Hitung yang masih aktif (status: "active")
+      const newOrders = allOrders.filter(o => o.status === "active").length;
+
+      updateReceiveBadge(newOrders);
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ Gagal membaca orders:", e.target.error);
+    };
 
   } catch (err) {
-    console.error("Error cek order baru:", err);
+    console.error("❌ Error cek order baru:", err);
   }
 }
 
 // =============== JALANKAN SAAT HALAMAN DIBUKA ===============
 document.addEventListener("DOMContentLoaded", () => {
   cekOrderBaru();
-
-  // OPTIONAL: auto-refresh setiap 10 detik
-  // setInterval(cekOrderBaru, 10000);
 });
-</script>
 
+// =============== REALTIME UPDATE LEWAT BROADCASTCHANNEL ===============
+try {
+  const bc = new BroadcastChannel("menuvaOrders");
+
+  bc.onmessage = (msg) => {
+    if (msg.data?.type === "newOrder") {
+      cekOrderBaru(); // 🔥 real-time update
+    }
+  };
+} catch (e) {
+  console.warn("⚠️ BroadcastChannel tidak support:", e);
+}
+</script>
 
 </body>
 </html>
-
