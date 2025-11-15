@@ -707,22 +707,16 @@ button {
   <button onclick="resetData()" class="btn-danger">🗑️ Reset Data</button>
 </div>
 
-<div class="nav-item">
-  <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none"
-       viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M17 16l4-4m0 0l-4-4m4 4H7"/>
-  </svg>
-  <div class="label">Logout</div>
-</div>
+<div class="fixed-bar">
+  <div class="nav-item" onclick="window.location.href='index.html'">
+    <ion-icon name="log-out-outline" class="icon"></ion-icon>
+    <div class="label">Logout</div>
+  </div>
 
-<div class="nav-item">
-  <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none"
-       viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M4 7v10a2 2 0 002 2h12a2 2 0 002-2V7m-16 0l2-3h12l2 3"/>
-  </svg>
-  <div class="label">Receives</div>
+  <div class="nav-item" onclick="window.location.href='recieves.html'">
+    <ion-icon name="cube-outline" class="icon"></ion-icon>
+    <div class="label">Receives</div>
+  </div>
 </div>
 
  <script>
@@ -2291,6 +2285,7 @@ async function saveVoucher() {
 
 </body>
 </html>
+
 
 
 
