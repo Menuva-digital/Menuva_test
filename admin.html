@@ -2319,10 +2319,9 @@ async function saveVoucher() {
 }
 </script>
 <script>
-// ======================= UPDATE BADGE =======================
+// ======================= FUNGSI UPDATE BADGE =======================
 function updateReceiveBadge(count) {
   const badge = document.getElementById("receiveBadge");
-
   if (!badge) return;
 
   if (count > 0) {
@@ -2333,22 +2332,25 @@ function updateReceiveBadge(count) {
   }
 }
 
-// ======================= CEK ORDER NEW =======================
+// ======================= CEK ORDER BARU =======================
 async function cekOrderBaru() {
   try {
     const db = await initDB();
-    const tx = db.transaction("orders", "readonly");
-    const store = tx.objectStore("orders");
+    const tx = db.transaction("ordersData", "readonly");
+    const store = tx.objectStore("ordersData");
 
     const allOrders = await store.getAll();
+
+    // cari order status "new"
     const newOrders = allOrders.filter(o => o.status === "new").length;
 
     updateReceiveBadge(newOrders);
 
-    // 🔔 mainkan suara kalau ada order NEW
+    // 🔔 mainkan suara jika ada order baru
     if (newOrders > 0) {
-      const snd = new Audio("beep.mp3");
-      snd.play().catch(() => {});
+      const audio = new Audio("beep.mp3");
+      audio.volume = 1.0;
+      audio.play().catch(() => {});
     }
 
   } catch (err) {
@@ -2356,21 +2358,20 @@ async function cekOrderBaru() {
   }
 }
 
-// ======================= HILANGKAN BADGE SAAT DIKLIK =======================
+// ======================= HAPUS BADGE SAAT TOMBOL DIKLIK =======================
 document.addEventListener("DOMContentLoaded", () => {
-  cekOrderBaru();
+  cekOrderBaru();      // cek saat halaman dibuka
+  setInterval(cekOrderBaru, 5000); // auto cek tiap 5 detik
 
-  const btn = document.getElementById("btnReceives");
-  if (btn) {
-    btn.addEventListener("click", async () => {
-
-      // update semua NEW → READ
+  // klik tombol Receives
+  const navItem = document.querySelector(".nav-item[onclick='markViewedAndGo()']");
+  if (navItem) {
+    navItem.addEventListener("click", async () => {
       const db = await initDB();
-      const tx = db.transaction("orders", "readwrite");
-      const store = tx.objectStore("orders");
+      const tx = db.transaction("ordersData", "readwrite");
+      const store = tx.objectStore("ordersData");
 
       const allOrders = await store.getAll();
-
       allOrders.forEach(o => {
         if (o.status === "new") {
           o.status = "read";
@@ -2378,7 +2379,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      updateReceiveBadge(0); // langsung hilangin badge
+      updateReceiveBadge(0); // langsung hilangkan badge
     });
   }
 });
@@ -2386,6 +2387,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
