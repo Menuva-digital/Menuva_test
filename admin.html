@@ -731,7 +731,10 @@ button {
   
 <script>
 function markViewedAndGo() {
+  // Catat waktu terakhir admin membuka receives
   localStorage.setItem("lastViewedOrderTime", Date.now());
+
+  // Setelah itu baru pindah halaman
   window.location.href = "recieves.html";
 }
 </script>
@@ -2342,20 +2345,24 @@ async function cekOrderBaru() {
     req.onsuccess = () => {
       const allOrders = req.result || [];
 
-      const lastViewed = Number(localStorage.getItem("lastViewedOrderTime") || 0);
-      
-      // Order yang lebih baru dari lastViewed
+      // Waktu terakhir admin melihat halaman receives
+      let lastViewed = Number(localStorage.getItem("lastViewedOrderTime") || 0);
+
+      // ⛔ PREVENT BUG
+      // Jika lastViewed = 0 (artinya belum pernah buka receives),
+      // kita set ke 1 Januari 2020 — jadi order pertama tetap muncul badge
+      if (!lastViewed) {
+        lastViewed = 1577836800000;
+      }
+
+      // Filter order yang masuk setelah lastViewed
       const newOrders = allOrders.filter(o => {
         const t = new Date(o.orderTime).getTime();
         return t > lastViewed;
       });
 
+      // Update badge
       updateReceiveBadge(newOrders.length);
-
-      // 🔥 Bunyi kalau ada order baru DAN sebelumnya badge belum ada
-      if (newOrders.length > 0) {
-        playSoundNotif();
-      }
     };
 
     req.onerror = (e) => {
@@ -2376,8 +2383,11 @@ try {
 
   bc.onmessage = (msg) => {
     if (msg.data?.type === "newOrder") {
-      playSoundNotif();   // 🔔 bunyi
-      cekOrderBaru();     // 🔄 update badge
+      // Bunyi notif
+      playSoundNotif();
+
+      // Update badge
+      cekOrderBaru();
     }
   };
 } catch (e) {
@@ -2386,4 +2396,5 @@ try {
 </script>
 </body>
 </html>
+
 
