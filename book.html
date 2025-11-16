@@ -1520,6 +1520,29 @@ body.dark-mode .promo-badge {
 
 })();
 </script>
+<script>
+// ===================== THEME MODE =====================
+function applyTheme() {
+    const saved = localStorage.getItem("themeMode") || "light";
+    document.documentElement.setAttribute("data-theme", saved);
+}
+
+// toggle theme
+function toggleTheme() {
+    const current = localStorage.getItem("themeMode") || "light";
+    const next = current === "light" ? "dark" : "light";
+    localStorage.setItem("themeMode", next);
+    applyTheme();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    applyTheme();
+    const btn = document.getElementById("themeToggleBtn");
+    if (btn) {
+        btn.addEventListener("click", toggleTheme);
+    }
+});
+</script>
 
 </body>
 </html>
