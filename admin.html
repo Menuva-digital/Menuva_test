@@ -2302,7 +2302,7 @@ async function saveVoucher() {
 </script>
 <script>
 /* ============================================================
-   1. PRELOAD + UNLOCK AUDIO (ANTI AUTOPLAY BLOCK)
+   1. PRELOAD + UNLOCK AUDIO
 ============================================================ */
 let notifAudio;
 
@@ -2310,7 +2310,7 @@ document.addEventListener("DOMContentLoaded", () => {
   notifAudio = new Audio("beep.mp3");
   notifAudio.load();
 
-  // Unlock audio ENOUGH sekali klik
+  // Unlock audio by click once
   const unlock = () => {
     notifAudio.play().then(() => {
       notifAudio.pause();
@@ -2320,21 +2320,20 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   document.body.addEventListener("click", unlock);
 
-  cekOrderBaru();
-  // setInterval(cekOrderBaru, 3000); // opsional
+  startRealtimeOrderChecker();   // <<<<<<<<<<<<<<<<< FIX PALING PENTING
 });
 
 /* ============================================================
-   2. PLAY SOUND
+   2. MAIN SOUND
 ============================================================ */
 function playNotifSound() {
   if (!notifAudio) return;
   notifAudio.currentTime = 0;
-  notifAudio.play().catch(err => console.warn("Sound blocked:", err));
+  notifAudio.play().catch(()=>{});
 }
 
 /* ============================================================
-   3. HELPERS
+   3. Helpers
 ============================================================ */
 function idbGetAll(store) {
   return new Promise((resolve, reject) => {
@@ -2357,7 +2356,7 @@ function updateReceiveBadge(count) {
 }
 
 /* ============================================================
-   4. CEK ORDER NEW (dengan deteksi perubahan biar ga spam suara)
+   4. REALTIME CHECK ORDERS
 ============================================================ */
 let lastCount = 0;
 
@@ -2372,7 +2371,7 @@ async function cekOrderBaru() {
 
     updateReceiveBadge(newCount);
 
-    // Mainkan suara hanya ketika jumlah new bertambah
+    // Bunyi hanya ketika jumlah new bertambah
     if (newCount > lastCount) {
       playNotifSound();
     }
@@ -2385,7 +2384,21 @@ async function cekOrderBaru() {
 }
 
 /* ============================================================
-   5. UBAH NEW → READ KETIKA DIBUKA
+   5. LOOP REALTIME (1 detik)
+============================================================ */
+let intervalStarted = false;
+
+function startRealtimeOrderChecker() {
+  if (intervalStarted) return;  // jaga jangan double
+  intervalStarted = true;
+
+  // Jalan tiap 1 detik (super ringan)
+  cekOrderBaru(); 
+  setInterval(cekOrderBaru, 1000);
+}
+
+/* ============================================================
+   6. Mark as read + go
 ============================================================ */
 async function markOrdersAsRead() {
   try {
@@ -2410,16 +2423,11 @@ async function markOrdersAsRead() {
   }
 }
 
-/* ============================================================
-   6. Pindah Halaman menerima pesanan
-============================================================ */
 function markViewedAndGo() {
   markOrdersAsRead();
-  window.location.href = "recieves.html"; // sesuai permintaan
+  window.location.href = "recieves.html";
 }
 </script>
 
 </body>
 </html>
-
-
