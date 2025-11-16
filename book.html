@@ -991,56 +991,87 @@ function loadCustomerForm() {
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
 
-/* ------------------ VOUCHER (with smooth fade) -------------------- */
-  function getActiveVoucherList() {
-  const raw = localStorage.getItem("voucher");
-  if (!raw) return [];
+/* ============================================================
+   FINAL FIX VOUCHER SYSTEM (BOOK.HTML)
+   Menghapus localStorage "voucher" → diganti IndexedDB
+   ============================================================ */
 
-  let list;
-  try {
-    list = JSON.parse(raw);
-  } catch {
-    return [];
-  }
+let voucherList = [];       // List voucher dari IndexedDB
+let activeVoucherData = null;
 
-  // Normalisasi → selalu array
-  return Array.isArray(list) ? list : [list];
+/* ---------------------------------------
+   1. Ambil voucher dari IndexedDB (ASYNC)
+---------------------------------------- */
+async function loadVoucherFromDB() {
+  return new Promise(resolve => {
+    const req = indexedDB.open("MenuvaDB", 1);
+
+    req.onerror = () => resolve([]);
+
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction("mainData", "readonly");
+      const store = tx.objectStore("mainData");
+      const getReq = store.get(1);
+
+      getReq.onsuccess = () => {
+        const data = getReq.result;
+        resolve(Array.isArray(data?.voucherList) ? data.voucherList : []);
+      };
+
+      getReq.onerror = () => resolve([]);
+    };
+  });
 }
 
+/* ---------------------------------------
+   2. REPLACE: getActiveVoucherList()
+---------------------------------------- */
+function getActiveVoucherList() {
+  return voucherList; // sekarang ambil dari IndexedDB, bukan localStorage
+}
+
+/* ---------------------------------------
+   3. REPLACE: findVoucher()
+---------------------------------------- */
 function findVoucher(codeInput) {
   const list = getActiveVoucherList();
   if (!codeInput) return null;
 
   const now = new Date();
-
-  return list.find(v =>
-    v.code &&
-    v.code.toLowerCase() === codeInput.toLowerCase() &&
-    new Date(v.expiry) >= now
-  ) || null;
+  return (
+    list.find(v =>
+      v.code &&
+      v.code.toLowerCase() === codeInput.toLowerCase() &&
+      new Date(v.expiry) >= now
+    ) || null
+  );
 }
 
+/* ---------------------------------------
+   4. REPLACE: applyVoucherAndUpdateSummary()
+---------------------------------------- */
 function applyVoucherAndUpdateSummary() {
-  const cartTotalEl = document.getElementById('cartTotal');
-  const grandTotalEl = document.getElementById('grandTotal');
-  const discountRow = document.getElementById('discountRow');
-  const voucherDiscountEl = document.getElementById('voucherDiscount');
-  const inputCode = (document.getElementById('voucherInput')?.value || '').trim();
+  const cartTotalEl = document.getElementById("cartTotal");
+  const grandTotalEl = document.getElementById("grandTotal");
+  const discountRow = document.getElementById("discountRow");
+  const voucherDiscountEl = document.getElementById("voucherDiscount");
+  const inputCode = (document.getElementById("voucherInput")?.value || "").trim();
 
   const rawTotal = cleanNumber(cartTotalEl.dataset.raw) || 0;
   let discount = 0;
 
   const voucher = findVoucher(inputCode);
-
   let voucherValid = false;
+
   if (voucher) {
     discount = rawTotal * (voucher.discount / 100);
     voucherValid = true;
     activeVoucherData = voucher;
-    showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${voucher.discount}%`, 'success');
+    showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${voucher.discount}%`, "success");
   } else if (inputCode) {
-    showToast('❌ Kode voucher salah atau kadaluarsa.', 'error');
     activeVoucherData = null;
+    showToast("❌ Kode voucher salah atau kadaluarsa.", "error");
   }
 
   const newTotal = Math.max(0, rawTotal - discount);
@@ -1051,37 +1082,40 @@ function applyVoucherAndUpdateSummary() {
 
   if (discountRow) {
     if (voucherValid && discount > 0) {
-      discountRow.style.display = 'flex';
-      discountRow.classList.add('fade-in');
-      discountRow.classList.remove('fade-out');
+      discountRow.style.display = "flex";
+      discountRow.classList.add("fade-in");
+      discountRow.classList.remove("fade-out");
     } else {
-      discountRow.classList.remove('fade-in');
-      discountRow.classList.add('fade-out');
-      setTimeout(() => (discountRow.style.display = 'none'), 300);
+      discountRow.classList.remove("fade-in");
+      discountRow.classList.add("fade-out");
+      setTimeout(() => (discountRow.style.display = "none"), 300);
     }
   }
 }
 
- function initVoucherInput(){
-  const voucherInput = document.getElementById('voucherInput');
-  const voucherMessage = document.getElementById('voucherMessage');
+/* ---------------------------------------
+   5. REPLACE: initVoucherInput()
+---------------------------------------- */
+function initVoucherInput() {
+  const voucherInput = document.getElementById("voucherInput");
+  const voucherMessage = document.getElementById("voucherMessage");
 
   if (!voucherInput || !voucherMessage) return;
 
-  const apply = ()=>{
+  const apply = () => {
     const code = voucherInput.value.trim();
     const voucher = findVoucher(code);
 
     if (voucher) {
       activeVoucherData = voucher;
       voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
-      voucherMessage.style.color = 'green';
+      voucherMessage.style.color = "green";
     } else if (code.length > 0) {
       activeVoucherData = null;
-      voucherMessage.textContent = '❌ Invalid voucher code';
-      voucherMessage.style.color = 'red';
+      voucherMessage.textContent = "❌ Invalid voucher code";
+      voucherMessage.style.color = "red";
     } else {
-      voucherMessage.textContent = '';
+      voucherMessage.textContent = "";
       activeVoucherData = null;
     }
 
@@ -1089,28 +1123,47 @@ function applyVoucherAndUpdateSummary() {
     saveVoucherToStorage();
   };
 
-  ['input','keyup','change','blur']
-    .forEach(evt=> voucherInput.addEventListener(evt, apply));
+  ["input", "keyup", "change", "blur"].forEach(evt =>
+    voucherInput.addEventListener(evt, apply)
+  );
 }
 
-  function saveVoucherToStorage() {
+/* ---------------------------------------
+   6. TIDAK DIUBAH: saveVoucherToStorage()
+---------------------------------------- */
+function saveVoucherToStorage() {
   if (!activeVoucherData) {
-    localStorage.removeItem('menuva_voucher');
+    localStorage.removeItem("menuva_voucher");
     return;
   }
-  localStorage.setItem('menuva_voucher', JSON.stringify(activeVoucherData));
+  localStorage.setItem("menuva_voucher", JSON.stringify(activeVoucherData));
 }
 
+/* ---------------------------------------
+   7. TIDAK DIUBAH: restoreVoucherFromStorage()
+---------------------------------------- */
 function restoreVoucherFromStorage() {
-  const saved = localStorage.getItem('menuva_voucher');
+  const saved = localStorage.getItem("menuva_voucher");
   if (!saved) return;
+
   try {
     activeVoucherData = JSON.parse(saved);
     applyVoucherAndUpdateSummary();
-  } catch(e) {
-    console.warn('Gagal load voucher:', e);
+  } catch (e) {
+    console.warn("Gagal load voucher:", e);
   }
 }
+
+/* ---------------------------------------
+   8. INIT – WAJIB DIPANGGIL SAAT PAGE LOAD
+---------------------------------------- */
+document.addEventListener("DOMContentLoaded", async () => {
+  voucherList = await loadVoucherFromDB();
+  console.log("📦 Voucher Loaded:", voucherList);
+  initVoucherInput();
+  restoreVoucherFromStorage();
+});
+
 
 
   /* ------------------ LOCALE UI ------------------------- */
@@ -1443,5 +1496,6 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
