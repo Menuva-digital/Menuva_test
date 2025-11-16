@@ -993,48 +993,32 @@ function loadCustomerForm() {
 
 let voucherList = []; 
 
-  async function loadVoucherFromDB() {
-  return new Promise(resolve => {
-    const req = indexedDB.open(DB_NAME);
+function loadVoucherFromDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("MenuvaDB", 1);
 
-    req.onerror = () => resolve([]);
+    request.onerror = () => reject("Tidak bisa membuka IndexedDB");
 
-    req.onsuccess = e => {
+    request.onsuccess = (e) => {
       const db = e.target.result;
-      const stores = db.objectStoreNames;
-      if (!stores.length) return resolve([]);
 
-      const collected = [];
+      const tx = db.transaction("voucher", "readonly");
+      const store = tx.objectStore("voucher");
 
-      let pending = stores.length;
+      const list = [];
 
-      stores.forEach(storeName => {
-        try {
-          const tx = db.transaction(storeName, "readonly");
-          const store = tx.objectStore(storeName);
-          const getAll = store.getAll();
-
-          getAll.onsuccess = () => {
-            const rows = getAll.result || [];
-
-            rows.forEach(r => {
-              if (!r) return;
-              if (Array.isArray(r.menuVoucher)) collected.push(...r.menuVoucher);
-              if (Array.isArray(r.voucherList)) collected.push(...r.voucherList);
-              if (Array.isArray(r.menu_voucher)) collected.push(...r.menu_voucher);
-            });
-
-            if (--pending === 0) resolve(collected);
-          };
-
-          getAll.onerror = () => {
-            if (--pending === 0) resolve(collected);
-          };
-
-        } catch (err) {
-          if (--pending === 0) resolve(collected);
+      const cursorReq = store.openCursor();
+      cursorReq.onerror = () => reject("Cursor gagal");
+      cursorReq.onsuccess = (ev) => {
+        const cursor = ev.target.result;
+        if (cursor) {
+          list.push(cursor.value);
+          cursor.continue();
+        } else {
+          console.log("📦 Voucher Loaded:", list);
+          resolve(list);
         }
-      });
+      };
     };
   });
 }
@@ -1092,28 +1076,19 @@ function getActiveVoucherList() {
 /* ---------------------------------------
    findVoucher (case-insensitive, robust expiry check)
 ---------------------------------------- */
-function findVoucher(codeInput) {
+async function findVoucher(codeInput) {
   if (!codeInput) return null;
-  const list = getActiveVoucherList();
-  if (!list.length) return null;
 
-  const low = codeInput.toString().trim().toLowerCase();
-  const now = Date.now();
+  const list = await ensureVoucherListLoaded();
+  const now = new Date();
 
-  return list.find(v => {
-    if (!v || !v.code) return false;
-
-    const vc = v.code.toString().trim().toLowerCase();
-
-    // cek expiry
-    let ok = true;
-    if (v.expiry) {
-      const exp = new Date(v.expiry).getTime();
-      if (!isNaN(exp)) ok = exp >= now;
-    }
-
-    return vc === low && ok;
-  }) || null;
+  return (
+    list.find(v =>
+      v.code &&
+      v.code.toLowerCase() === codeInput.toLowerCase() &&
+      new Date(v.expiry) >= now
+    ) || null
+  );
 }
 
 /* ---------------------------------------
@@ -1565,6 +1540,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
