@@ -990,64 +990,159 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-
-/* ============================================================
-   FINAL FIX VOUCHER SYSTEM (BOOK.HTML)
-   Menghapus localStorage "voucher" → diganti IndexedDB
+  /* ============================================================
+   ROBUST VOUCHER FIX (BOOK.HTML)
+   - Baca dari IndexedDB (cari di semua objectStore jika perlu)
+   - Fallback ke localStorage (menuVoucher / voucher / menuva_voucher)
+   - Normalisasi -> selalu array
    ============================================================ */
 
-let voucherList = [];       // List voucher dari IndexedDB
-/* ---------------------------------------
-   1. Ambil voucher dari IndexedDB (ASYNC)
----------------------------------------- */
+let voucherList = []; 
+if (typeof activeVoucherData === "undefined") {
+  var activeVoucherData = null;
+}
+
+/**
+ * Try to read the main record (id=1) from any objectStore in the DB.
+ * We'll try DB name from global DB_NAME if available, otherwise fallback to MenuvaDB.
+ */
 async function loadVoucherFromDB() {
   return new Promise(resolve => {
-    const req = indexedDB.open("MenuvaDB", 1);
+    const dbName = (typeof DB_NAME !== "undefined" && DB_NAME) ? DB_NAME : "MenuvaDB";
+    const req = indexedDB.open(dbName);
 
-    req.onerror = () => resolve([]);
+    req.onerror = () => {
+      // Can't open DB, fallback later
+      resolve([]);
+    };
 
     req.onsuccess = () => {
       const db = req.result;
-      const tx = db.transaction("mainData", "readonly");
-      const store = tx.objectStore("mainData");
-      const getReq = store.get(1);
+      // If no stores, return empty
+      if (!db.objectStoreNames || db.objectStoreNames.length === 0) {
+        resolve([]);
+        return;
+      }
 
-      getReq.onsuccess = () => {
-        const data = getReq.result;
-        resolve(Array.isArray(data?.voucherList) ? data.voucherList : []);
+      // helper to attempt to read id=1 from a store and check for voucher fields
+      const tryStore = (storeName) => {
+        return new Promise(res => {
+          try {
+            const tx = db.transaction(storeName, "readonly");
+            const store = tx.objectStore(storeName);
+            const g = store.get(1);
+            g.onsuccess = () => {
+              const row = g.result;
+              if (!row) return res(null);
+              // possible field names that store voucher arrays
+              if (Array.isArray(row.menuVoucher)) return res(row.menuVoucher);
+              if (Array.isArray(row.voucherList)) return res(row.voucherList);
+              if (Array.isArray(row.menu_voucher)) return res(row.menu_voucher);
+              // some admins might still save voucher in localStorage only
+              return res(null);
+            };
+            g.onerror = () => res(null);
+          } catch (err) {
+            res(null);
+          }
+        });
       };
 
-      getReq.onerror = () => resolve([]);
+      (async () => {
+        for (let i = 0; i < db.objectStoreNames.length; i++) {
+          const storeName = db.objectStoreNames[i];
+          /* eslint-disable no-await-in-loop */
+          const found = await tryStore(storeName);
+          if (Array.isArray(found) && found.length > 0) {
+            resolve(found);
+            return;
+          }
+        }
+        // Nothing found in any store
+        resolve([]);
+      })();
     };
   });
 }
 
+/**
+ * Fallback: try to read from localStorage keys commonly used.
+ * Normalize to array.
+ */
+function loadVoucherFromLocalStorageFallback() {
+  const keys = ["menuVoucher", "voucher", "menuva_voucher"];
+  for (const k of keys) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      // sometimes it's a single object
+      if (parsed && typeof parsed === "object") return [parsed];
+    } catch (e) {
+      // ignore parse errors and continue
+      continue;
+    }
+  }
+  return [];
+}
+
+/**
+ * Public helper used by book.html logic: ensures voucherList is loaded
+ * (tries DB first, then localStorage fallback).
+ */
+async function ensureVoucherListLoaded() {
+  if (Array.isArray(voucherList) && voucherList.length > 0) return voucherList;
+  try {
+    const fromDB = await loadVoucherFromDB();
+    if (Array.isArray(fromDB) && fromDB.length > 0) {
+      voucherList = fromDB;
+      console.log("📦 Voucher loaded (from IndexedDB):", voucherList);
+      return voucherList;
+    }
+  } catch (e) {
+    console.warn("⚠️ loadVoucherFromDB failed:", e);
+  }
+
+  // fallback to localStorage
+  const fromLS = loadVoucherFromLocalStorageFallback();
+  voucherList = Array.isArray(fromLS) ? fromLS : [];
+  console.log("📦 Voucher loaded (from localStorage fallback):", voucherList);
+  return voucherList;
+}
+
 /* ---------------------------------------
-   2. REPLACE: getActiveVoucherList()
+   getActiveVoucherList() - synchronous API used elsewhere
+   It returns current voucherList (may be empty). Make sure ensureVoucherListLoaded() called on init.
 ---------------------------------------- */
 function getActiveVoucherList() {
-  return voucherList; // sekarang ambil dari IndexedDB, bukan localStorage
+  return Array.isArray(voucherList) ? voucherList : [];
 }
 
 /* ---------------------------------------
-   3. REPLACE: findVoucher()
+   findVoucher (case-insensitive, robust expiry check)
 ---------------------------------------- */
 function findVoucher(codeInput) {
-  const list = getActiveVoucherList();
   if (!codeInput) return null;
+  const list = getActiveVoucherList();
+  if (!Array.isArray(list) || list.length === 0) return null;
 
   const now = new Date();
-  return (
-    list.find(v =>
-      v.code &&
-      v.code.toLowerCase() === codeInput.toLowerCase() &&
-      new Date(v.expiry) >= now
-    ) || null
-  );
+  // tolerate different expiry formats, try to parse safely
+  return list.find(v => {
+    if (!v || !v.code) return false;
+    try {
+      const expiry = v.expiry ? new Date(v.expiry) : null;
+      const validExpiry = expiry instanceof Date && !isNaN(expiry.getTime()) ? expiry >= now : true;
+      return v.code.toString().toLowerCase() === codeInput.toString().toLowerCase() && validExpiry;
+    } catch {
+      return v.code.toString().toLowerCase() === codeInput.toString().toLowerCase();
+    }
+  }) || null;
 }
 
 /* ---------------------------------------
-   4. REPLACE: applyVoucherAndUpdateSummary()
+   applyVoucherAndUpdateSummary (keperluan UI)
 ---------------------------------------- */
 function applyVoucherAndUpdateSummary() {
   const cartTotalEl = document.getElementById("cartTotal");
@@ -1056,27 +1151,28 @@ function applyVoucherAndUpdateSummary() {
   const voucherDiscountEl = document.getElementById("voucherDiscount");
   const inputCode = (document.getElementById("voucherInput")?.value || "").trim();
 
-  const rawTotal = cleanNumber(cartTotalEl.dataset.raw) || 0;
+  const rawTotal = (cartTotalEl && cartTotalEl.dataset && cleanNumber(cartTotalEl.dataset.raw)) ? cleanNumber(cartTotalEl.dataset.raw) : 0;
   let discount = 0;
 
   const voucher = findVoucher(inputCode);
   let voucherValid = false;
 
   if (voucher) {
-    discount = rawTotal * (voucher.discount / 100);
+    const pct = Number(voucher.discount) || 0;
+    discount = rawTotal * (pct / 100);
     voucherValid = true;
     activeVoucherData = voucher;
-    showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${voucher.discount}%`, "success");
+    try { showToast && showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${pct}%`, "success"); } catch(e){/* ignore */ }
   } else if (inputCode) {
     activeVoucherData = null;
-    showToast("❌ Kode voucher salah atau kadaluarsa.", "error");
+    try { showToast && showToast("❌ Kode voucher salah atau kadaluarsa.", "error"); } catch(e){/* ignore */ }
   }
 
   const newTotal = Math.max(0, rawTotal - discount);
 
-  cartTotalEl.textContent = formatWithActive(rawTotal);
-  voucherDiscountEl.textContent = formatWithActive(discount);
-  grandTotalEl.textContent = formatWithActive(newTotal);
+  if (cartTotalEl) cartTotalEl.textContent = formatWithActive ? formatWithActive(rawTotal) : rawTotal;
+  if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive ? formatWithActive(discount) : discount;
+  if (grandTotalEl) grandTotalEl.textContent = formatWithActive ? formatWithActive(newTotal) : newTotal;
 
   if (discountRow) {
     if (voucherValid && discount > 0) {
@@ -1092,13 +1188,13 @@ function applyVoucherAndUpdateSummary() {
 }
 
 /* ---------------------------------------
-   5. REPLACE: initVoucherInput()
+   initVoucherInput - attach handlers
 ---------------------------------------- */
 function initVoucherInput() {
   const voucherInput = document.getElementById("voucherInput");
   const voucherMessage = document.getElementById("voucherMessage");
 
-  if (!voucherInput || !voucherMessage) return;
+  if (!voucherInput) return;
 
   const apply = () => {
     const code = voucherInput.value.trim();
@@ -1106,28 +1202,30 @@ function initVoucherInput() {
 
     if (voucher) {
       activeVoucherData = voucher;
-      voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
-      voucherMessage.style.color = "green";
+      if (voucherMessage) {
+        voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
+        voucherMessage.style.color = "green";
+      }
     } else if (code.length > 0) {
       activeVoucherData = null;
-      voucherMessage.textContent = "❌ Invalid voucher code";
-      voucherMessage.style.color = "red";
+      if (voucherMessage) {
+        voucherMessage.textContent = "❌ Invalid voucher code";
+        voucherMessage.style.color = "red";
+      }
     } else {
-      voucherMessage.textContent = "";
       activeVoucherData = null;
+      if (voucherMessage) voucherMessage.textContent = "";
     }
 
     applyVoucherAndUpdateSummary();
     saveVoucherToStorage();
   };
 
-  ["input", "keyup", "change", "blur"].forEach(evt =>
-    voucherInput.addEventListener(evt, apply)
-  );
+  ["input", "keyup", "change", "blur"].forEach(evt => voucherInput.addEventListener(evt, apply));
 }
 
 /* ---------------------------------------
-   6. TIDAK DIUBAH: saveVoucherToStorage()
+   keep save/restore local active voucher (optional)
 ---------------------------------------- */
 function saveVoucherToStorage() {
   if (!activeVoucherData) {
@@ -1137,13 +1235,9 @@ function saveVoucherToStorage() {
   localStorage.setItem("menuva_voucher", JSON.stringify(activeVoucherData));
 }
 
-/* ---------------------------------------
-   7. TIDAK DIUBAH: restoreVoucherFromStorage()
----------------------------------------- */
 function restoreVoucherFromStorage() {
   const saved = localStorage.getItem("menuva_voucher");
   if (!saved) return;
-
   try {
     activeVoucherData = JSON.parse(saved);
     applyVoucherAndUpdateSummary();
@@ -1153,16 +1247,17 @@ function restoreVoucherFromStorage() {
 }
 
 /* ---------------------------------------
-   8. INIT – WAJIB DIPANGGIL SAAT PAGE LOAD
+   INIT: wajib dipanggil di DOMContentLoaded
 ---------------------------------------- */
 document.addEventListener("DOMContentLoaded", async () => {
-  voucherList = await loadVoucherFromDB();
-  console.log("📦 Voucher Loaded:", voucherList);
+  try {
+    await ensureVoucherListLoaded(); // load from IDB or fallback to LS
+  } catch (e) {
+    console.warn("Voucher init err:", e);
+  }
   initVoucherInput();
   restoreVoucherFromStorage();
 });
-
-
 
   /* ------------------ LOCALE UI ------------------------- */
   function initLocaleSelect(){
@@ -1494,6 +1589,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
