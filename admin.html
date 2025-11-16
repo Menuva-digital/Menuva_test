@@ -840,68 +840,72 @@ async function getDB() {
   });
 }
 
-// ====================== SAVE DATA SUPER DEBUG VERSION ======================
-async function saveDataToDB(data) {
-  if (!data || typeof data !== "object") throw new Error("Invalid data");
-
-  const recordId = 1;
-  const record = { id: recordId, ...data };
-
-  console.group("💾 [SAVE DEBUG] saveDataToDB() DIPANGGIL");
-  console.log("➡️ Data MASUK untuk disimpan:", JSON.parse(JSON.stringify(record)));
-
+async function saveDataToDB(id, newData) {
+  console.groupCollapsed("💾 [TRACE] saveDataToDB()");
   const db = await getDB();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.objectStore(STORE_NAME);
 
   return new Promise((resolve, reject) => {
-    const txCheck = db.transaction(STORE_NAME, "readonly");
-    const storeCheck = txCheck.objectStore(STORE_NAME);
-    const checkReq = storeCheck.get(recordId);
+    const checkReq = store.get(id);
 
     checkReq.onsuccess = () => {
-      console.log("📂 Isi DB SEBELUM SAVE:", JSON.parse(JSON.stringify(checkReq.result)));
+      let oldData = checkReq.result;
 
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-
-      console.log("💽 Menyimpan data ke DB...");
-
-      if (!Array.isArray(record.menuVoucher)) {
-      console.warn("⚠️ menuVoucher tidak ditemukan saat save — dibuat array kosong agar tidak hilang.");
-      record.menuVoucher = [];
+      // ==========================
+      // 1️⃣ FIX ANTI ERROR JSON.parse(NULL)
+      // ==========================
+      if (!oldData || typeof oldData !== "object") {
+        console.warn("⚠️ DB kosong → pakai default");
+        oldData = buatDataDefault(id);
       }
-      
-      const req = store.put(record);
 
-      req.onsuccess = () => {
-        console.log("✅ DB BERHASIL DISIMPAN");
-
-        // Load lagi setelah save untuk cek apakah ketimpa
-        const txAfter = db.transaction(STORE_NAME, "readonly");
-        const storeAfter = txAfter.objectStore(STORE_NAME);
-        const afterReq = storeAfter.get(recordId);
-
-        afterReq.onsuccess = () => {
-          console.log("📦 Isi DB SETELAH SAVE:", JSON.parse(JSON.stringify(afterReq.result)));
-          console.groupEnd();
-          resolve(record);
-        };
-
-        afterReq.onerror = () => {
-          console.error("❌ Gagal membaca ulang DB setelah save");
-          console.groupEnd();
-          resolve(record);
-        };
+      // ==========================
+      // 2️⃣ MERGE DATA BARU + LAMA
+      // ==========================
+      const finalData = {
+        ...oldData,
+        ...newData,
       };
 
-      req.onerror = (e) => {
-        console.error("❌ ERROR saat save:", e.target.error);
+      // ==========================
+      // 3️⃣ FIX: PASTIKAN SEMUA FIELD YANG WAJIB ADA TIDAK HILANG
+      // ==========================
+      finalData.menuPromo = Array.isArray(finalData.menuPromo) ? finalData.menuPromo : [];
+      finalData.menuVoucher = Array.isArray(finalData.menuVoucher) ? finalData.menuVoucher : [];
+      finalData.rooms = Array.isArray(finalData.rooms) ? finalData.rooms : [];
+
+      // FLIPBOOK ANTI HILANG
+      finalData.flipbookRuanganImages = Array.isArray(finalData.flipbookRuanganImages)
+        ? finalData.flipbookRuanganImages
+        : [];
+
+      finalData.flipbookMenuImages = Array.isArray(finalData.flipbookMenuImages)
+        ? finalData.flipbookMenuImages
+        : [];
+
+      // ==========================
+      // 4️⃣ SIMPAN AMAN KE DB
+      // ==========================
+      const saveReq = store.put(finalData);
+
+      saveReq.onsuccess = () => {
+        console.log("✅ Data tersimpan:", finalData);
+        console.groupEnd();
+        resolve(finalData);
+      };
+
+      saveReq.onerror = (e) => {
+        console.error("❌ Gagal simpan DB:", e.target.error);
         console.groupEnd();
         reject(e.target.error);
       };
     };
 
-    checkReq.onerror = () => {
-      console.warn("⚠️ Tidak bisa membaca data DB sebelum save");
+    checkReq.onerror = (e) => {
+      console.error("❌ Gagal load data lama:", e.target.error);
+      console.groupEnd();
+      reject(e.target.error);
     };
   });
 }
@@ -2444,5 +2448,6 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
