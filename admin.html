@@ -756,23 +756,11 @@ if (!window.indexedDB) {
   };
 }
 
-let dbPromise = null; // 🔒 lock promise untuk mencegah race condition
+let dbPromise = null;
 
 async function initDB() {
-  if (dbInstance) {
-    // console.log("♻️ [DEBUG] Reuse DB instance:", DB_NAME);
-    return dbInstance;
-  }
-
-  // Jika sedang dalam proses membuka DB, tunggu promise yang sama
-  if (dbPromise) {
-    console.log("⏳ [DEBUG] initDB sedang dibuka, tunggu...");
-    return dbPromise;
-  }
-
-  console.groupCollapsed("🟢 [DEBUG] initDB() dipanggil");
-  console.trace("📍 Asal pemanggilan initDB()");
-  console.groupEnd();
+  if (dbInstance) return dbInstance;
+  if (dbPromise) return dbPromise;
 
   dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -780,30 +768,27 @@ async function initDB() {
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
 
-      // Store utama (sebelumnya sudah ada)
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
 
-      // 🔥 Store order sesuai yang dipakai customer
-     if (!db.objectStoreNames.contains("ordersData")) {
-      db.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
-       }
-
-      console.log("⚙️ onupgradeneeded selesai, store lengkap:", db.objectStoreNames);
+      if (!db.objectStoreNames.contains("ordersData")) {
+        db.createObjectStore("ordersData", {
+          keyPath: "id",
+          autoIncrement: true
+        });
+      }
     };
 
     request.onsuccess = (e) => {
-      console.log("✅ [DEBUG] initDB sukses:", DB_NAME);
       dbInstance = e.target.result;
+      dbPromise = null;
       resolve(dbInstance);
-      dbPromise = null; // reset lock
     };
 
     request.onerror = (e) => {
-      console.error("❌ [DEBUG] initDB gagal:", e.target.error);
+      dbPromise = null;
       reject(e.target.error);
-      dbPromise = null; // reset lock meski gagal
     };
   });
 
@@ -811,37 +796,17 @@ async function initDB() {
 }
 
 async function getDB() {
-  // console.log("🟢 [DEBUG] getDB() dipanggil...");
-  if (dbInstance) {
-    console.log("✅ [DEBUG] getDB pakai instance lama");
-    return dbInstance;
-  }
-
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        console.log("🧱 [DEBUG] Membuat store baru:", STORE_NAME);
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-
-    req.onsuccess = (e) => {
-      dbInstance = e.target.result;
-      // console.log("✅ [DEBUG] getDB sukses:", dbInstance.name);
-      resolve(dbInstance);
-    };
-
-    req.onerror = (e) => {
-      console.error("❌ [DEBUG] getDB gagal:", e.target.error);
-      reject(e.target.error);
-    };
-  });
+  if (dbInstance) return dbInstance;
+  return await initDB();
 }
 
 async function saveDataToDB(id, newData) {
   console.groupCollapsed("💾 [TRACE] saveDataToDB()");
+
+  // Pastikan ID valid dan number
+  id = Number(id);
+  if (!id || isNaN(id)) id = 1;
+
   const db = await getDB();
   const tx = db.transaction(STORE_NAME, "readwrite");
   const store = tx.objectStore(STORE_NAME);
@@ -852,41 +817,25 @@ async function saveDataToDB(id, newData) {
     checkReq.onsuccess = () => {
       let oldData = checkReq.result;
 
-      // ==========================
-      // 1️⃣ FIX ANTI ERROR JSON.parse(NULL)
-      // ==========================
       if (!oldData || typeof oldData !== "object") {
-        console.warn("⚠️ DB kosong → pakai default");
+        console.warn("⚠️ DB kosong → generate default");
         oldData = buatDataDefault(id);
       }
 
-      // ==========================
-      // 2️⃣ MERGE DATA BARU + LAMA
-      // ==========================
+      // MERGE AMAN
       const finalData = {
         ...oldData,
         ...newData,
       };
 
-      // ==========================
-      // 3️⃣ FIX: PASTIKAN SEMUA FIELD YANG WAJIB ADA TIDAK HILANG
-      // ==========================
+      // Field critical anti-hilang
       finalData.menuPromo = Array.isArray(finalData.menuPromo) ? finalData.menuPromo : [];
       finalData.menuVoucher = Array.isArray(finalData.menuVoucher) ? finalData.menuVoucher : [];
       finalData.rooms = Array.isArray(finalData.rooms) ? finalData.rooms : [];
+      finalData.flipbookRuanganImages = Array.isArray(finalData.flipbookRuanganImages) ? finalData.flipbookRuanganImages : [];
+      finalData.flipbookMenuImages = Array.isArray(finalData.flipbookMenuImages) ? finalData.flipbookMenuImages : [];
 
-      // FLIPBOOK ANTI HILANG
-      finalData.flipbookRuanganImages = Array.isArray(finalData.flipbookRuanganImages)
-        ? finalData.flipbookRuanganImages
-        : [];
-
-      finalData.flipbookMenuImages = Array.isArray(finalData.flipbookMenuImages)
-        ? finalData.flipbookMenuImages
-        : [];
-
-      // ==========================
-      // 4️⃣ SIMPAN AMAN KE DB
-      // ==========================
+      // SIMPAN
       const saveReq = store.put(finalData);
 
       saveReq.onsuccess = () => {
@@ -1744,6 +1693,7 @@ function restoreDataFromFile(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
+
   reader.onload = async (e) => {
     try {
       let json = JSON.parse(e.target.result);
@@ -1760,22 +1710,34 @@ function restoreDataFromFile(event) {
 
       // ensure restoId: prefer restoPhone, else nama slug, else timestamp
       if (!json.restoId) {
-        json.restoId = json.restoPhone || (json.namaRestoran ? slugify(json.namaRestoran) : ("resto" + Date.now()));
+        json.restoId =
+          json.restoPhone ||
+          (json.namaRestoran ? slugify(json.namaRestoran) : ("resto" + Date.now()));
       }
-      // also ensure restoPhone exists
+
       if (!json.restoPhone) json.restoPhone = json.restoId;
 
-      await saveDataToDB(json);
+      // ============== FIX UTAMA ==============
+      let idResto = 1;
+      if (typeof json.id === "number") idResto = json.id;
+      else if (typeof json.restoId === "number") idResto = json.restoId;
+      idResto = Number(idResto) || 1;
+      // ========================================
+
+      await saveDataToDB(idResto, json);
 
       alert("✅ Data restored successfully! Reloading...");
       location.reload();
+
     } catch (err) {
       console.error("❌ Restore failed:", err);
       alert("❌ Failed to restore JSON file. Lihat console untuk detail.");
     }
   };
+
   reader.readAsText(file);
 }
+
 // ====================== Links / QR helpers ======================
 function generateDynamicLink(baseUrl, data) {
   try {
@@ -2448,6 +2410,7 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
 
