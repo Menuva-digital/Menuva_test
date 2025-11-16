@@ -997,7 +997,10 @@ function loadCustomerForm() {
    ============================================================ */
 
 let voucherList = [];       // List voucher dari IndexedDB
-let activeVoucherData = null;
+
+  if (typeof activeVoucherData === "undefined") {
+    var activeVoucherData = null;
+}
 
 /* ---------------------------------------
    1. Ambil voucher dari IndexedDB (ASYNC)
@@ -1496,6 +1499,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
