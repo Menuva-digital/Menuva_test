@@ -990,210 +990,78 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
+// ============================================================
+//  VOUCHER FIX FINAL — sesuai DB admin.html
+// ============================================================
 
-let voucherList = []; 
+let cachedVoucherList = null;
 
-function loadVoucherFromDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("MenuvaDB", 1);
-
-    request.onerror = () => reject("Tidak bisa membuka IndexedDB");
-
-    request.onsuccess = (e) => {
-      const db = e.target.result;
-
-      const tx = db.transaction("voucher", "readonly");
-      const store = tx.objectStore("voucher");
-
-      const list = [];
-
-      const cursorReq = store.openCursor();
-      cursorReq.onerror = () => reject("Cursor gagal");
-      cursorReq.onsuccess = (ev) => {
-        const cursor = ev.target.result;
-        if (cursor) {
-          list.push(cursor.value);
-          cursor.continue();
-        } else {
-          console.log("📦 Voucher Loaded:", list);
-          resolve(list);
-        }
-      };
-    };
-  });
-}
-
-function loadVoucherFromLocalStorageFallback() {
-  const keys = ["menuVoucher", "voucher", "menuva_voucher"];
-  for (const k of keys) {
-    try {
-      const raw = localStorage.getItem(k);
-      if (!raw) continue;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      // sometimes it's a single object
-      if (parsed && typeof parsed === "object") return [parsed];
-    } catch (e) {
-      // ignore parse errors and continue
-      continue;
-    }
-  }
-  return [];
-}
-
-/**
- * Public helper used by book.html logic: ensures voucherList is loaded
- * (tries DB first, then localStorage fallback).
- */
-async function ensureVoucherListLoaded() {
-  if (Array.isArray(voucherList) && voucherList.length > 0) return voucherList;
+// Load voucher langsung dari store "menuvaData", id=1
+async function loadVoucherList() {
   try {
-    const fromDB = await loadVoucherFromDB();
-    if (Array.isArray(fromDB) && fromDB.length > 0) {
-      voucherList = fromDB;
-      console.log("📦 Voucher loaded (from IndexedDB):", voucherList);
-      return voucherList;
-    }
-  } catch (e) {
-    console.warn("⚠️ loadVoucherFromDB failed:", e);
-  }
+    const db = await getDB();
+    const tx = db.transaction("menuvaData", "readonly");
+    const store = tx.objectStore("menuvaData");
 
-  // fallback to localStorage
-  const fromLS = loadVoucherFromLocalStorageFallback();
-  voucherList = Array.isArray(fromLS) ? fromLS : [];
-  console.log("📦 Voucher loaded (from localStorage fallback):", voucherList);
-  return voucherList;
-}
+    return new Promise((resolve, reject) => {
+      const req = store.get(1);
 
-/* ---------------------------------------
-   getActiveVoucherList() - synchronous API used elsewhere
-   It returns current voucherList (may be empty). Make sure ensureVoucherListLoaded() called on init.
----------------------------------------- */
-function getActiveVoucherList() {
-  return Array.isArray(voucherList) ? voucherList : [];
-}
+      req.onsuccess = () => {
+        const data = req.result;
 
-/* ---------------------------------------
-   findVoucher (case-insensitive, robust expiry check)
----------------------------------------- */
-async function findVoucher(codeInput) {
-  if (!codeInput) return null;
+        if (!data || !Array.isArray(data.menuVoucher)) {
+          console.warn("⚠️ Tidak ada menuVoucher di DB → pakai []");
+          resolve([]);
+          return;
+        }
 
-  const list = await ensureVoucherListLoaded();
-  const now = new Date();
+        console.log("📦 Voucher loaded from IndexedDB:", data.menuVoucher);
+        resolve(data.menuVoucher);
+      };
 
-  return (
-    list.find(v =>
-      v.code &&
-      v.code.toLowerCase() === codeInput.toLowerCase() &&
-      new Date(v.expiry) >= now
-    ) || null
-  );
-}
-
-/* ---------------------------------------
-   applyVoucherAndUpdateSummary (keperluan UI)
----------------------------------------- */
-function applyVoucherAndUpdateSummary() {
-  const cartTotalEl = document.getElementById("cartTotal");
-  const grandTotalEl = document.getElementById("grandTotal");
-  const discountRow = document.getElementById("discountRow");
-  const voucherDiscountEl = document.getElementById("voucherDiscount");
-  const inputCode = (document.getElementById("voucherInput")?.value || "").trim();
-
-  const rawTotal = (cartTotalEl && cartTotalEl.dataset && cleanNumber(cartTotalEl.dataset.raw)) ? cleanNumber(cartTotalEl.dataset.raw) : 0;
-  let discount = 0;
-
-  const voucher = activeVoucherData || findVoucher(inputCode);
-  let voucherValid = false;
-
-  if (voucher) {
-    const pct = Number(voucher.discount) || 0;
-    discount = rawTotal * (pct / 100);
-    voucherValid = true;
-    activeVoucherData = voucher;
-    try { showToast && showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${pct}%`, "success"); } catch(e){/* ignore */ }
-  } else if (inputCode) {
-    activeVoucherData = null;
-    try { showToast && showToast("❌ Kode voucher salah atau kadaluarsa.", "error"); } catch(e){/* ignore */ }
-  }
-
-  const newTotal = Math.max(0, rawTotal - discount);
-
-  if (cartTotalEl) cartTotalEl.textContent = formatWithActive ? formatWithActive(rawTotal) : rawTotal;
-  if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive ? formatWithActive(discount) : discount;
-  if (grandTotalEl) grandTotalEl.textContent = formatWithActive ? formatWithActive(newTotal) : newTotal;
-
-  if (discountRow) {
-    if (voucherValid && discount > 0) {
-      discountRow.style.display = "flex";
-      discountRow.classList.add("fade-in");
-      discountRow.classList.remove("fade-out");
-    } else {
-      discountRow.classList.remove("fade-in");
-      discountRow.classList.add("fade-out");
-      setTimeout(() => (discountRow.style.display = "none"), 300);
-    }
+      req.onerror = () => {
+        console.error("❌ Gagal load voucher dari IndexedDB");
+        resolve([]); // fallback aman
+      };
+    });
+  } catch (err) {
+    console.error("❌ IndexedDB error:", err);
+    return [];
   }
 }
 
-/* ---------------------------------------
-   initVoucherInput - attach handlers
----------------------------------------- */
-function initVoucherInput() {
-  const voucherInput = document.getElementById("voucherInput");
-  const voucherMessage = document.getElementById("voucherMessage");
+// Pastikan voucher sudah di-cache
+async function ensureVoucherLoaded() {
+  if (cachedVoucherList) return cachedVoucherList;
 
-  if (!voucherInput) return;
+  cachedVoucherList = await loadVoucherList();
 
-  const apply = () => {
-    const code = voucherInput.value.trim();
-    const voucher = findVoucher(code);
+  console.log("📦 Voucher list cached:", cachedVoucherList);
 
-    if (voucher) {
-      activeVoucherData = voucher;
-      if (voucherMessage) {
-        voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
-        voucherMessage.style.color = "green";
-      }
-    } else if (code.length > 0) {
-      activeVoucherData = null;
-      if (voucherMessage) {
-        voucherMessage.textContent = "❌ Invalid voucher code";
-        voucherMessage.style.color = "red";
-      }
-    } else {
-      activeVoucherData = null;
-      if (voucherMessage) voucherMessage.textContent = "";
-    }
-
-    applyVoucherAndUpdateSummary();
-    saveVoucherToStorage();
-  };
-
-  ["input", "keyup", "change", "blur"].forEach(evt => voucherInput.addEventListener(evt, apply));
+  return cachedVoucherList;
 }
 
-/* ---------------------------------------
-   keep save/restore local active voucher (optional)
----------------------------------------- */
-function saveVoucherToStorage() {
-  if (!activeVoucherData) {
-    localStorage.removeItem("menuva_voucher");
+// Cari voucher berdasarkan code
+async function findVoucher(code) {
+  const list = await ensureVoucherLoaded();
+
+  return list.find(v => v.kodeVoucher === code.toUpperCase()) || null;
+}
+
+// Apply voucher
+async function applyVoucher() {
+  const code = document.getElementById("voucherInput").value.trim().toUpperCase();
+  if (!code) return alert("Masukkan kode voucher!");
+
+  const v = await findVoucher(code);
+
+  if (!v) {
+    alert("❌ Invalid voucher code");
     return;
   }
-  localStorage.setItem("menuva_voucher", JSON.stringify(activeVoucherData));
-}
 
-function restoreVoucherFromStorage() {
-  const saved = localStorage.getItem("menuva_voucher");
-  if (!saved) return;
-  try {
-    activeVoucherData = JSON.parse(saved);
-    applyVoucherAndUpdateSummary();
-  } catch (e) {
-    console.warn("Gagal load voucher:", e);
-  }
+  console.log("🎉 Voucher applied:", v);
+  alert(`Voucher berhasil! Diskon: ${v.discount}%`);
 }
 
 /* ---------------------------------------
@@ -1540,6 +1408,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
