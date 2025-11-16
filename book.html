@@ -992,9 +992,6 @@ function loadCustomerForm() {
 
 
 let voucherList = []; 
-if (typeof activeVoucherData === "undefined") {
-  var activeVoucherData = null;
-}
 
   async function loadVoucherFromDB() {
   return new Promise(resolve => {
@@ -1568,5 +1565,6 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
