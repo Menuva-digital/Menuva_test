@@ -990,85 +990,58 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-  /* ============================================================
-   ROBUST VOUCHER FIX (BOOK.HTML)
-   - Baca dari IndexedDB (cari di semua objectStore jika perlu)
-   - Fallback ke localStorage (menuVoucher / voucher / menuva_voucher)
-   - Normalisasi -> selalu array
-   ============================================================ */
 
 let voucherList = []; 
 if (typeof activeVoucherData === "undefined") {
   var activeVoucherData = null;
 }
 
-/**
- * Try to read the main record (id=1) from any objectStore in the DB.
- * We'll try DB name from global DB_NAME if available, otherwise fallback to MenuvaDB.
- */
-async function loadVoucherFromDB() {
+  async function loadVoucherFromDB() {
   return new Promise(resolve => {
-    const dbName = (typeof DB_NAME !== "undefined" && DB_NAME) ? DB_NAME : "MenuvaDB";
-    const req = indexedDB.open(dbName);
+    const req = indexedDB.open(DB_NAME);
 
-    req.onerror = () => {
-      // Can't open DB, fallback later
-      resolve([]);
-    };
+    req.onerror = () => resolve([]);
 
-    req.onsuccess = () => {
-      const db = req.result;
-      // If no stores, return empty
-      if (!db.objectStoreNames || db.objectStoreNames.length === 0) {
-        resolve([]);
-        return;
-      }
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const stores = db.objectStoreNames;
+      if (!stores.length) return resolve([]);
 
-      // helper to attempt to read id=1 from a store and check for voucher fields
-      const tryStore = (storeName) => {
-        return new Promise(res => {
-          try {
-            const tx = db.transaction(storeName, "readonly");
-            const store = tx.objectStore(storeName);
-            const g = store.get(1);
-            g.onsuccess = () => {
-              const row = g.result;
-              if (!row) return res(null);
-              // possible field names that store voucher arrays
-              if (Array.isArray(row.menuVoucher)) return res(row.menuVoucher);
-              if (Array.isArray(row.voucherList)) return res(row.voucherList);
-              if (Array.isArray(row.menu_voucher)) return res(row.menu_voucher);
-              // some admins might still save voucher in localStorage only
-              return res(null);
-            };
-            g.onerror = () => res(null);
-          } catch (err) {
-            res(null);
-          }
-        });
-      };
+      const collected = [];
 
-      (async () => {
-        for (let i = 0; i < db.objectStoreNames.length; i++) {
-          const storeName = db.objectStoreNames[i];
-          /* eslint-disable no-await-in-loop */
-          const found = await tryStore(storeName);
-          if (Array.isArray(found) && found.length > 0) {
-            resolve(found);
-            return;
-          }
+      let pending = stores.length;
+
+      stores.forEach(storeName => {
+        try {
+          const tx = db.transaction(storeName, "readonly");
+          const store = tx.objectStore(storeName);
+          const getAll = store.getAll();
+
+          getAll.onsuccess = () => {
+            const rows = getAll.result || [];
+
+            rows.forEach(r => {
+              if (!r) return;
+              if (Array.isArray(r.menuVoucher)) collected.push(...r.menuVoucher);
+              if (Array.isArray(r.voucherList)) collected.push(...r.voucherList);
+              if (Array.isArray(r.menu_voucher)) collected.push(...r.menu_voucher);
+            });
+
+            if (--pending === 0) resolve(collected);
+          };
+
+          getAll.onerror = () => {
+            if (--pending === 0) resolve(collected);
+          };
+
+        } catch (err) {
+          if (--pending === 0) resolve(collected);
         }
-        // Nothing found in any store
-        resolve([]);
-      })();
+      });
     };
   });
 }
 
-/**
- * Fallback: try to read from localStorage keys commonly used.
- * Normalize to array.
- */
 function loadVoucherFromLocalStorageFallback() {
   const keys = ["menuVoucher", "voucher", "menuva_voucher"];
   for (const k of keys) {
@@ -1125,19 +1098,24 @@ function getActiveVoucherList() {
 function findVoucher(codeInput) {
   if (!codeInput) return null;
   const list = getActiveVoucherList();
-  if (!Array.isArray(list) || list.length === 0) return null;
+  if (!list.length) return null;
 
-  const now = new Date();
-  // tolerate different expiry formats, try to parse safely
+  const low = codeInput.toString().trim().toLowerCase();
+  const now = Date.now();
+
   return list.find(v => {
     if (!v || !v.code) return false;
-    try {
-      const expiry = v.expiry ? new Date(v.expiry) : null;
-      const validExpiry = expiry instanceof Date && !isNaN(expiry.getTime()) ? expiry >= now : true;
-      return v.code.toString().toLowerCase() === codeInput.toString().toLowerCase() && validExpiry;
-    } catch {
-      return v.code.toString().toLowerCase() === codeInput.toString().toLowerCase();
+
+    const vc = v.code.toString().trim().toLowerCase();
+
+    // cek expiry
+    let ok = true;
+    if (v.expiry) {
+      const exp = new Date(v.expiry).getTime();
+      if (!isNaN(exp)) ok = exp >= now;
     }
+
+    return vc === low && ok;
   }) || null;
 }
 
@@ -1154,7 +1132,7 @@ function applyVoucherAndUpdateSummary() {
   const rawTotal = (cartTotalEl && cartTotalEl.dataset && cleanNumber(cartTotalEl.dataset.raw)) ? cleanNumber(cartTotalEl.dataset.raw) : 0;
   let discount = 0;
 
-  const voucher = findVoucher(inputCode);
+  const voucher = activeVoucherData || findVoucher(inputCode);
   let voucherValid = false;
 
   if (voucher) {
@@ -1587,11 +1565,8 @@ function initDarkMode() {
 window.addEventListener('DOMContentLoaded', initDarkMode);
 </script>
 
+
 </body>
 </html>
-
-
-
-
 
 
