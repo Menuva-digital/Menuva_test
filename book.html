@@ -1407,6 +1407,8 @@ async function getDB() {
   /* =========================
      LOCALE SELECT INIT
      ========================= */
+  const LOCALE_KEY = "menuva_locale";
+
   function initLocaleSelect(){
     const sel = document.getElementById('localeSelect');
     if (!sel) return;
@@ -1570,4 +1572,5 @@ document.addEventListener("click", (e) => {
 
 </body>
 </html>
+
 
