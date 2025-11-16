@@ -1069,12 +1069,10 @@ async function applyVoucher() {
 ---------------------------------------- */
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    await ensureVoucherListLoaded(); // load from IDB or fallback to LS
+    await ensureVoucherLoaded();   // 🔥 versi final sinkron dengan admin
   } catch (e) {
-    console.warn("Voucher init err:", e);
+    console.warn("⚠️ Voucher init error:", e);
   }
-  initVoucherInput();
-  restoreVoucherFromStorage();
 });
 
   /* ------------------ LOCALE UI ------------------------- */
@@ -1408,6 +1406,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
