@@ -1521,29 +1521,55 @@ body.dark-mode .promo-badge {
 })();
 </script>
 <script>
-// ===================== THEME MODE =====================
+// =====================
+// THEME (LIGHT / DARK)
+// =====================
+
+// Apply theme ke body
 function applyTheme() {
-    const saved = localStorage.getItem("themeMode") || "light";
-    document.documentElement.setAttribute("data-theme", saved);
+  const saved = localStorage.getItem("themeMode") || "light";
+
+  if (saved === "dark") {
+    document.body.classList.add("dark-mode");
+  } else {
+    document.body.classList.remove("dark-mode");
+  }
 }
 
-// toggle theme
+// Toggle theme
 function toggleTheme() {
-    const current = localStorage.getItem("themeMode") || "light";
-    const next = current === "light" ? "dark" : "light";
-    localStorage.setItem("themeMode", next);
-    applyTheme();
+  const isDark = document.body.classList.contains("dark-mode");
+
+  if (isDark) {
+    document.body.classList.remove("dark-mode");
+    localStorage.setItem("themeMode", "light");
+  } else {
+    document.body.classList.add("dark-mode");
+    localStorage.setItem("themeMode", "dark");
+  }
 }
 
+// Initialize
 document.addEventListener("DOMContentLoaded", () => {
-    applyTheme();
-    const btn = document.getElementById("themeToggleBtn");
-    if (btn) {
-        btn.addEventListener("click", toggleTheme);
-    }
+  applyTheme();
+
+  const btn = document.getElementById("darkToggle");
+  if (btn) {
+    btn.addEventListener("click", toggleTheme);
+
+    // Set icon sesuai mode
+    btn.textContent = document.body.classList.contains("dark-mode") ? "🌞" : "🌙";
+  }
+});
+
+// Update icon setiap toggle
+document.addEventListener("click", (e) => {
+  if (e.target.id === "darkToggle") {
+    e.target.textContent =
+      document.body.classList.contains("dark-mode") ? "🌞" : "🌙";
+  }
 });
 </script>
 
 </body>
 </html>
-
