@@ -1590,7 +1590,7 @@ async function loadData(data) {
     window.menuVoucher = data.menuVoucher.slice();
     if (typeof renderVoucher === "function") renderVoucher(window.menuVoucher);
 
-       // ========== MENU KATEGORI ==========
+    // ========== MENU KATEGORI ==========
     ["food", "snack", "drink", "special"].forEach(kat => {
       const old = document.getElementById(
         {
@@ -1603,10 +1603,10 @@ async function loadData(data) {
       if (old) old.innerHTML = "";
     });
 
-    // inisialisasi data.menu kalau undefined
-    const menuList = Array.isArray(data.menu) ? data.menu : (Array.isArray(data.menuData) ? data.menuData : []);
+    const menuList = Array.isArray(data.menu)
+      ? data.menu
+      : (Array.isArray(data.menuData) ? data.menuData : []);
 
-    // render menu memakai tambahMenu (aman)
     menuList.forEach(m => {
       const kategori = m.kategori || m.cat || m.category || "food";
       const nama = m.nama || m.name || "";
@@ -1616,22 +1616,41 @@ async function loadData(data) {
     });
 
     // ========== FLIPBOOK ==========
-    flipbookRuanganImages = Array.isArray(data.flipbookRuanganImages) ? data.flipbookRuanganImages.slice() : [];
-    flipbookMenuImages = Array.isArray(data.flipbookMenuImages) ? data.flipbookMenuImages.slice() : [];
+    flipbookRuanganImages = Array.isArray(data.flipbookRuanganImages)
+      ? data.flipbookRuanganImages.slice()
+      : [];
 
-    // clear preview containers
+    flipbookMenuImages = Array.isArray(data.flipbookMenuImages)
+      ? data.flipbookMenuImages.slice()
+      : [];
+
     const ruanganPreview = document.getElementById("flipbookRuanganPreview");
     const menuPreview = document.getElementById("flipbookMenuPreview");
     if (ruanganPreview) ruanganPreview.innerHTML = "";
     if (menuPreview) menuPreview.innerHTML = "";
 
-    // delay lebih aman supaya DOM siap (200ms)
     setTimeout(() => {
       if (typeof renderImagePreview === "function") {
-        flipbookRuanganImages.forEach(src => { if (src) renderImagePreview("ruangan", src); });
-        flipbookMenuImages.forEach(src => { if (src) renderImagePreview("menu", src); });
+        flipbookRuanganImages.forEach(src => {
+          if (src) renderImagePreview("ruangan", src);
+        });
+        flipbookMenuImages.forEach(src => {
+          if (src) renderImagePreview("menu", src);
+        });
       }
     }, 200);
+
+    // ========== ROOM / PACKAGES (FIXED) ==========
+    if (Array.isArray(data.rooms)) {
+      if (typeof restoreRoomFromData === "function") {
+        console.log("📦 Restore ROOM:", data.rooms);
+        restoreRoomFromData(data.rooms);
+      } else {
+        console.warn("⚠️ restoreRoomFromData() tidak ditemukan.");
+      }
+    } else {
+      console.warn("⚠️ data.rooms kosong atau bukan array");
+    }
 
     // ========== RESTO ID ==========
     let restoIdEl = document.getElementById("restoId");
@@ -2427,4 +2446,5 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
