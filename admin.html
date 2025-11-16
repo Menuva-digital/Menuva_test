@@ -874,10 +874,17 @@ async function saveDataToDB(id, newData) {
       console.log("📦 Data dari DB (raw):", r);
 
       // ======== DATA DEFAULT JIKA KOSONG ========
-      if (!r) {
-        console.warn("⚠️ DB kosong → create default");
-        r = buatDataDefault(id);
-      }
+      // Jika data ada tapi field rooms hilang → tambahkan
+if (r && !Array.isArray(r.rooms)) {
+  console.warn("⚠️ Field ROOMS hilang → tambahkan default");
+  r.rooms = [];
+}
+
+// Jika data sama sekali tidak ada → buat default penuh
+if (!r) {
+  console.warn("⚠️ DB kosong → create default");
+  r = buatDataDefault(id);
+}
 
       // ======== FORCE STRUCTURE (ANTI HILANG) ========
       const safe = {
@@ -2420,3 +2427,4 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
