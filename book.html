@@ -522,14 +522,7 @@ body.dark-mode .promo-badge {
 
   <script>
 (async () => {
-  /* =========================
-     CONFIG / SHARED STATE
-     ========================= */
-  const DB_NAME = 'MenuvaDB';
-  const STORE_NAME = 'menuvaData';
-  const LOCALE_KEY = 'menuva_localeChoice';
-  const DB_VERSION = 10;
-
+ 
   let db = null;                 // IndexedDB instance
   let menuData = [];
   let menuPromo = [];
@@ -537,6 +530,27 @@ body.dark-mode .promo-badge {
   let cart = [];
   let activeVoucherData = null;  // object voucher aktif (null jika none)
   let promoCountdownTimer = null;
+
+  /* ============ FIX ABSOLUTE WAJIB ============ */
+const DB_NAME = "MenuvaDB";
+const STORE_NAME = "menuvaData";  // harus sama seperti admin.js
+
+// backup getDB kalau belum ada di book.html
+async function getDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 10);
+
+    req.onerror = () => reject("IndexedDB error");
+    req.onsuccess = () => resolve(req.result);
+
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+  });
+}
 
   /* ---------------------
      LOCALE / CURRENCY HELPERS
@@ -951,45 +965,28 @@ body.dark-mode .promo-badge {
 
   let cachedVoucherList = null;
 
-  // read voucher array from DB (id=1) safely
-  async function loadVoucherListFromDB() {
-    try {
-      const database = await getDB();
-      if (!database) throw new Error('no-db');
-      if (!database.objectStoreNames.contains(STORE_NAME)) return [];
-      const tx = database.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
+ async function loadVoucherListFromDB() {
+  try {
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
 
-      return await new Promise((resolve) => {
-        const req = store.get(1);
-        req.onsuccess = () => {
-          const row = req.result;
-          if (!row) return resolve([]);
-          // possible names: menuVoucher, menu_voucher, voucherList, vouchers
-          const candidates = ['menuVoucher','menu_voucher','voucherList','vouchers','voucher','menuVoucherList'];
-          for (const k of candidates) {
-            if (Array.isArray(row[k]) && row[k].length) return resolve(row[k]);
-          }
-          // maybe saved under 'menu' or another structure - try to detect voucher-like objects
-          // scan object properties for arrays that look like voucher arrays
-          for (const key of Object.keys(row)) {
-            const val = row[key];
-            if (Array.isArray(val) && val.length && val.every(it => typeof it === 'object')) {
-              // quick heuristic: contains at least one voucher-like field
-              if (val.some(it => it.code || it.kodeVoucher || it.kode || it.kod || it.voucherCode || it.discount)) {
-                return resolve(val);
-              }
-            }
-          }
-          resolve([]);
-        };
-        req.onerror = () => resolve([]);
-      });
-    } catch (err) {
-      console.warn('⚠️ loadVoucherListFromDB failed:', err);
-      return [];
-    }
+    return await new Promise((resolve) => {
+      const req = store.get(1);
+      req.onsuccess = () => {
+        const data = req.result;
+        if (!data) return resolve([]);
+
+        const list = Array.isArray(data.menuVoucher) ? data.menuVoucher : [];
+        resolve(list);
+      };
+      req.onerror = () => resolve([]);
+    });
+  } catch (e) {
+    console.warn("Voucher DB error:", e);
+    return [];
   }
+}
 
   // fallback to localStorage keys
   function loadVoucherListFromLocalStorage() {
@@ -1573,3 +1570,4 @@ document.addEventListener("click", (e) => {
 
 </body>
 </html>
+
