@@ -760,7 +760,7 @@ let dbPromise = null; // 🔒 lock promise untuk mencegah race condition
 
 async function initDB() {
   if (dbInstance) {
-    console.log("♻️ [DEBUG] Reuse DB instance:", DB_NAME);
+    // console.log("♻️ [DEBUG] Reuse DB instance:", DB_NAME);
     return dbInstance;
   }
 
@@ -811,7 +811,7 @@ async function initDB() {
 }
 
 async function getDB() {
-  console.log("🟢 [DEBUG] getDB() dipanggil...");
+  // console.log("🟢 [DEBUG] getDB() dipanggil...");
   if (dbInstance) {
     console.log("✅ [DEBUG] getDB pakai instance lama");
     return dbInstance;
@@ -829,7 +829,7 @@ async function getDB() {
 
     req.onsuccess = (e) => {
       dbInstance = e.target.result;
-      console.log("✅ [DEBUG] getDB sukses:", dbInstance.name);
+      // console.log("✅ [DEBUG] getDB sukses:", dbInstance.name);
       resolve(dbInstance);
     };
 
@@ -2431,3 +2431,4 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
