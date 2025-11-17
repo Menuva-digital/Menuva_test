@@ -990,9 +990,63 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-// ============================================================
-//  VOUCHER FIX FINAL — sesuai DB admin.html
-// ============================================================
+/* ===========================
+   VOUCHER STORAGE HELPERS
+   (save / restore dari localStorage)
+   =========================== */
+
+function saveVoucherToStorage() {
+  try {
+    if (!activeVoucherData) {
+      localStorage.removeItem('menuva_voucher');
+      return;
+    }
+    // save the raw object if present (keamanan agar struktur DB tetap utuh)
+    const toSave = activeVoucherData._raw || activeVoucherData;
+    localStorage.setItem('menuva_voucher', JSON.stringify(toSave));
+  } catch (err) {
+    console.warn('⚠️ saveVoucherToStorage failed:', err);
+  }
+}
+
+function restoreVoucherFromStorage() {
+  try {
+    const saved = localStorage.getItem('menuva_voucher');
+    if (!saved) return;
+
+    let parsed;
+    try { parsed = JSON.parse(saved); } catch (e) { parsed = null; }
+
+    if (!parsed) return;
+
+    // parsed could be an array (legacy) or object
+    const candidateRaw = Array.isArray(parsed) ? (parsed[0] || null) : parsed;
+    if (!candidateRaw) return;
+
+    const norm = typeof normalizeVoucher === 'function' ? normalizeVoucher(candidateRaw) : null;
+    if (!norm) {
+      // fallback minimal normalize
+      activeVoucherData = { code: String(candidateRaw.code || candidateRaw.kode || '').trim(), discount: Number(candidateRaw.discount||0), _raw: candidateRaw };
+      applyVoucherAndUpdateSummary?.();
+      return;
+    }
+
+    // If cached voucher list already present, try find canonical one
+    if (Array.isArray(cachedVoucherList) && cachedVoucherList.length) {
+      const found = cachedVoucherList.find(v => String(v.code || '').trim().toLowerCase() === String(norm.code || '').trim().toLowerCase());
+      activeVoucherData = found || norm;
+    } else {
+      // otherwise just restore normalized voucher (may be validated later)
+      activeVoucherData = norm;
+    }
+
+    // update UI/summary
+    applyVoucherAndUpdateSummary?.();
+  } catch (err) {
+    console.warn('⚠️ restoreVoucherFromStorage failed:', err);
+  }
+}
+
 
 let cachedVoucherList = null;
 
@@ -1448,5 +1502,6 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
