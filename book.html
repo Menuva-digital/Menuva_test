@@ -990,9 +990,36 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-/* ============================
-   APPLY VOUCHER + UPDATE SUMMARY
+  /* ============================
+   VOUCHER HELPERS (WAJIB ADA)
    ============================ */
+
+// Normalisasi voucher agar seragam
+function normalizeVoucher(v) {
+  if (!v) return null;
+
+  return {
+    code: String(v.code || v.kodeVoucher || '').trim().toUpperCase(),
+    discount: Number(v.discount || v.persen || 0),
+    _raw: v
+  };
+}
+
+// Cari voucher secara SINKRON dari cache yang sudah dimuat
+function findVoucherSync(code) {
+  if (!code) return null;
+  if (!Array.isArray(cachedVoucherList)) return null;
+
+  const c = String(code).trim().toUpperCase();
+
+  const found = cachedVoucherList.find(v => {
+    const vc = String(v.code || v.kodeVoucher || '').trim().toUpperCase();
+    return vc === c;
+  });
+
+  return found ? normalizeVoucher(found) : null;
+}
+
 function applyVoucherAndUpdateSummary() {
   const cartTotalEl = document.getElementById('cartTotal');
   const grandTotalEl = document.getElementById('grandTotal');
@@ -1549,6 +1576,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
