@@ -312,18 +312,7 @@ body.dark-mode .promo-badge {
   background: #ddd;
   color: #222;
 }
-    /* voucher UI */
-    .voucher-box{display:flex;gap:8px;justify-content:flex-start}
-    .voucher-box input{width:220px;max-width:60%;padding:8px;border:1px solid #ccc;border-radius:6px}
-    #voucherMessage{margin-top:8px;font-size:0.9em;color:var(--muted);}
-
-    /* responsive tweaks */
-    @media (max-width:640px){
-      .form{grid-template-columns:1fr}
-      .cart-row{grid-template-columns:1fr 84px 84px 28px}
-      #restoLogo{height:44px;width:44px}
-    }
-
+   
   .toast {
     position: fixed;
     left: 50%;
@@ -380,15 +369,15 @@ body.dark-mode .promo-badge {
     /* ===== Voucher Animation ===== */
 
 .voucher-valid {
-  animation: voucherPulseGreen 0.4s ease;
+  animation: voucherPulseGreen 0.3s ease;
   border: 2px solid #28c76f !important;
-  background: rgba(40, 199, 111, 0.12) !important;
+  background: rgba(40,199,111,0.15);
 }
 
 .voucher-invalid {
-  animation: voucherShakeRed 0.4s ease;
+  animation: voucherShakeRed 0.3s ease;
   border: 2px solid #ff3e3e !important;
-  background: rgba(255, 0, 0, 0.08) !important;
+  background: rgba(255,0,0,0.15);
 }
 
 @keyframes voucherPulseGreen {
@@ -399,9 +388,9 @@ body.dark-mode .promo-badge {
 
 @keyframes voucherShakeRed {
   0% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  50% { transform: translateX(4px); }
-  75% { transform: translateX(-3px); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
   100% { transform: translateX(0); }
 }
 
@@ -1209,7 +1198,9 @@ async function applyVoucher() {
   const msg = document.getElementById("voucherMessage");
   const code = input.value.trim();
 
-  // Reset class dulu biar animasi bisa berulang
+  console.log("🔎 applyVoucher() dipanggil, code =", code);
+
+  // Reset animasi
   input.classList.remove("voucher-valid", "voucher-invalid");
 
   if (!code) {
@@ -1221,44 +1212,63 @@ async function applyVoucher() {
   }
 
   await ensureVoucherLoaded();
-  const found = findVoucherSync(code);
 
-  // ❌ INVALID
-  if (!found) {
+  const voucher = findVoucherSync(code);
+
+  if (!voucher) {
+    console.log("❌ Voucher invalid");
     msg.textContent = "❌ Invalid voucher code";
     msg.style.color = "var(--danger)";
     input.classList.add("voucher-invalid");
-
+    playError();
+    
     activeVoucherData = null;
     saveVoucherToStorage();
-    applyVoucherAndUpdateSummary();
 
-    playError();
+    applyVoucherAndUpdateSummary();
     return;
   }
 
-  // ✅ VALID
-  activeVoucherData = found;
+  console.log("✅ Voucher valid:", voucher);
+
+  activeVoucherData = voucher;
   saveVoucherToStorage();
 
-  msg.textContent = "✅ Voucher applied: " + found.code;
+  msg.textContent = "✅ Voucher applied: " + voucher.code;
   msg.style.color = "var(--success)";
   input.classList.add("voucher-valid");
-
   playSuccess();
+
   applyVoucherAndUpdateSummary();
 }
 
 
-  function initVoucherInput() {
+ function initVoucherInput() {
   const input = document.getElementById("voucherInput");
+  const msg = document.getElementById("voucherMessage");
 
-  input.addEventListener("keyup", (e) => {
+  if (!input) {
+    console.error("❌ voucherInput tidak ditemukan di DOM!");
+    return;
+  }
+
+  console.log("🎯 initVoucherInput aktif");
+
+  // Pas user tekan Enter
+  input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
+      console.log("⏩ Enter ditekan → applyVoucher()");
       applyVoucher();
     }
   });
+
+  // Real-time input change
+  input.addEventListener("input", () => {
+    msg.textContent = "";
+    input.classList.remove("voucher-valid", "voucher-invalid");
+  });
 }
+
 
 function hideDiscount() {
   document.getElementById("discountRow").style.display = "none";
@@ -1277,11 +1287,10 @@ function playError() {
    INIT: wajib dipanggil di DOMContentLoaded
 ---------------------------------------- */
 document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    await ensureVoucherLoaded();   // 🔥 versi final sinkron dengan admin
-  } catch (e) {
-    console.warn("⚠️ Voucher init error:", e);
-  }
+  console.log("🚀 DOM Loaded → Init voucher");
+  initVoucherInput();
+  await ensureVoucherLoaded();
+  restoreVoucherFromStorage?.();
 });
 
   /* ------------------ LOCALE UI ------------------------- */
@@ -1614,6 +1623,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
