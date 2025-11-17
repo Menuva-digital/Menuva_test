@@ -377,6 +377,33 @@ body.dark-mode .promo-badge {
   from { opacity: 1; transform: translateY(0); }
   to { opacity: 0; transform: translateY(6px); }
 }
+    /* ===== Voucher Animation ===== */
+
+.voucher-valid {
+  animation: voucherPulseGreen 0.4s ease;
+  border: 2px solid #28c76f !important;
+  background: rgba(40, 199, 111, 0.12) !important;
+}
+
+.voucher-invalid {
+  animation: voucherShakeRed 0.4s ease;
+  border: 2px solid #ff3e3e !important;
+  background: rgba(255, 0, 0, 0.08) !important;
+}
+
+@keyframes voucherPulseGreen {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+@keyframes voucherShakeRed {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
 
   </style>
 
@@ -1178,39 +1205,50 @@ async function findVoucher(code) {
 
 // Apply voucher
 async function applyVoucher() {
-  const input = document.getElementById("voucherInput").value.trim();
+  const input = document.getElementById("voucherInput");
   const msg = document.getElementById("voucherMessage");
+  const code = input.value.trim();
 
-  if (!input) {
+  // Reset class dulu biar animasi bisa berulang
+  input.classList.remove("voucher-valid", "voucher-invalid");
+
+  if (!code) {
     msg.textContent = "❌ Please enter voucher code";
     msg.style.color = "var(--danger)";
+    input.classList.add("voucher-invalid");
     playError();
     return;
   }
 
-  // pastikan voucher sudah dimuat
   await ensureVoucherLoaded();
+  const found = findVoucherSync(code);
 
-  const found = window.voucherList.find(
-    v => v.code.toLowerCase() === input.toLowerCase()
-  );
-
+  // ❌ INVALID
   if (!found) {
     msg.textContent = "❌ Invalid voucher code";
     msg.style.color = "var(--danger)";
+    input.classList.add("voucher-invalid");
+
+    activeVoucherData = null;
+    saveVoucherToStorage();
+    applyVoucherAndUpdateSummary();
+
     playError();
-    hideDiscount();
     return;
   }
 
-  window.activeVoucher = found;
+  // ✅ VALID
+  activeVoucherData = found;
+  saveVoucherToStorage();
 
   msg.textContent = "✅ Voucher applied: " + found.code;
   msg.style.color = "var(--success)";
-  playSuccess();
+  input.classList.add("voucher-valid");
 
-  updateTotals();
+  playSuccess();
+  applyVoucherAndUpdateSummary();
 }
+
 
   function initVoucherInput() {
   const input = document.getElementById("voucherInput");
@@ -1576,6 +1614,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
