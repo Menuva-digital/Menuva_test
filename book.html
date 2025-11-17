@@ -965,27 +965,26 @@ async function getDB() {
 
   let cachedVoucherList = null;
 
- async function loadVoucherListFromDB() {
-  try {
-    const db = await getDB();
-    const tx = db.transaction(STORE_NAME, "readonly");
+async function loadVoucherListFromDB(dbInstance) {
+  if (!dbInstance) dbInstance = await getDB();
+
+  return new Promise((resolve) => {
+    if (!dbInstance.objectStoreNames.contains(STORE_NAME)) return resolve([]);
+    const tx = dbInstance.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
+    const req = store.get(1);
 
-    return await new Promise((resolve) => {
-      const req = store.get(1);
-      req.onsuccess = () => {
-        const data = req.result;
-        if (!data) return resolve([]);
+    req.onsuccess = () => {
+      const row = req.result || {};
+      const candidates = ['menuVoucher','menu_voucher','voucherList','vouchers','voucher','menuVoucherList'];
+      for (const k of candidates) {
+        if (Array.isArray(row[k]) && row[k].length) return resolve(row[k]);
+      }
+      resolve([]);
+    };
 
-        const list = Array.isArray(data.menuVoucher) ? data.menuVoucher : [];
-        resolve(list);
-      };
-      req.onerror = () => resolve([]);
-    });
-  } catch (e) {
-    console.warn("Voucher DB error:", e);
-    return [];
-  }
+    req.onerror = () => resolve([]);
+  });
 }
 
   // fallback to localStorage keys
@@ -1022,14 +1021,12 @@ async function getDB() {
   }
 
   async function ensureVoucherLoaded() {
-    if (Array.isArray(cachedVoucherList)) return cachedVoucherList;
-
-    // try DB first
-    let list = [];
-    try {
-      list = await loadVoucherListFromDB();
-    } catch(e) { list = []; }
-
+  if (Array.isArray(cachedVoucherList)) return cachedVoucherList;
+  const db = await getDB();       // ambil DB yang sudah diinisialisasi
+  const list = await loadVoucherListFromDB(db); // kasih db ke fungsi load
+  cachedVoucherList = list.map(normalizeVoucher).filter(Boolean);
+  return cachedVoucherList;
+}
     // fallback to LS
     if (!Array.isArray(list) || list.length === 0) {
       const fromLS = loadVoucherListFromLocalStorage();
@@ -1572,5 +1569,6 @@ document.addEventListener("click", (e) => {
 
 </body>
 </html>
+
 
 
