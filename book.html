@@ -990,10 +990,57 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-/* ===========================
-   VOUCHER STORAGE HELPERS
-   (save / restore dari localStorage)
-   =========================== */
+/* ============================
+   APPLY VOUCHER + UPDATE SUMMARY
+   ============================ */
+function applyVoucherAndUpdateSummary() {
+  const cartTotalEl = document.getElementById('cartTotal');
+  const grandTotalEl = document.getElementById('grandTotal');
+  const discountRow = document.getElementById('discountRow');
+  const voucherDiscountEl = document.getElementById('voucherDiscount');
+  const inputCode = (document.getElementById('voucherInput')?.value || '').trim();
+
+  // Ambil total dari data-raw
+  const rawTotal = (cartTotalEl && cartTotalEl.dataset && cleanNumber(cartTotalEl.dataset.raw)) 
+    ? cleanNumber(cartTotalEl.dataset.raw) 
+    : 0;
+
+  let discount = 0;
+  let voucherValid = false;
+
+  const voucher = findVoucherSync(inputCode);
+
+  if (voucher) {
+    const pct = Number(voucher.discount) || 0;
+    discount = rawTotal * (pct / 100);
+    voucherValid = true;
+    activeVoucherData = voucher;
+
+    try { showToast && showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${pct}%`, 'success'); } catch(e){}
+  } else if (inputCode) {
+    activeVoucherData = null;
+    try { showToast && showToast('❌ Kode voucher salah atau kadaluarsa.', 'error'); } catch(e){}
+  }
+
+  const newTotal = Math.max(0, rawTotal - discount);
+
+  if (cartTotalEl) cartTotalEl.textContent = formatWithActive ? formatWithActive(rawTotal) : rawTotal;
+  if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive ? formatWithActive(discount) : discount;
+  if (grandTotalEl) grandTotalEl.textContent = formatWithActive ? formatWithActive(newTotal) : newTotal;
+
+  // Animasi discount row
+  if (discountRow) {
+    if (voucherValid && discount > 0) {
+      discountRow.style.display = 'flex';
+      discountRow.classList.add('fade-in');
+      discountRow.classList.remove('fade-out');
+    } else {
+      discountRow.classList.remove('fade-in');
+      discountRow.classList.add('fade-out');
+      setTimeout(() => (discountRow.style.display = 'none'), 300);
+    }
+  }
+}
 
 function saveVoucherToStorage() {
   try {
@@ -1502,6 +1549,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
