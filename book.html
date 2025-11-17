@@ -519,42 +519,23 @@ body.dark-mode .promo-badge {
     </div>
   </div> <!-- tutup container -->
 </footer>
+  
+<script>
+(() => {
+  /* ------------------ CONFIG / STATE ------------------- */
+  const DB_NAME = 'MenuvaDB';
+  const STORE_NAME = 'menuvaData';
+  const LOCALE_KEY = 'menuva_localeChoice';
 
-  <script>
-(async () => {
- 
-  let db = null;                 // IndexedDB instance
+  let db = null;
   let menuData = [];
   let menuPromo = [];
   let restoData = {};
   let cart = [];
-  let activeVoucherData = null;  // object voucher aktif (null jika none)
+  let activeVoucherData = null; // object voucher aktif (null jika none)
   let promoCountdownTimer = null;
 
-  /* ============ FIX ABSOLUTE WAJIB ============ */
-const DB_NAME = "MenuvaDB";
-const STORE_NAME = "menuvaData";  // harus sama seperti admin.js
-
-// backup getDB kalau belum ada di book.html
-async function getDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 10);
-
-    req.onerror = () => reject("IndexedDB error");
-    req.onsuccess = () => resolve(req.result);
-
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-  });
-}
-
-  /* ---------------------
-     LOCALE / CURRENCY HELPERS
-     --------------------- */
+  /* ------------------ LOCALE / CURRENCY ---------------- */
   const localeToCurrencyFallback = {
     'id': 'IDR','en-US': 'USD','en': 'USD','en-GB': 'GBP','de': 'EUR','fr': 'EUR','ja': 'JPY','zh': 'CNY'
   };
@@ -603,9 +584,7 @@ async function getDB() {
     return formatPrice(amount, ac.currency, ac.locale);
   }
 
-  /* ---------------------
-     GENERIC HELPERS
-     --------------------- */
+  /* ------------------ HELPERS ------------------- */
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -626,94 +605,106 @@ async function getDB() {
     return p.get('resto') || null;
   }
 
-  /* =========================
-     INDEXEDDB: init, getDB helpers
-     ========================= */
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      if (db) return resolve(db);
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+/* ------------------ IndexedDB (auto fix store) ------------------- */
+function initDB() {
+  return new Promise((resolve, reject) => {
+    if (db) return resolve(db);
 
-      request.onerror = (e) => {
-        console.warn('⚠️ IndexedDB open error', e.target?.error || e);
-        // don't reject hard — caller will handle fallback
-        reject(e.target?.error || e);
-      };
+    const req = indexedDB.open(DB_NAME, 10);
+    req.onerror = () => reject(req.error);
 
-      request.onblocked = () => {
-        console.warn("⚠️ DB upgrade blocked. Tutup tab lain yang masih pakai DB ini.");
-      };
+    req.onsuccess = (e) => {
+      db = e.target.result;
 
-      request.onupgradeneeded = (e) => {
-        const idb = e.target.result;
-        if (!idb.objectStoreNames.contains(STORE_NAME)) {
-          idb.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
-        }
-        if (!idb.objectStoreNames.contains("ordersData")) {
-          const orders = idb.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
-          orders.createIndex("status", "status", { unique: false });
-          orders.createIndex("orderTime", "orderTime", { unique: false });
-        }
-      };
+      // 🧩 Cek apakah store 'ordersData' sudah ada
+      if (!db.objectStoreNames.contains("ordersData")) {
+        console.warn("⚠️ Store 'ordersData' belum ada. Membuat ulang DB internal...");
 
-      request.onsuccess = (e) => {
-        db = e.target.result;
-        resolve(db);
-      };
-    });
-  }
+        // Buat ulang DB tanpa hapus data lain
+        const newVersion = db.version + 1;
+        db.close();
+        const recreateReq = indexedDB.open(DB_NAME, newVersion);
 
-  async function getDB() {
-    if (db) return db;
-    try {
-      return await initDB();
-    } catch (err) {
-      // bubble up
-      throw err;
-    }
-  }
-
-  /* =========================
-     DATA LOAD: loadDataFromDB (menu/resto)
-     ========================= */
-  function loadDataFromDB(restoId) {
-    return new Promise(async (resolve) => {
-      try {
-        const database = await getDB();
-        if (!database) return resolve(null);
-        if (!database.objectStoreNames.contains(STORE_NAME)) return resolve(null);
-
-        const tx = database.transaction(STORE_NAME, "readonly");
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.getAll();
-
-        req.onsuccess = () => {
-          const all = req.result || [];
-          if (!all.length) return resolve(null);
-
-          if (restoId) {
-            const found = all.find(r =>
-              r?.restoId === restoId ||
-              r?.restoPhone === restoId ||
-              r?.id === Number(restoId)
-            );
-            if (found) return resolve(found);
+        recreateReq.onupgradeneeded = (ev) => {
+          const upgradedDB = ev.target.result;
+          if (!upgradedDB.objectStoreNames.contains("ordersData")) {
+            const orders = upgradedDB.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
+            orders.createIndex("status", "status", { unique: false });
+            orders.createIndex("orderTime", "orderTime", { unique: false });
           }
-          resolve(all[0]);
         };
 
-        req.onerror = () => resolve(null);
-      } catch (err) {
-        // can't open DB
-        console.warn('⚠️ loadDataFromDB fail', err);
-        resolve(null);
-      }
-    });
-  }
+        recreateReq.onsuccess = (ev2) => {
+          db = ev2.target.result;
+          console.log("✅ Store 'ordersData' berhasil dibuat otomatis (runtime fix)");
+          resolve(db);
+        };
 
-  /* =========================
-     CART RELATED
-     ========================= */
+        recreateReq.onerror = () => reject(recreateReq.error);
+        return;
+      }
+
+      resolve(db);
+    };
+
+    req.onblocked = () => {
+      console.warn("⚠️ DB upgrade blocked. Tutup tab lain yang masih pakai DB ini.");
+    };
+
+    req.onupgradeneeded = (e) => {
+      db = e.target.result;
+
+      // Store utama tetap
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+      }
+
+      // Store order baru
+      if (!db.objectStoreNames.contains("ordersData")) {
+        const orders = db.createObjectStore("ordersData", { keyPath: "id", autoIncrement: true });
+        orders.createIndex("status", "status", { unique: false });
+        orders.createIndex("orderTime", "orderTime", { unique: false });
+      }
+    };
+  });
+}
+
+  /* ================== REALTIME BROADCAST CHANNEL ================== */
+const bc = new BroadcastChannel("menuvaOrders");
+
+
+ function loadDataFromDB(restoId) {
+  return new Promise((resolve) => {
+    if (!db) return resolve(null);
+    if (!db.objectStoreNames.contains(STORE_NAME)) return resolve(null);
+
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      const all = req.result || [];
+      if (!all.length) return resolve(null);
+
+      // ✅ Jika ada restoId di URL, coba cari yang cocok
+      if (restoId) {
+        const found = all.find(r => 
+          r?.restoId === restoId || 
+          r?.restoPhone === restoId ||
+          r?.id === Number(restoId)
+        );
+        if (found) return resolve(found);
+      }
+
+      // ✅ Jika tidak ada, ambil record pertama saja
+      resolve(all[0]);
+    };
+
+    req.onerror = () => resolve(null);
+  });
+}
+
+  /* ------------------ CART ------------------- */
   function updateCartCount() {
     const el = document.getElementById('cartCount');
     if (!el) return;
@@ -722,78 +713,107 @@ async function getDB() {
     else el.style.display = 'none';
   }
 
-  function refreshAllPriceDisplays(){
-    document.querySelectorAll('.menu-price').forEach(el=>{
-      const p = Number(el.dataset.price) || 0;
-      el.textContent = formatWithActive(p);
-    });
-    // update cart totals formatting too
-    try { applyVoucherAndUpdateSummary(); } catch(e){}
-  }
+function renderCart() {
+  const rows = document.getElementById('cartRows');
+  const empty = document.getElementById('cartEmpty');
+  if (!rows || !empty) return;
+  rows.innerHTML = '';
 
-  function renderCart() {
-    const rows = document.getElementById('cartRows');
-    const empty = document.getElementById('cartEmpty');
-    if (!rows || !empty) return;
-    rows.innerHTML = '';
-
-    if (!cart || cart.length === 0) {
-      empty.style.display = 'block';
-      const cartTotalEl = document.getElementById('cartTotal');
-      const grandTotalEl = document.getElementById('grandTotal');
-      if (cartTotalEl) { cartTotalEl.dataset.raw = 0; cartTotalEl.textContent = formatWithActive(0); }
-      if (grandTotalEl) { grandTotalEl.dataset.raw = 0; grandTotalEl.textContent = formatWithActive(0); }
-      const discountRow = document.getElementById('discountRow');
-      if (discountRow) discountRow.style.display = 'none';
-      updateCartCount();
-
-      // simpan kondisi cart kosong ke storage
-      saveCartToStorage();
-      restoreVoucherFromStorage();
-      return;
-    }
-
-    empty.style.display = 'none';
-    let total = 0;
-    cart.forEach((c,i)=>{
-      const subtotal = (Number(c.harga)||0) * (Number(c.qty)||0);
-      total += subtotal;
-
-      const row = document.createElement('div');
-      row.className = 'cart-row';
-      row.innerHTML = `
-        <div>
-          <strong>${escapeHtml(c.nama)}</strong>
-          <div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div>
-        </div>
-        <div class="qty-wrap">
-          <button type="button" onclick="window._menuva.updateQty(${i}, -1)">-</button>
-          <input 
-            type="text" 
-            id="cart-qty-${i}" 
-            name="cart-qty-${i}" 
-            value="${c.qty}" 
-            readonly 
-          />
-          <button type="button" onclick="window._menuva.updateQty(${i}, 1)">+</button>
-        </div>
-        <div class="price-right">${formatWithActive(subtotal)}</div>
-        <button class="remove-btn" title="Remove" onclick="window._menuva.removeFromCart(${i})">✕</button>
-      `;
-      rows.appendChild(row);
-    });
-
+  if (!cart || cart.length === 0) {
+    empty.style.display = 'block';
     const cartTotalEl = document.getElementById('cartTotal');
-    if (cartTotalEl) cartTotalEl.dataset.raw = String(total);
-
-    refreshAllPriceDisplays();
+    const grandTotalEl = document.getElementById('grandTotal');
+    if (cartTotalEl) { cartTotalEl.dataset.raw = 0; cartTotalEl.textContent = formatWithActive(0); }
+    if (grandTotalEl) { grandTotalEl.dataset.raw = 0; grandTotalEl.textContent = formatWithActive(0); }
+    const discountRow = document.getElementById('discountRow');
+    if (discountRow) discountRow.style.display = 'none';
     updateCartCount();
 
-    // ✅ simpan cart setiap kali render ulang
+    // simpan kondisi cart kosong ke storage
     saveCartToStorage();
     restoreVoucherFromStorage();
-    applyVoucherAndUpdateSummary();
+    return;
   }
+
+  empty.style.display = 'none';
+  let total = 0;
+  cart.forEach((c,i)=>{
+    const subtotal = (Number(c.harga)||0) * (Number(c.qty)||0);
+    total += subtotal;
+
+    const row = document.createElement('div');
+    row.className = 'cart-row';
+    row.innerHTML = `
+      <div>
+        <strong>${escapeHtml(c.nama)}</strong>
+        <div style="font-size:12px;color:var(--muted)">${formatWithActive(c.harga)} × ${c.qty}</div>
+      </div>
+      <div class="qty-wrap">
+        <button type="button" onclick="window._menuva.updateQty(${i}, -1)">-</button>
+        <input 
+          type="text" 
+          id="cart-qty-${i}" 
+          name="cart-qty-${i}" 
+          value="${c.qty}" 
+          readonly 
+        />
+        <button type="button" onclick="window._menuva.updateQty(${i}, 1)">+</button>
+      </div>
+      <div class="price-right">${formatWithActive(subtotal)}</div>
+      <button class="remove-btn" title="Remove" onclick="window._menuva.removeFromCart(${i})">✕</button>
+    `;
+    rows.appendChild(row);
+  });
+
+  const cartTotalEl = document.getElementById('cartTotal');
+  if (cartTotalEl) cartTotalEl.dataset.raw = String(total);
+
+  refreshAllPriceDisplays();
+  updateCartCount();
+
+  // ✅ simpan cart setiap kali render ulang
+  saveCartToStorage();
+  restoreVoucherFromStorage();
+  applyVoucherAndUpdateSummary(); 
+}
+
+
+  /* ------------------ CART PERSISTENCE ------------------- */
+function saveCartToStorage() {
+  localStorage.setItem("menuva_cart", JSON.stringify(cart));
+}
+
+function loadCartFromStorage() {
+  try {
+    const data = JSON.parse(localStorage.getItem("menuva_cart") || "[]");
+    if (Array.isArray(data)) cart = data;
+  } catch(e) {
+    cart = [];
+  }
+}
+
+function saveCustomerForm() {
+  const formData = {
+    name: document.getElementById('custName')?.value || '',
+    table: document.getElementById('custTable')?.value || '',
+    date: document.getElementById('custDate')?.value || '',
+    time: document.getElementById('custTime')?.value || '',
+    note: document.getElementById('custNote')?.value || ''
+  };
+  localStorage.setItem("menuva_customer", JSON.stringify(formData));
+}
+
+function loadCustomerForm() {
+  try {
+    const data = JSON.parse(localStorage.getItem("menuva_customer") || "{}");
+    if (!data) return;
+    if (data.name) document.getElementById('custName').value = data.name;
+    if (data.table) document.getElementById('custTable').value = data.table;
+    if (data.date) document.getElementById('custDate').value = data.date;
+    if (data.time) document.getElementById('custTime').value = data.time;
+    if (data.note) document.getElementById('custNote').value = data.note;
+  } catch(e) {}
+}
 
   function addToCartObj(name, price) {
     const idx = cart.findIndex(i => i.key === name);
@@ -809,31 +829,31 @@ async function getDB() {
     renderCart();
   }
 
-  function removeFromCart(index) {
-    if (!cart[index]) return;
-    cart.splice(index, 1);
-    renderCart();
-    saveCartToStorage(); // pastikan tersimpan ulang
+ function removeFromCart(index) {
+  if (!cart[index]) return;
+  cart.splice(index, 1);
+  renderCart();
+  saveCartToStorage(); // pastikan tersimpan ulang
 
-    // kalau cart kosong, bersihkan voucher juga
-    if (cart.length === 0) {
-      activeVoucherData = null;
-      localStorage.removeItem('menuva_voucher');
-      applyVoucherAndUpdateSummary();
-    }
+  // kalau cart kosong, bersihkan voucher juga
+  if (cart.length === 0) {
+    activeVoucherData = null;
+    localStorage.removeItem('menuva_voucher');
+    applyVoucherAndUpdateSummary();
   }
+}
 
+
+  /* expose these helpers for onclick usage in HTML */
   window._menuva = window._menuva || {};
   window._menuva.addToCart = addToCartObj;
   window._menuva.updateQty = updateQty;
   window._menuva.removeFromCart = removeFromCart;
   window._menuva.getActiveLocaleCurrency = getActiveLocaleCurrency;
   window._menuva.formatWithActive = formatWithActive;
-  window._menuva.refreshAllPriceDisplays = refreshAllPriceDisplays;
+  window._menuva.refreshAllPriceDisplays = () => refreshAllPriceDisplays();
 
-  /* =========================
-     PROMO / MENU RENDER
-     ========================= */
+  /* ------------------ RENDER MENU & PROMO ---------------------- */
   function renderMenu() {
     const map = { food:'foodGrid', snack:'snackGrid', drink:'drinkGrid', special:'specialGrid' };
     Object.keys(map).forEach(k=>{
@@ -863,68 +883,82 @@ async function getDB() {
   }
 
   function renderPromo(list) {
-    const grid = document.getElementById('promoGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
+  const grid = document.getElementById('promoGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
 
-    const promos = (list && list.length ? list : menuPromo || []).filter(p => {
-      const now = Date.now();
-      if (!p.tanggalAkhir) return true;
-      const end = new Date(p.tanggalAkhir).getTime();
-      return isFinite(end) ? end > now : true;
-    });
+  const promos = (list && list.length ? list : menuPromo || []).filter(p => {
+    const now = Date.now();
+    if (!p.tanggalAkhir) return true;
+    const end = new Date(p.tanggalAkhir).getTime();
+    return isFinite(end) ? end > now : true;
+  });
 
-    if (!promos.length) {
-      grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
-      stopPromoCountdown?.();
-      return;
-    }
-
-    promos.forEach(p => {
-      const card = document.createElement('div');
-      card.className = 'promo-card';
-      card.style.position = 'relative';
-
-      const endAttr = p.tanggalAkhir ? `data-end="${p.tanggalAkhir}"` : '';
-
-      card.innerHTML = `
-        ${p.image ? `<img src="${p.image}" class="promo-thumb">` : ''}
-        <div class="promo-title">${escapeHtml(p.namaPromo || p.namaMenu)}</div>
-        <div class="promo-desc">${escapeHtml(p.deskripsi || '')}</div>
-        <div class="promo-price">${formatWithActive(p.harga || 0)}</div>
-        <div class="promo-count" ${endAttr}></div>
-      `;
-
-      const badgeLabel = document.createElement('div');
-      badgeLabel.className = 'promo-badge';
-      badgeLabel.textContent = (p.kategori || 'PROMO').toUpperCase();
-      card.appendChild(badgeLabel);
-
-      const badgeCount = document.createElement('div');
-      badgeCount.className = 'promo-click-badge';
-      badgeCount.textContent = '0';
-      Object.assign(badgeCount.style, {
-        position: 'absolute', top: '6px', right: '6px', background: '#ff3b30',
-        color: '#fff', fontWeight: 'bold', borderRadius: '50%', width: '22px', height: '22px',
-        display: 'none', justifyContent: 'center', alignItems: 'center', fontSize: '13px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.2)', zIndex: '2'
-      });
-      card.appendChild(badgeCount);
-
-      let count = 0;
-      card.onclick = () => {
-        addToCartObj(p.namaPromo || p.namaMenu, p.harga);
-        count++;
-        badgeCount.textContent = count;
-        badgeCount.style.display = 'flex';
-        try { badgeCount.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 200 }); } catch(e){}
-      };
-
-      grid.appendChild(card);
-    });
-
-    startPromoCountdown?.();
+  if (!promos.length) {
+    grid.innerHTML = '<div class="cart-empty">No promo choice</div>';
+    stopPromoCountdown?.();
+    return;
   }
+
+  promos.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'promo-card';
+    card.style.position = 'relative'; // biar badge nempel ke pojok kanan atas
+
+    const endAttr = p.tanggalAkhir ? `data-end="${p.tanggalAkhir}"` : '';
+
+    // isi konten utama promo
+    card.innerHTML = `
+      ${p.image ? `<img src="${p.image}" class="promo-thumb">` : ''}
+      <div class="promo-title">${escapeHtml(p.namaPromo || p.namaMenu)}</div>
+      <div class="promo-desc">${escapeHtml(p.deskripsi || '')}</div>
+      <div class="promo-price">${formatWithActive(p.harga || 0)}</div>
+      <div class="promo-count" ${endAttr}></div>
+    `;
+
+    // 🔹 badge kategori (misal tulisan "PROMO" di pojok kiri)
+    const badgeLabel = document.createElement('div');
+    badgeLabel.className = 'promo-badge';
+    badgeLabel.textContent = (p.kategori || 'PROMO').toUpperCase();
+    card.appendChild(badgeLabel);
+
+    // 🔹 badge angka (pojok kanan atas)
+    const badgeCount = document.createElement('div');
+    badgeCount.className = 'promo-click-badge';
+    badgeCount.textContent = '0';
+    badgeCount.style.position = 'absolute';
+    badgeCount.style.top = '6px';
+    badgeCount.style.right = '6px';
+    badgeCount.style.background = '#ff3b30';
+    badgeCount.style.color = '#fff';
+    badgeCount.style.fontWeight = 'bold';
+    badgeCount.style.borderRadius = '50%';
+    badgeCount.style.width = '22px';
+    badgeCount.style.height = '22px';
+    badgeCount.style.display = 'none';
+    badgeCount.style.justifyContent = 'center';
+    badgeCount.style.alignItems = 'center';
+    badgeCount.style.fontSize = '13px';
+    badgeCount.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+    badgeCount.style.zIndex = '2';
+    card.appendChild(badgeCount);
+
+    // 🔹 klik = tambah ke cart + naikin badge angka
+    let count = 0;
+    card.onclick = () => {
+      addToCartObj(p.namaPromo || p.namaMenu, p.harga);
+
+      count++;
+      badgeCount.textContent = count;
+      badgeCount.style.display = 'flex';
+      badgeCount.animate([{ transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 200 });
+    };
+
+    grid.appendChild(card);
+  });
+
+  startPromoCountdown?.();
+}
 
   function updateBadge(cardEl, itemName) {
     try {
@@ -937,6 +971,7 @@ async function getDB() {
     } catch(e){}
   }
 
+  /* ------------------ PROMO COUNTDOWN -------------------- */
   function startPromoCountdown(){
     stopPromoCountdown();
     promoCountdownTimer = setInterval(()=>{
@@ -955,455 +990,92 @@ async function getDB() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-  /* ============================================================
-     VOUCHER SYSTEM (ROBUST)
-     - load from DB (menuvaData -> menuVoucher)
-     - fallback to localStorage keys
-     - normalize a lot of possible voucher field names
-     - cache results
-     ============================================================ */
+// ============================================================
+//  VOUCHER FIX FINAL — sesuai DB admin.html
+// ============================================================
 
-  let cachedVoucherList = null;
+let cachedVoucherList = null;
 
-async function loadVoucherListFromDB(dbInstance) {
-  if (!dbInstance) dbInstance = await getDB();
+// Load voucher langsung dari store "menuvaData", id=1
+async function loadVoucherList() {
+  try {
+    const db = await getDB();
+    const tx = db.transaction("menuvaData", "readonly");
+    const store = tx.objectStore("menuvaData");
 
-  return new Promise((resolve) => {
-    if (!dbInstance.objectStoreNames.contains(STORE_NAME)) return resolve([]);
-    const tx = dbInstance.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(1);
+    return new Promise((resolve, reject) => {
+      const req = store.get(1);
 
-    req.onsuccess = () => {
-      const row = req.result || {};
-      const candidates = ['menuVoucher','menu_voucher','voucherList','vouchers','voucher','menuVoucherList'];
-      for (const k of candidates) {
-        if (Array.isArray(row[k]) && row[k].length) return resolve(row[k]);
-      }
-      resolve([]);
-    };
+      req.onsuccess = () => {
+        const data = req.result;
 
-    req.onerror = () => resolve([]);
-  });
-}
+        if (!data || !Array.isArray(data.menuVoucher)) {
+          console.warn("⚠️ Tidak ada menuVoucher di DB → pakai []");
+          resolve([]);
+          return;
+        }
 
-  // fallback to localStorage keys
-  function loadVoucherListFromLocalStorage() {
-    const keys = ['menuVoucher','voucher','menuva_voucher','vouchers','voucherList'];
-    for (const k of keys) {
-      try {
-        const raw = localStorage.getItem(k);
-        if (!raw) continue;
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
-        if (parsed && typeof parsed === 'object') return [parsed];
-      } catch(e){}
-    }
+        console.log("📦 Voucher loaded from IndexedDB:", data.menuVoucher);
+        resolve(data.menuVoucher);
+      };
+
+      req.onerror = () => {
+        console.error("❌ Gagal load voucher dari IndexedDB");
+        resolve([]); // fallback aman
+      };
+    });
+  } catch (err) {
+    console.error("❌ IndexedDB error:", err);
     return [];
   }
+}
 
-  // normalize voucher object (map many possible fields to canonical ones)
-  function normalizeVoucher(v) {
-    if (!v || typeof v !== 'object') return null;
-    const obj = {};
-    obj.code = String(v.code || v.kodeVoucher || v.kode || v.voucherCode || v.codeVoucher || v.kod || v.k).trim();
-    // discount percent
-    obj.discount = Number(v.discount ?? v.diskon ?? v.persen ?? v.pct ?? 0) || 0;
-    // expiry
-    const expiryRaw = v.expiry || v.tanggalAkhir || v.exp || v.validUntil || v.valid_thru || v.berlakuSampai || v.expired;
-    if (expiryRaw) {
-      const d = new Date(expiryRaw);
-      obj.expiry = isFinite(d.getTime()) ? d.toISOString() : null;
-    } else obj.expiry = null;
-    // keep original raw object
-    obj._raw = v;
-    return obj;
-  }
+// Pastikan voucher sudah di-cache
+async function ensureVoucherLoaded() {
+  if (cachedVoucherList) return cachedVoucherList;
 
-  async function ensureVoucherLoaded() {
-  if (Array.isArray(cachedVoucherList)) return cachedVoucherList;
+  cachedVoucherList = await loadVoucherList();
 
-  const db = await getDB();
-  let list = await loadVoucherListFromDB(db);
+  console.log("📦 Voucher list cached:", cachedVoucherList);
 
-  // fallback to LS
-  if (!Array.isArray(list) || list.length === 0) {
-    const fromLS = loadVoucherListFromLocalStorage();
-    if (Array.isArray(fromLS) && fromLS.length) list = fromLS;
-  }
-
-  cachedVoucherList = list.map(normalizeVoucher).filter(Boolean);
-  console.log("📦 Voucher loaded/cached:", cachedVoucherList);
   return cachedVoucherList;
 }
 
-  // synchronous accessor for list (returns empty array if not loaded yet)
-  function getActiveVoucherList() {
-    return Array.isArray(cachedVoucherList) ? cachedVoucherList : [];
+// Cari voucher berdasarkan code
+async function findVoucher(code) {
+  const list = await ensureVoucherLoaded();
+
+  return list.find(v => v.kodeVoucher === code.toUpperCase()) || null;
+}
+
+// Apply voucher
+async function applyVoucher() {
+  const code = document.getElementById("voucherInput").value.trim().toUpperCase();
+  if (!code) return alert("Masukkan kode voucher!");
+
+  const v = await findVoucher(code);
+
+  if (!v) {
+    alert("❌ Invalid voucher code");
+    return;
   }
 
-  // find voucher (case-insensitive), respects expiry if present
-  function findVoucherSync(codeInput) {
-    if (!codeInput) return null;
-    const code = String(codeInput).trim().toLowerCase();
-    const list = getActiveVoucherList();
-    if (!list.length) return null;
-    const now = Date.now();
-    return list.find(v => {
-      if (!v || !v.code) return false;
-      if (String(v.code).trim().toLowerCase() !== code) return false;
-      if (v.expiry) {
-        const t = Date.parse(v.expiry);
-        if (!isFinite(t)) return true; // can't parse expiry → assume valid
-        return t >= now;
-      }
-      return true;
-    }) || null;
+  console.log("🎉 Voucher applied:", v);
+  alert(`Voucher berhasil! Diskon: ${v.discount}%`);
+}
+
+/* ---------------------------------------
+   INIT: wajib dipanggil di DOMContentLoaded
+---------------------------------------- */
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    await ensureVoucherLoaded();   // 🔥 versi final sinkron dengan admin
+  } catch (e) {
+    console.warn("⚠️ Voucher init error:", e);
   }
+});
 
-  /* -------------------------
-     UI: voucher input & apply
-     ------------------------- */
-
-  function applyVoucherAndUpdateSummary() {
-    const cartTotalEl = document.getElementById('cartTotal');
-    const grandTotalEl = document.getElementById('grandTotal');
-    const discountRow = document.getElementById('discountRow');
-    const voucherDiscountEl = document.getElementById('voucherDiscount');
-    const inputCode = (document.getElementById('voucherInput')?.value || '').trim();
-
-    const rawTotal = (cartTotalEl && cartTotalEl.dataset && cleanNumber(cartTotalEl.dataset.raw)) ? cleanNumber(cartTotalEl.dataset.raw) : 0;
-    let discount = 0;
-
-    const voucher = findVoucherSync(inputCode);
-
-    let voucherValid = false;
-    if (voucher) {
-      const pct = Number(voucher.discount) || 0;
-      discount = rawTotal * (pct / 100);
-      voucherValid = true;
-      activeVoucherData = voucher;
-      try { showToast && showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${pct}%`, 'success'); } catch(e){}
-    } else if (inputCode) {
-      activeVoucherData = null;
-      try { showToast && showToast('❌ Kode voucher salah atau kadaluarsa.', 'error'); } catch(e){}
-    }
-
-    const newTotal = Math.max(0, rawTotal - discount);
-
-    if (cartTotalEl) cartTotalEl.textContent = formatWithActive ? formatWithActive(rawTotal) : rawTotal;
-    if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive ? formatWithActive(discount) : discount;
-    if (grandTotalEl) grandTotalEl.textContent = formatWithActive ? formatWithActive(newTotal) : newTotal;
-
-    if (discountRow) {
-      if (voucherValid && discount > 0) {
-        discountRow.style.display = 'flex';
-        discountRow.classList.add('fade-in');
-        discountRow.classList.remove('fade-out');
-      } else {
-        discountRow.classList.remove('fade-in');
-        discountRow.classList.add('fade-out');
-        setTimeout(() => (discountRow.style.display = 'none'), 300);
-      }
-    }
-  }
-
-  function saveVoucherToStorage() {
-    if (!activeVoucherData) {
-      localStorage.removeItem('menuva_voucher');
-      return;
-    }
-    // save the raw object (to allow restore)
-    localStorage.setItem('menuva_voucher', JSON.stringify(activeVoucherData._raw || activeVoucherData));
-  }
-
-  function restoreVoucherFromStorage() {
-    const saved = localStorage.getItem('menuva_voucher');
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved);
-      // normalize and set activeVoucherData if still valid
-      const norm = normalizeVoucher(parsed);
-      if (!norm) return;
-      // if cached vouchers loaded, try to find actual canonical voucher
-      const candidate = getActiveVoucherList().find(v => v.code.toLowerCase() === norm.code.toLowerCase());
-      if (candidate) activeVoucherData = candidate;
-      else activeVoucherData = norm; // allow a voucher restored from local storage
-      applyVoucherAndUpdateSummary();
-    } catch(e) {
-      console.warn('Gagal load voucher dari storage:', e);
-    }
-  }
-
-  function initVoucherInput() {
-    const voucherInput = document.getElementById('voucherInput');
-    const voucherMessage = document.getElementById('voucherMessage');
-
-    if (!voucherInput) return;
-
-    const applyHandler = async ()=> {
-      // Ensure voucher list loaded before checking
-      try { await ensureVoucherLoaded(); } catch(e) {}
-      const code = (voucherInput.value || '').trim();
-      const voucher = findVoucherSync(code);
-
-      if (voucher) {
-        activeVoucherData = voucher;
-        if (voucherMessage) {
-          voucherMessage.textContent = `✅ Voucher applied: ${voucher.discount}% off`;
-          voucherMessage.style.color = 'green';
-        }
-      } else if (code.length > 0) {
-        activeVoucherData = null;
-        if (voucherMessage) {
-          voucherMessage.textContent = '❌ Invalid voucher code';
-          voucherMessage.style.color = 'red';
-        }
-      } else {
-        activeVoucherData = null;
-        if (voucherMessage) voucherMessage.textContent = '';
-      }
-
-      applyVoucherAndUpdateSummary();
-      saveVoucherToStorage();
-    };
-
-    ['input','keyup','change','blur'].forEach(evt => voucherInput.addEventListener(evt, applyHandler));
-  }
-
-  // A helper used by some legacy code: synchronous findVoucher wrapper (will try to use cached)
-  function findVoucher(code) {
-    return findVoucherSync(code);
-  }
-
-  /* =========================
-     CART PERSISTENCE & CUSTOMER FORM
-     ========================= */
-  function saveCartToStorage() {
-    localStorage.setItem("menuva_cart", JSON.stringify(cart));
-  }
-
-  function loadCartFromStorage() {
-    try {
-      const data = JSON.parse(localStorage.getItem("menuva_cart") || "[]");
-      if (Array.isArray(data)) cart = data;
-    } catch(e) {
-      cart = [];
-    }
-  }
-
-  function saveCustomerForm() {
-    const formData = {
-      name: document.getElementById('custName')?.value || '',
-      table: document.getElementById('custTable')?.value || '',
-      date: document.getElementById('custDate')?.value || '',
-      time: document.getElementById('custTime')?.value || '',
-      note: document.getElementById('custNote')?.value || ''
-    };
-    localStorage.setItem("menuva_customer", JSON.stringify(formData));
-  }
-
-  function loadCustomerForm() {
-    try {
-      const data = JSON.parse(localStorage.getItem("menuva_customer") || "{}");
-      if (!data) return;
-      if (data.name) document.getElementById('custName').value = data.name;
-      if (data.table) document.getElementById('custTable').value = data.table;
-      if (data.date) document.getElementById('custDate').value = data.date;
-      if (data.time) document.getElementById('custTime').value = data.time;
-      if (data.note) document.getElementById('custNote').value = data.note;
-    } catch(e) {}
-  }
-
-  /* =========================
-     ORDER SAVE (same as original, but uses initDB/getDB)
-     ========================= */
-  async function sendOrder() {
-    const name = (document.getElementById('custName')?.value || '').trim();
-    const table = (document.getElementById('custTable')?.value || '').trim();
-    const date = document.getElementById('custDate')?.value || '';
-    const time = document.getElementById('custTime')?.value || '';
-    const note = (document.getElementById('custNote')?.value || '').trim();
-
-    if (!name) return showToast('⚠️ Please fill in customer name!', "error"), playSound("error");
-    if (!table) return showToast('⚠️ Please fill in table number!', "error"), playSound("error");
-    if (!cart || !cart.length) return showToast('⚠️ Please add items to cart before submitting!', "error"), playSound("error");
-
-    let subtotal = 0;
-    cart.forEach(c => subtotal += (Number(c.harga) || 0) * (Number(c.qty) || 0));
-
-    let discount = 0, voucherCode = null, discountPercent = 0;
-    if (activeVoucherData) {
-      discountPercent = parseFloat(activeVoucherData.discount) || 0;
-      discount = subtotal * (discountPercent / 100);
-      voucherCode = activeVoucherData.code;
-    }
-    const grandTotal = subtotal - discount;
-    const now = new Date();
-
-    const orderData = {
-      resto: restoData?.namaRestoran || '',
-      customer: name,
-      table,
-      date,
-      time,
-      note: note || '-',
-      items: cart.map(c => ({
-        nama: c.nama,
-        qty: c.qty,
-        harga: c.harga,
-        total: (Number(c.harga) || 0) * (Number(c.qty) || 0)
-      })),
-      subtotal,
-      discount,
-      discountPercent,
-      voucherCode,
-      grandTotal,
-      status: "new",
-      orderTime: now.toLocaleString("id-ID", { dateStyle: "short", timeStyle: "medium" })
-    };
-
-    try {
-      const database = await initDB();
-      const tx = database.transaction("ordersData", "readwrite");
-      const store = tx.objectStore("ordersData");
-      const req = store.add(orderData);
-
-      req.onsuccess = (e) => {
-        const newId = e.target.result;
-        console.log("✅ Order stored:", { ...orderData, id: newId });
-        showToast("✅ Order submitted successfully!", "success", "top");
-        playSound("success");
-
-        try {
-          const bc = new BroadcastChannel("menuvaOrders");
-          bc.postMessage({
-            type: "newOrder",
-            data: { ...orderData, id: newId }
-          });
-          bc.close();
-        } catch (err) {
-          console.warn("⚠️ Broadcast gagal:", err);
-        }
-
-        showToast("🧾 Order is being processed", "info", "bottom");
-      };
-
-      req.onerror = (e) => {
-        console.error("❌ Failed saving order:", e.target.error);
-        showToast("❌ Failed to save order, please try again.", "error");
-        playSound("error");
-      };
-
-    } catch (err) {
-      console.error("❌ DB Error:", err);
-      showToast("❌ Database not initialized", "error");
-    }
-  }
-
-  /* =========================
-     SOUND & TOAST HELPERS
-     ========================= */
-  function playSound(type) {
-    let file = "";
-    if (type === "success") file = "clik.mp3";
-    else if (type === "error") file = "beep.mp3";
-    if (!file) return;
-    const audio = new Audio(`./${file}`);
-    audio.play().catch(err => console.warn("Sound error:", err));
-  }
-
-  function showToast(message, type = "info", position = "top") {
-    const toast = document.createElement("div");
-    toast.className = `toast ${type} toast-${position}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
-
-  /* =========================
-     TABS & UI INIT
-     ========================= */
-  function switchTab(tabName){
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    const target = document.getElementById(tabName);
-    if (target) target.classList.add('active');
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    const activeTab = Array.from(document.querySelectorAll('.tab')).find(x => x.getAttribute('onclick')?.includes(tabName));
-    if (activeTab) activeTab.classList.add('active');
-  }
-
-  window.sendOrder = sendOrder;
-  window.switchTab = switchTab;
-
-  /* =========================
-     CLEAR CUSTOMER DATA (kept)
-     ========================= */
-  async function clearCustomerData(confirmRequired = true) {
-    if (confirmRequired) {
-      if (!confirm('Yakin mau hapus semua data pesanan di halaman ini?')) return;
-    }
-
-    try {
-      cart = [];
-      activeVoucherData = null;
-
-      localStorage.removeItem('menuva_cart');
-      localStorage.removeItem('menuva_customer');
-      localStorage.removeItem('menuva_voucher');
-      localStorage.removeItem('voucher');
-
-      const idsToClear = ['custName', 'custTable', 'custNote'];
-      idsToClear.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-      const dateInput = document.getElementById('custDate');
-      const timeInput = document.getElementById('custTime');
-      if (dateInput) dateInput.value = dateStr;
-      if (timeInput) timeInput.value = timeStr;
-
-      saveCartToStorage();
-      saveCustomerForm();
-      saveVoucherToStorage();
-
-      renderCart();
-      applyVoucherAndUpdateSummary();
-      renderMenu();
-      renderPromo(menuPromo);
-      updateCartCount();
-
-      try {
-        const notifyBc = new BroadcastChannel('menuvaOrders');
-        notifyBc.postMessage({ type: 'customer_cleared' });
-        notifyBc.close();
-      } catch (e) {}
-
-      showToast('🧹 Semua data pesanan Anda telah dihapus.', 'success', 'top');
-      playSound('delete');
-    } catch (err) {
-      console.error('❌ clearCustomerData error:', err);
-      showToast('❌ Gagal menghapus data. Coba lagi.', 'error');
-    }
-  }
-
-  const clearBtn = document.getElementById('clearDataBtn');
-  if (clearBtn) {
-    clearBtn.replaceWith(clearBtn.cloneNode(true));
-    const newBtn = document.getElementById('clearDataBtn');
-    newBtn.addEventListener('click', () => clearCustomerData(true));
-  }
-
-  /* =========================
-     LOCALE SELECT INIT
-     ========================= */
-  const LOCALE_KEY = "menuva_locale";
-
+  /* ------------------ LOCALE UI ------------------------- */
   function initLocaleSelect(){
     const sel = document.getElementById('localeSelect');
     if (!sel) return;
@@ -1416,39 +1088,155 @@ async function loadVoucherListFromDB(dbInstance) {
     });
   }
 
-  /* =========================
-     VOUCHER + INIT ORDER: main DOM ready
-     - ensure vouchers loaded BEFORE rendering cart so findVoucherSync works
-     ========================= */
+  function refreshAllPriceDisplays(){
+    document.querySelectorAll('.menu-price').forEach(el=>{
+      const p = Number(el.dataset.price) || 0;
+      el.textContent = formatWithActive(p);
+    });
+    // update cart totals formatting too
+    try { applyVoucherAndUpdateSummary(); } catch(e){}
+  }
+
+/* ------------------ SAVE ORDER (NEW STORE + REALTIME BROADCAST) ------------- */
+async function sendOrder() {
+  const name = (document.getElementById('custName')?.value || '').trim();
+  const table = (document.getElementById('custTable')?.value || '').trim();
+  const date = document.getElementById('custDate')?.value || '';
+  const time = document.getElementById('custTime')?.value || '';
+  const note = (document.getElementById('custNote')?.value || '').trim(); // ✅ ambil notes
+
+  if (!name) return showToast('⚠️ Please fill in customer name!', "error"), playSound("error");
+  if (!table) return showToast('⚠️ Please fill in table number!', "error"), playSound("error");
+  if (!cart || !cart.length) return showToast('⚠️ Please add items to cart before submitting!', "error"), playSound("error");
+
+  // ✅ Hitung subtotal, discount, total
+  let subtotal = 0;
+  cart.forEach(c => subtotal += (Number(c.harga) || 0) * (Number(c.qty) || 0));
+
+  let discount = 0, voucherCode = null, discountPercent = 0;
+  if (activeVoucherData) {
+    discountPercent = parseFloat(activeVoucherData.discount) || 0;
+    discount = subtotal * (discountPercent / 100);
+    voucherCode = activeVoucherData.code;
+  }
+  const grandTotal = subtotal - discount;
+  const now = new Date();
+
+  // ✅ Data lengkap termasuk note
+  const orderData = {
+    resto: restoData?.namaRestoran || '',
+    customer: name,
+    table,
+    date,
+    time,
+    note: note || '-', // ✅ simpan note walau kosong
+    items: cart.map(c => ({
+      nama: c.nama,
+      qty: c.qty,
+      harga: c.harga,
+      total: (Number(c.harga) || 0) * (Number(c.qty) || 0)
+    })),
+    subtotal,
+    discount,
+    discountPercent,
+    voucherCode,
+    grandTotal,
+    status: "new",
+    orderTime: now.toLocaleString("id-ID", { dateStyle: "short", timeStyle: "medium" })
+  };
+
+  try {
+    const db = await initDB();
+    const tx = db.transaction("ordersData", "readwrite");
+    const store = tx.objectStore("ordersData");
+    const req = store.add(orderData);
+
+    req.onsuccess = (e) => {
+      const newId = e.target.result;
+      console.log("✅ Order stored:", { ...orderData, id: newId });
+      showToast("✅ Order submitted successfully!", "success", "top");
+      playSound("success");
+
+      // ✅ Kirim sinyal real-time ke receives.html
+      try {
+        const bc = new BroadcastChannel("menuvaOrders");
+        bc.postMessage({
+          type: "newOrder",
+          data: { ...orderData, id: newId }
+        });
+        bc.close();
+      } catch (err) {
+        console.warn("⚠️ Broadcast gagal:", err);
+      }
+
+      // 🚫 Jangan hapus data di sini!
+      // Biarkan customer tetap lihat pesanan & datanya walau sudah dikirim
+      // Semua data akan tetap tersimpan di localStorage
+
+      showToast("🧾 Order is being processed", "info", "bottom");
+    };
+
+    req.onerror = (e) => {
+      console.error("❌ Failed saving order:", e.target.error);
+      showToast("❌ Failed to save order, please try again.", "error");
+      playSound("error");
+    };
+
+  } catch (err) {
+    console.error("❌ DB Error:", err);
+    showToast("❌ Database not initialized", "error");
+  }
+}
+
+/* ---------------- SOUND EFFECT ---------------- */
+function playSound(type) {
+  let file = "";
+  if (type === "success") file = "clik.mp3";
+  else if (type === "error") file = "beep.mp3";
+
+  if (!file) return;
+  const audio = new Audio(`./${file}`);
+  audio.play().catch(err => console.warn("Sound error:", err));
+}
+
+ function showToast(message, type = "info", position = "top") {
+    const toast = document.createElement("div");
+    toast.className = `toast ${type} toast-${position}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  /* ------------------ TABS ------------------ */
+  function switchTab(tabName){
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const target = document.getElementById(tabName);
+    if (target) target.classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    const activeTab = Array.from(document.querySelectorAll('.tab')).find(x => x.getAttribute('onclick')?.includes(tabName));
+    if (activeTab) activeTab.classList.add('active');
+  }
+
+  /* expose to window */
+  window.sendOrder = sendOrder;
+  window.switchTab = switchTab;
+
+/* ------------------ INIT (on DOM ready) ---------------- */
   window.addEventListener('DOMContentLoaded', async () => {
-    // initialize locale, voucher input handlers, dark mode handled elsewhere
+    // ========== Inisialisasi Locale & Voucher ==========
     initLocaleSelect();
     initVoucherInput();
 
     try {
-      // open DB first (may throw if device denies it)
-      try {
-        await initDB();
-      } catch (err) {
-        console.warn('⚠️ initDB error (will fallback to localStorage):', err);
-      }
-
-      // load base data (menu / resto) if DB available
-      try {
-        const restoId = getQueryRestoId();
-        const data = await loadDataFromDB(restoId);
-        restoData = data || {};
-        menuData = Array.isArray(data?.menu) ? data.menu : Array.isArray(data?.menuData) ? data.menuData : [];
-        menuPromo = Array.isArray(data?.menuPromo) ? data.menuPromo : [];
-      } catch (e) {
-        console.warn('⚠️ DB init error:', e);
-      }
-
-      // ensure vouchers loaded (DB first, fallback LS)
-      try { await ensureVoucherLoaded(); } catch(e){ console.warn('Voucher ensure failed', e); }
-
-    } catch (err) {
-      console.warn('Init error:', err);
+      // ========== Buka DB ==========
+      await initDB();
+      const restoId = getQueryRestoId();
+      const data = await loadDataFromDB(restoId);
+      restoData = data || {};
+      menuData = Array.isArray(data?.menu) ? data.menu : [];
+      menuPromo = Array.isArray(data?.menuPromo) ? data.menuPromo : [];
+    } catch (e) {
+      console.warn('⚠️ DB init error:', e);
     }
 
     // ========== Header Info ==========
@@ -1467,107 +1255,154 @@ async function loadVoucherListFromDB(dbInstance) {
     const telEl = document.getElementById('teleponRestoranDisplay');
     if (telEl) telEl.innerText = restoData?.restoPhone || '';
 
-    // default date/time
+    // ========== Default Date/Time ==========
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const dateInput = document.getElementById('custDate');
     if (dateInput) dateInput.value = dateStr;
     const timeInput = document.getElementById('custTime');
     if (timeInput) timeInput.value = timeStr;
 
-    // initial render
+    // ========== Render Awal ==========
     renderMenu();
     renderPromo(menuPromo);
 
+    // restore data dari localStorage
     loadCartFromStorage();
     loadCustomerForm();
     renderCart();
-    // applyVoucherAndUpdateSummary will consider cached vouchers loaded above
     applyVoucherAndUpdateSummary();
     restoreVoucherFromStorage();
 
-    // auto-save form inputs
+    // ========== Auto Save Customer Form ==========
     ['custName', 'custTable', 'custDate', 'custTime', 'custNote'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', saveCustomerForm);
     });
 
-    // locale select UI set
+    // ========== Locale Select ==========
     const sel = document.getElementById('localeSelect');
     if (sel) sel.value = localStorage.getItem(LOCALE_KEY) || 'auto';
 
-    console.log('✅ Menuva JS (clean) initialized');
+    console.log('✅ Menuva JS initialized');
+
+    // ========== 🔴 Broadcast Channel: Realtime Sync ke receives.html ==========
+    const bc = new BroadcastChannel('orders_channel');
+    window.notifyOrdersUpdated = () => {
+      bc.postMessage('update_orders');
+      console.log('📡 Orders broadcast dikirim ke receives.html');
+    };
   });
 
-  /* =========================
-     expose some functions to window (keperluan template)
-     ========================= */
-  window.findVoucher = findVoucher; // compatibility
-  window.applyVoucherAndUpdateSummary = applyVoucherAndUpdateSummary;
-  window.saveVoucherToStorage = saveVoucherToStorage;
-  window.restoreVoucherFromStorage = restoreVoucherFromStorage;
-  window.ensureVoucherLoaded = ensureVoucherLoaded;
-  window.initVoucherInput = initVoucherInput;
-  window.getActiveVoucherList = getActiveVoucherList;
+ /* ------------------ CLEAR CUSTOMER DATA (replace old handler) ------------------ */
+async function clearCustomerData(confirmRequired = true) {
+  if (confirmRequired) {
+    if (!confirm('Yakin mau hapus semua data pesanan di halaman ini?')) return;
+  }
 
-})();
+  try {
+    // 1) Kosongkan runtime state
+    cart = [];
+    activeVoucherData = null;
+
+    // 2) Hapus semua key localStorage yang berkaitan dengan customer-side
+    localStorage.removeItem('menuva_cart');
+    localStorage.removeItem('menuva_customer');
+    localStorage.removeItem('menuva_voucher');
+    localStorage.removeItem('voucher');
+
+    // 3) Reset form fields di DOM (jangan lupa set default date/time lagi)
+    const idsToClear = ['custName', 'custTable', 'custNote'];
+    idsToClear.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+
+    // reset date/time to "now" in same format used on init
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const dateInput = document.getElementById('custDate');
+    const timeInput = document.getElementById('custTime');
+    if (dateInput) dateInput.value = dateStr;
+    if (timeInput) timeInput.value = timeStr;
+
+    // 4) Persist the cleared state so reload isn't required (important)
+    saveCartToStorage();     // will write empty cart
+    saveCustomerForm();      // will save cleared customer form
+    saveVoucherToStorage();  // will remove menuva_voucher if activeVoucherData is null
+
+    // 5) Update UI immediately
+    renderCart();                    // rebuild cart UI (will show empty)
+    applyVoucherAndUpdateSummary();  // update totals / discount rows
+    renderMenu();                    // (optional) refresh menu price display/badges
+    renderPromo(menuPromo);          // re-render promo area (keeps promo visible)
+    updateCartCount();
+
+    // 6) Notify other tabs (if any) so they can sync/clear UI too
+    try {
+      const notifyBc = new BroadcastChannel('menuvaOrders');
+      notifyBc.postMessage({ type: 'customer_cleared' });
+      notifyBc.close();
+    } catch (e) {
+      // ignore if BC not available
+    }
+
+    // 7) UX feedback
+    showToast('🧹 Semua data pesanan Anda telah dihapus.', 'success', 'top');
+    playSound('delete');
+
+  } catch (err) {
+    console.error('❌ clearCustomerData error:', err);
+    showToast('❌ Gagal menghapus data. Coba lagi.', 'error');
+  }
+}
+
+/* pasang ke tombol (gantikan handler lama) */
+const clearBtn = document.getElementById('clearDataBtn');
+if (clearBtn) {
+  // remove any previous listeners just in case
+  clearBtn.replaceWith(clearBtn.cloneNode(true));
+  const newBtn = document.getElementById('clearDataBtn');
+  newBtn.addEventListener('click', () => clearCustomerData(true));
+}
+  
+})(); 
 </script>
 <script>
-// =====================
-// THEME (LIGHT / DARK)
-// =====================
+/* ======================
+   DARK MODE HANDLER
+   ====================== */
+function initDarkMode() {
+  const toggleBtn = document.getElementById('darkToggle');
+  if (!toggleBtn) return;
 
-// Apply theme ke body
-function applyTheme() {
-  const saved = localStorage.getItem("themeMode") || "light";
-
-  if (saved === "dark") {
-    document.body.classList.add("dark-mode");
+  // 🔹 Baca preferensi user dari localStorage
+  const savedTheme = localStorage.getItem('menuva_theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    toggleBtn.textContent = '☀️';
   } else {
-    document.body.classList.remove("dark-mode");
+    document.body.classList.remove('dark-mode');
+    toggleBtn.textContent = '🌙';
   }
+
+  // 🔹 Event klik toggle
+  toggleBtn.addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('menuva_theme', isDark ? 'dark' : 'light');
+    toggleBtn.textContent = isDark ? '☀️' : '🌙';
+  });
 }
 
-// Toggle theme
-function toggleTheme() {
-  const isDark = document.body.classList.contains("dark-mode");
-
-  if (isDark) {
-    document.body.classList.remove("dark-mode");
-    localStorage.setItem("themeMode", "light");
-  } else {
-    document.body.classList.add("dark-mode");
-    localStorage.setItem("themeMode", "dark");
-  }
-}
-
-// Initialize
-document.addEventListener("DOMContentLoaded", () => {
-  applyTheme();
-
-  const btn = document.getElementById("darkToggle");
-  if (btn) {
-    btn.addEventListener("click", toggleTheme);
-
-    // Set icon sesuai mode
-    btn.textContent = document.body.classList.contains("dark-mode") ? "🌞" : "🌙";
-  }
-});
-
-// Update icon setiap toggle
-document.addEventListener("click", (e) => {
-  if (e.target.id === "darkToggle") {
-    e.target.textContent =
-      document.body.classList.contains("dark-mode") ? "🌞" : "🌙";
-  }
-});
+// Jalankan setelah DOM siap
+window.addEventListener('DOMContentLoaded', initDarkMode);
 </script>
 
 </body>
 </html>
-
-
-
 
