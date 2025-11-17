@@ -999,7 +999,7 @@ let cachedVoucherList = null;
 // Load voucher langsung dari store "menuvaData", id=1
 async function loadVoucherList() {
   try {
-    const db = await getDB();
+    const db = await initDB();
     const tx = db.transaction("menuvaData", "readonly");
     const store = tx.objectStore("menuvaData");
 
@@ -1050,18 +1050,61 @@ async function findVoucher(code) {
 
 // Apply voucher
 async function applyVoucher() {
-  const code = document.getElementById("voucherInput").value.trim().toUpperCase();
-  if (!code) return alert("Masukkan kode voucher!");
+  const input = document.getElementById("voucherInput").value.trim();
+  const msg = document.getElementById("voucherMessage");
 
-  const v = await findVoucher(code);
-
-  if (!v) {
-    alert("❌ Invalid voucher code");
+  if (!input) {
+    msg.textContent = "❌ Please enter voucher code";
+    msg.style.color = "var(--danger)";
+    playError();
     return;
   }
 
-  console.log("🎉 Voucher applied:", v);
-  alert(`Voucher berhasil! Diskon: ${v.discount}%`);
+  // pastikan voucher sudah dimuat
+  await ensureVoucherLoaded();
+
+  const found = window.voucherList.find(
+    v => v.code.toLowerCase() === input.toLowerCase()
+  );
+
+  if (!found) {
+    msg.textContent = "❌ Invalid voucher code";
+    msg.style.color = "var(--danger)";
+    playError();
+    hideDiscount();
+    return;
+  }
+
+  window.activeVoucher = found;
+
+  msg.textContent = "✅ Voucher applied: " + found.code;
+  msg.style.color = "var(--success)";
+  playSuccess();
+
+  updateTotals();
+}
+
+  function initVoucherInput() {
+  const input = document.getElementById("voucherInput");
+
+  input.addEventListener("keyup", (e) => {
+    if (e.key === "Enter") {
+      applyVoucher();
+    }
+  });
+}
+
+function hideDiscount() {
+  document.getElementById("discountRow").style.display = "none";
+  document.getElementById("voucherDiscount").textContent = "0";
+}
+
+function playSuccess() {
+  document.getElementById("sound-success").play();
+}
+
+function playError() {
+  document.getElementById("sound-error").play();
 }
 
 /* ---------------------------------------
@@ -1405,4 +1448,5 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
