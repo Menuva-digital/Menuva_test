@@ -1022,22 +1022,20 @@ async function loadVoucherListFromDB(dbInstance) {
 
   async function ensureVoucherLoaded() {
   if (Array.isArray(cachedVoucherList)) return cachedVoucherList;
-  const db = await getDB();       // ambil DB yang sudah diinisialisasi
-  const list = await loadVoucherListFromDB(db); // kasih db ke fungsi load
+
+  const db = await getDB();
+  let list = await loadVoucherListFromDB(db);
+
+  // fallback to LS
+  if (!Array.isArray(list) || list.length === 0) {
+    const fromLS = loadVoucherListFromLocalStorage();
+    if (Array.isArray(fromLS) && fromLS.length) list = fromLS;
+  }
+
   cachedVoucherList = list.map(normalizeVoucher).filter(Boolean);
+  console.log("📦 Voucher loaded/cached:", cachedVoucherList);
   return cachedVoucherList;
 }
-    // fallback to LS
-    if (!Array.isArray(list) || list.length === 0) {
-      const fromLS = loadVoucherListFromLocalStorage();
-      if (Array.isArray(fromLS) && fromLS.length) list = fromLS;
-    }
-
-    // normalize entries
-    cachedVoucherList = (Array.isArray(list) ? list.map(normalizeVoucher).filter(Boolean) : []);
-    console.log('📦 Voucher loaded/cached:', cachedVoucherList);
-    return cachedVoucherList;
-  }
 
   // synchronous accessor for list (returns empty array if not loaded yet)
   function getActiveVoucherList() {
@@ -1569,6 +1567,7 @@ document.addEventListener("click", (e) => {
 
 </body>
 </html>
+
 
 
 
