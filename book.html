@@ -1021,31 +1021,42 @@ async function loadVoucherList() {
     const store = tx.objectStore("menuvaData");
 
     return new Promise((resolve, reject) => {
-      const req = store.get(1);
+      const req = store.getAll();
 
       req.onsuccess = () => {
-        const data = req.result;
+        const all = req.result || [];
 
-        if (!data || !Array.isArray(data.menuVoucher)) {
-          console.warn("⚠️ Tidak ada menuVoucher di DB → pakai []");
+        if (!all.length) {
+          console.warn("⚠️ menuvaData kosong");
           resolve([]);
           return;
         }
 
-        console.log("📦 Voucher loaded from IndexedDB:", data.menuVoucher);
-        resolve(data.menuVoucher);
+        // cari yang paling lengkap (punya menuVoucher)
+        const found = all.find(r => Array.isArray(r.menuVoucher));
+
+        if (!found) {
+          console.warn("⚠️ Tidak ada record yang punya menuVoucher");
+          resolve([]);
+          return;
+        }
+
+        console.log("📦 Voucher loaded:", found.menuVoucher);
+        resolve(found.menuVoucher);
       };
 
       req.onerror = () => {
-        console.error("❌ Gagal load voucher dari IndexedDB");
-        resolve([]); // fallback aman
+        console.error("❌ Gagal load data dari IndexedDB");
+        resolve([]);
       };
     });
+
   } catch (err) {
     console.error("❌ IndexedDB error:", err);
     return [];
   }
 }
+
 
 // Pastikan voucher sudah di-cache
 async function ensureVoucherLoaded() {
@@ -1062,7 +1073,10 @@ async function ensureVoucherLoaded() {
 async function findVoucher(code) {
   const list = await ensureVoucherLoaded();
 
-  return list.find(v => v.kodeVoucher === code.toUpperCase()) || null;
+ const c = code.toUpperCase();
+return list.find(v => 
+  String(v.kodeVoucher || v.code).toUpperCase() === c
+);
 }
 
 // Apply voucher
@@ -1496,6 +1510,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
