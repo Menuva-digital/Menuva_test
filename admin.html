@@ -2100,6 +2100,7 @@ function initRoomToggle() {
   });
 }
 
+
 // ===================== VOUCHER TOGGLE =====================
 async function initVoucherToggle() {
   const toggleVoucherPage = document.getElementById("toggleVoucherPage");
@@ -2121,104 +2122,115 @@ async function initVoucherToggle() {
   toggleVoucherPage.checked = enabled;
   voucherForm.style.display = enabled ? "block" : "none";
 
-  toggleVoucherPage.addEventListener("change", (e) => {
+  toggleVoucherPage.addEventListener("change", async (e) => {
     const enabled = e.target.checked;
     localStorage.setItem("page_voucher", enabled);
     voucherForm.style.display = enabled ? "block" : "none";
 
     if (!enabled) {
-      // Hapus cache voucher
-      localStorage.removeItem("menuva_voucher");
-      renderVoucher();
+      renderVoucher([]);
+    } else {
+      await loadVouchers(); // <<===== fungsi baru
     }
   });
 
-  await loadVoucherOnInit();
+  // <<<==== PENTING! panggil fungsi baru
+  await loadVouchers();
 }
 
-  // ===================== LOAD VOUCHER =====================
-async function loadVoucherOnInit() {
-  if (voucherLoaded) {
-    console.warn("⚠️ loadVoucherOnInit() sudah pernah dijalankan, skip");
-    return;
-  }
-  voucherLoaded = true;
 
-  // ==== CEK LOCALSTORAGE TERLEBIH DAHULU ====
-  const fromLocal = localStorage.getItem("menuva_voucher");
-  if (fromLocal) {
-    let vouchers;
+ async function loadVouchers() {
+  console.groupCollapsed("📥 Load Vouchers");
 
-    try {
-      vouchers = JSON.parse(fromLocal);
-      if (!Array.isArray(vouchers)) vouchers = [vouchers];
-    } catch (e) {
-      vouchers = [];
-    }
+  const data = await loadDataFromDB(1);
 
-    console.log("📦 Voucher dari localStorage:", vouchers);
-    renderVoucher(vouchers);
-    return;
+  if (!Array.isArray(data.menuVoucher)) {
+    console.warn("⚠️ menuVoucher hilang → reset array");
+    data.menuVoucher = [];
   }
 
-  // ==== LOAD DARI INDEXEDDB ====
-  try {
-    const db = await initDB();
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.get(1);
-
-    req.onsuccess = (e) => {
-      const data = e.target.result;
-
-      let vouchers = [];
-      if (Array.isArray(data?.menuVoucher)) vouchers = data.menuVoucher;
-      else if (data?.menuVoucher) vouchers = [data.menuVoucher];
-
-      if (vouchers.length) {
-        console.log("📦 Voucher ditemukan di IndexedDB:", vouchers);
-
-        // Simpan ke localStorage sebagai array
-        localStorage.setItem("menuva_voucher", JSON.stringify(Array.isArray(vouchers) ? vouchers : []));
-
-        renderVoucher(vouchers);
-      } else {
-        console.log("⚠️ Tidak ada voucher di DB");
-        renderVoucher([]);
-      }
-    };
-
-    req.onerror = () => {
-      console.error("❌ Gagal get voucher dari IndexedDB");
-      renderVoucher([]);
-    };
-
-  } catch (err) {
-    console.error("❌ Gagal load voucher dari DB:", err);
-    renderVoucher([]);
-  }
-}
-  
-// ===================== RENDER VOUCHER =====================
-function renderVoucher(voucherData = []) {
-  const voucherPreview = document.getElementById("voucherPreview");
-  if (!voucherPreview) return;
-
-  let vouchers = Array.isArray(voucherData) ? voucherData : [];
-
-  // Filter masih berlaku
+  // Auto remove expired
   const today = new Date();
-  vouchers = vouchers.filter(v => {
+  const cleaned = data.menuVoucher.filter(v => {
     const exp = new Date(v.expiry);
     return isFinite(exp) && exp >= today;
   });
 
-  if (vouchers.length === 0) {
-    voucherPreview.innerHTML = "<em>Belum ada voucher aktif</em>";
+  if (cleaned.length !== data.menuVoucher.length) {
+    console.warn("🧹 Membersihkan voucher expired...");
+    data.menuVoucher = cleaned;
+    await saveDataToDB(1, data);
+  }
+
+  console.log("📦 Voucher aktif:", cleaned);
+  console.groupEnd();
+
+  renderVoucher(cleaned);  
+  return cleaned;
+}
+
+  async function saveVoucherNew() {
+  const code = document.getElementById("voucherCode").value.trim();
+  const discount = parseFloat(document.getElementById("voucherDiscount").value);
+  const expiry = document.getElementById("voucherExpiry").value;
+
+  if (!code || isNaN(discount) || !expiry) {
+    alert("⚠️ Harap isi semua form!");
     return;
   }
 
-  voucherPreview.innerHTML = `
+  const data = await loadDataFromDB(1);
+
+  if (!Array.isArray(data.menuVoucher)) data.menuVoucher = [];
+
+  const codeUpper = code.toUpperCase();
+
+  // Cek apakah voucher dengan code yang sama sudah ada
+  const existing = data.menuVoucher.find(v => v.code === codeUpper);
+
+  if (existing) {
+    // Update
+    existing.discount = discount;
+    existing.expiry = expiry;
+    existing.updatedAt = new Date().toISOString();
+
+    console.log("✏️ Voucher updated:", existing);
+  } else {
+    // Tambah baru
+    const newVoucher = {
+      id: crypto.randomUUID(),
+      code: codeUpper,
+      discount,
+      expiry,
+      createdAt: new Date().toISOString()
+    };
+
+    data.menuVoucher.push(newVoucher);
+    console.log("➕ Voucher ditambahkan:", newVoucher);
+  }
+
+  await saveDataToDB(1, data);
+
+  renderVoucher(data.menuVoucher);
+
+  alert("✅ Voucher berhasil disimpan!");
+}
+
+  function renderVoucher(vouchers = []) {
+  const box = document.getElementById("voucherPreview");
+  if (!box) return;
+
+  if (!Array.isArray(vouchers)) vouchers = [];
+
+  const today = new Date();
+  vouchers = vouchers.filter(v => new Date(v.expiry) >= today);
+
+  if (vouchers.length === 0) {
+    box.innerHTML = "<em>Belum ada voucher aktif</em>";
+    return;
+  }
+
+  box.innerHTML = `
     <h3>Voucher Aktif</h3>
     ${vouchers.map(v => `
       <div class="voucher-item" style="border:1px solid #ccc; padding:8px; margin:8px 0; border-radius:8px;">
@@ -2233,79 +2245,8 @@ function renderVoucher(voucherData = []) {
   `;
 }
 
-// ===================== COPY VOUCHER CODE =====================
-function copyVoucherCode(codeText) {
-  // Jika diberikan langsung, pakai itu
-  if (codeText && typeof codeText === 'string') {
-    navigator.clipboard.writeText(codeText)
-      .then(() => alert("Kode voucher berhasil di-copy: " + codeText))
-      .catch(err => console.error("Gagal copy", err));
-    return;
-  }
-
-  // Jika tidak ada parameter, coba cari elemen di DOM (kompatibel dengan versi lama)
-  const fallback = document.getElementById("voucherCodeText") || document.querySelector(".voucher-code");
-  const text = fallback ? (fallback.innerText || fallback.textContent) : null;
-  if (!text) return;
-  navigator.clipboard.writeText(text)
-    .then(() => alert("Kode voucher berhasil di-copy: " + text))
-    .catch(err => console.error("Gagal copy", err));
-}
-
-</script>
- <script>
- async function saveVoucher() {
-  const code = document.getElementById("voucherCode").value.trim();
-  const discount = parseFloat(document.getElementById("voucherDiscount").value);
-  const expiry = document.getElementById("voucherExpiry").value;
-
-  if (!code || isNaN(discount) || !expiry) {
-    alert("⚠️ Harap isi semua kolom voucher!");
-    return;
-  }
-
-  try {
-    // Ambil data dari DB
-    const data = await loadDataFromDB(1);
-
-    // Pastikan menuVoucher tetap array
-    if (!Array.isArray(data.menuVoucher)) {
-      console.warn("⚠️ menuVoucher bukan array → reset menjadi array kosong");
-      data.menuVoucher = [];
-    }
-
-    // Buat object voucher
-    const voucherObj = {
-      code: code.toUpperCase(),
-      discount,
-      expiry,
-      createdAt: new Date().toISOString()
-    };
-
-    // Cek duplikasi
-    const idx = data.menuVoucher.findIndex(v => v.code === code.toUpperCase());
-
-    if (idx !== -1) {
-      data.menuVoucher[idx] = voucherObj;
-      console.log("✏️ Voucher updated:", voucherObj);
-    } else {
-      data.menuVoucher.push(voucherObj);
-      console.log("➕ Voucher ditambahkan:", voucherObj);
-    }
-
-    // SIMPAN KE IndexedDB
-   await saveDataToDB(1, data);
-
-    // Render ulang di admin
-    renderVoucher(data.menuVoucher);
-
-    alert("✅ Voucher berhasil disimpan!");
-    document.getElementById("voucherForm").style.display = "none";
-
-  } catch (err) {
-    console.error("❌ Gagal menyimpan voucher:", err);
-    alert("❌ Error saat menyimpan voucher!");
-  }
+  async function initVoucherSystem() {
+  await loadVouchers();
 }
 
 </script>
@@ -2316,10 +2257,10 @@ function copyVoucherCode(codeText) {
 let notifAudio;
 
 document.addEventListener("DOMContentLoaded", () => {
+  initVoucherToggle(); // <<<<<<<<<< ini yang benar
   notifAudio = new Audio("beep.mp3");
   notifAudio.load();
 
-  // Unlock audio by click once
   const unlock = () => {
     notifAudio.play().then(() => {
       notifAudio.pause();
@@ -2329,7 +2270,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   document.body.addEventListener("click", unlock);
 
-  startRealtimeOrderChecker();   // <<<<<<<<<<<<<<<<< FIX PALING PENTING
+  startRealtimeOrderChecker();
 });
 
 /* ============================================================
@@ -2440,6 +2381,7 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
 
