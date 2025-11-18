@@ -815,17 +815,19 @@ async function getDB() {
     req.onsuccess = () => {
       let oldData = req.result || buatDataDefault(id);
 
-      // MERGE TANPA HILANG FIELD
-      const finalData = {
-        ...oldData,
-        ...newData,
-        // Anti hilang voucher
-        menuVoucher: Array.isArray(newData.menuVoucher)
-          ? newData.menuVoucher
-          : Array.isArray(oldData.menuVoucher)
-            ? oldData.menuVoucher
-            : [],
-      };
+    
+     // MERGE TANPA HILANG FIELD (VERSI FIX)
+const finalData = {
+  ...oldData,
+  ...newData,
+};
+
+// Pastikan menuVoucher tidak corrupt
+if (!Array.isArray(finalData.menuVoucher)) {
+  finalData.menuVoucher = Array.isArray(oldData.menuVoucher)
+    ? oldData.menuVoucher
+    : [];
+}
 
       const saveReq = store.put(finalData);
 
@@ -2438,6 +2440,7 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
 
