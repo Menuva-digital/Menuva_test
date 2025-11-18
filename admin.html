@@ -2169,6 +2169,15 @@ async function initVoucherToggle() {
   return cleaned;
 }
 
+  // Compatibility wrapper — biar onclick lama tetap work
+function saveVoucher() {
+  // return promise in case caller expects it
+  return saveVoucherNew && typeof saveVoucherNew === 'function'
+    ? saveVoucherNew()
+    : (alert("Function saveVoucherNew() tidak ditemukan."), Promise.reject(new Error("saveVoucherNew not defined")));
+}
+
+
   async function saveVoucherNew() {
   const code = document.getElementById("voucherCode").value.trim();
   const discount = parseFloat(document.getElementById("voucherDiscount").value);
@@ -2381,6 +2390,7 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
 
