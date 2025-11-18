@@ -1036,32 +1036,6 @@ function restoreVoucherFromStorage() {
 
 let cachedVoucherList = null;
 
-// ==== DEBUG LOG SUPER UNTUK DETEKSI VOUCHER HILANG ====
-
-// Ambil voucher dari localStorage sebagai fallback
-function debugLoadVoucherLocalStorage() {
-  console.warn("🔄 [FALLBACK] Coba load voucher dari localStorage...");
-
-  try {
-    const raw = localStorage.getItem("menuva_vouchers");
-    console.log("🔍 LS Raw:", raw);
-
-    if (!raw) {
-      console.warn("⚠️ localStorage kosong.");
-      return [];
-    }
-
-    let parsed = [];
-    try { parsed = JSON.parse(raw); } catch(e){}
-
-    console.log("📦 Parsed localStorage voucher:", parsed);
-    return parsed;
-  } catch (err) {
-    console.error("❌ ERROR localStorage fallback:", err);
-    return [];
-  }
-}
-
 // Load voucher dari IndexedDB record ID=1
 async function loadVoucherList() {
   console.log("====== 🧪 DEBUG: loadVoucherList() START ======");
@@ -1615,6 +1589,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
