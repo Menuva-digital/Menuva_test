@@ -800,42 +800,33 @@ async function getDB() {
   return await initDB();
 }
 
-async function saveDataToDB(id, newData) {
+   async function saveDataToDB(id, newData) {
   console.groupCollapsed("💾 [TRACE] saveDataToDB()");
 
-  // Pastikan ID valid dan number
-  id = Number(id);
-  if (!id || isNaN(id)) id = 1;
+  id = Number(id) || 1;
 
   const db = await getDB();
   const tx = db.transaction(STORE_NAME, "readwrite");
   const store = tx.objectStore(STORE_NAME);
 
   return new Promise((resolve, reject) => {
-    const checkReq = store.get(id);
+    const req = store.get(id);
 
-    checkReq.onsuccess = () => {
-      let oldData = checkReq.result;
+    req.onsuccess = () => {
+      let oldData = req.result || buatDataDefault(id);
 
-      if (!oldData || typeof oldData !== "object") {
-        console.warn("⚠️ DB kosong → generate default");
-        oldData = buatDataDefault(id);
-      }
-
-      // MERGE AMAN
+      // MERGE TANPA HILANG FIELD
       const finalData = {
         ...oldData,
         ...newData,
+        // Anti hilang voucher
+        menuVoucher: Array.isArray(newData.menuVoucher)
+          ? newData.menuVoucher
+          : Array.isArray(oldData.menuVoucher)
+            ? oldData.menuVoucher
+            : [],
       };
 
-      // Field critical anti-hilang
-      finalData.menuPromo = Array.isArray(finalData.menuPromo) ? finalData.menuPromo : [];
-      finalData.menuVoucher = Array.isArray(finalData.menuVoucher) ? finalData.menuVoucher : [];
-      finalData.rooms = Array.isArray(finalData.rooms) ? finalData.rooms : [];
-      finalData.flipbookRuanganImages = Array.isArray(finalData.flipbookRuanganImages) ? finalData.flipbookRuanganImages : [];
-      finalData.flipbookMenuImages = Array.isArray(finalData.flipbookMenuImages) ? finalData.flipbookMenuImages : [];
-
-      // SIMPAN
       const saveReq = store.put(finalData);
 
       saveReq.onsuccess = () => {
@@ -851,8 +842,8 @@ async function saveDataToDB(id, newData) {
       };
     };
 
-    checkReq.onerror = (e) => {
-      console.error("❌ Gagal load data lama:", e.target.error);
+    req.onerror = (e) => {
+      console.error("❌ Gagal membaca DB:", e.target.error);
       console.groupEnd();
       reject(e.target.error);
     };
@@ -2207,22 +2198,17 @@ async function loadVoucherOnInit() {
 }
   
 // ===================== RENDER VOUCHER =====================
-function renderVoucher(voucherData) {
+function renderVoucher(voucherData = []) {
   const voucherPreview = document.getElementById("voucherPreview");
   if (!voucherPreview) return;
 
-  // Normalisasi
-  let vouchers = [];
-  if (!voucherData) vouchers = [];
-  else if (Array.isArray(voucherData)) vouchers = voucherData;
-  else if (typeof voucherData === "object") vouchers = [voucherData];
+  let vouchers = Array.isArray(voucherData) ? voucherData : [];
 
-  // Filter voucher yang masih berlaku
+  // Filter masih berlaku
   const today = new Date();
   vouchers = vouchers.filter(v => {
-    if (!v || !v.expiry) return false;
-    const expiryDate = new Date(v.expiry);
-    return isFinite(expiryDate.getTime()) && expiryDate >= today;
+    const exp = new Date(v.expiry);
+    return isFinite(exp) && exp >= today;
   });
 
   if (vouchers.length === 0) {
@@ -2230,21 +2216,19 @@ function renderVoucher(voucherData) {
     return;
   }
 
-  let html = "<h3>Voucher Aktif</h3>";
-  vouchers.forEach(voucher => {
-    html += `
+  voucherPreview.innerHTML = `
+    <h3>Voucher Aktif</h3>
+    ${vouchers.map(v => `
       <div class="voucher-item" style="border:1px solid #ccc; padding:8px; margin:8px 0; border-radius:8px;">
         <p><strong>Kode Voucher:</strong>
-          <span class="voucher-code">${voucher.code}</span>
-          <button type="button" onclick="copyVoucherCode('${voucher.code}')">📋 Copy</button>
+          <span class="voucher-code">${v.code}</span>
+          <button onclick="copyVoucherCode('${v.code}')">📋 Copy</button>
         </p>
-        <p><strong>Diskon:</strong> ${voucher.discount}%</p>
-        <p><strong>Berlaku sampai:</strong> ${voucher.expiry}</p>
+        <p><strong>Diskon:</strong> ${v.discount}%</p>
+        <p><strong>Berlaku sampai:</strong> ${v.expiry}</p>
       </div>
-    `;
-  });
-
-  voucherPreview.innerHTML = html;
+    `).join("")}
+  `;
 }
 
 // ===================== COPY VOUCHER CODE =====================
@@ -2268,7 +2252,7 @@ function copyVoucherCode(codeText) {
 
 </script>
  <script>
-async function saveVoucher() {
+ async function saveVoucher() {
   const code = document.getElementById("voucherCode").value.trim();
   const discount = parseFloat(document.getElementById("voucherDiscount").value);
   const expiry = document.getElementById("voucherExpiry").value;
@@ -2279,41 +2263,49 @@ async function saveVoucher() {
   }
 
   try {
+    // Ambil data dari DB
     const data = await loadDataFromDB(1);
-    if (!data.menuVoucher) data.menuVoucher = [];
 
-    const existingIndex = data.menuVoucher.findIndex(v => v.code === code);
+    // Pastikan menuVoucher tetap array
+    if (!Array.isArray(data.menuVoucher)) {
+      console.warn("⚠️ menuVoucher bukan array → reset menjadi array kosong");
+      data.menuVoucher = [];
+    }
 
+    // Buat object voucher
     const voucherObj = {
-      code,
+      code: code.toUpperCase(),
       discount,
       expiry,
       createdAt: new Date().toISOString()
     };
 
-    if (existingIndex !== -1) {
-      data.menuVoucher[existingIndex] = voucherObj;
+    // Cek duplikasi
+    const idx = data.menuVoucher.findIndex(v => v.code === code.toUpperCase());
+
+    if (idx !== -1) {
+      data.menuVoucher[idx] = voucherObj;
+      console.log("✏️ Voucher updated:", voucherObj);
     } else {
       data.menuVoucher.push(voucherObj);
+      console.log("➕ Voucher ditambahkan:", voucherObj);
     }
 
-    await saveDataToDB(1, data);
+    // SIMPAN KE IndexedDB
+    await saveDataToDB(1, { menuVoucher: data.menuVoucher });
 
-    // Simpan cache
-    localStorage.setItem("menuva_voucher", JSON.stringify(data.menuVoucher || []));
-
+    // Render ulang di admin
     renderVoucher(data.menuVoucher);
-    alert("✅ Voucher berhasil disimpan!");
 
-    // hanya tutup form, TIDAK mematikan toggle
-    const form = document.getElementById("voucherForm");
-    if (form) form.style.display = "none";
+    alert("✅ Voucher berhasil disimpan!");
+    document.getElementById("voucherForm").style.display = "none";
 
   } catch (err) {
     console.error("❌ Gagal menyimpan voucher:", err);
-    alert("❌ Gagal menyimpan voucher ke database!");
+    alert("❌ Error saat menyimpan voucher!");
   }
 }
+
 </script>
 <script>
 /* ============================================================
@@ -2446,6 +2438,7 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
 
