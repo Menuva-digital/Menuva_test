@@ -2294,7 +2294,7 @@ function copyVoucherCode(codeText) {
     }
 
     // SIMPAN KE IndexedDB
-    await saveDataToDB(1, { menuVoucher: data.menuVoucher });
+   await saveDataToDB(1, data);
 
     // Render ulang di admin
     renderVoucher(data.menuVoucher);
@@ -2440,6 +2440,7 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
 
