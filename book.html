@@ -424,9 +424,9 @@ footer{background:var(--surface);margin-top:24px;box-shadow:var(--shadow);paddin
   let activeVoucherData = null; // object voucher aktif (null jika none)
   let promoCountdownTimer = null;
 
-  function initDB() {
+ function initDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("MenuvaDB", 1);
+    const request = indexedDB.open("menuvaDB", 1); // FIX DI SINI
 
     request.onerror = () => {
       console.error("❌ Gagal membuka IndexedDB");
@@ -446,7 +446,6 @@ footer{background:var(--surface);margin-top:24px;box-shadow:var(--shadow);paddin
     };
   });
 }
-
 
   /* ------------------ LOCALE / CURRENCY ---------------- */
   const localeToCurrencyFallback = {
@@ -1616,6 +1615,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
