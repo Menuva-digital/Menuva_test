@@ -1037,50 +1037,121 @@ function restoreVoucherFromStorage() {
 
 let cachedVoucherList = null;
 
-// Load voucher dari IndexedDB (ID = 1), jika kosong -> fallback localStorage
-async function loadVoucherList() {
+// ==== DEBUG LOG SUPER UNTUK DETEKSI VOUCHER HILANG ====
+
+// Ambil voucher dari localStorage sebagai fallback
+function debugLoadVoucherLocalStorage() {
+  console.warn("🔄 [FALLBACK] Coba load voucher dari localStorage...");
+
   try {
-    const db = await initDB();
+    const raw = localStorage.getItem("menuva_vouchers");
+    console.log("🔍 LS Raw:", raw);
+
+    if (!raw) {
+      console.warn("⚠️ localStorage kosong.");
+      return [];
+    }
+
+    let parsed = [];
+    try { parsed = JSON.parse(raw); } catch(e){}
+
+    console.log("📦 Parsed localStorage voucher:", parsed);
+    return parsed;
+  } catch (err) {
+    console.error("❌ ERROR localStorage fallback:", err);
+    return [];
+  }
+}
+
+// Load voucher dari IndexedDB record ID=1
+async function loadVoucherList() {
+  console.log("====== 🧪 DEBUG: loadVoucherList() START ======");
+
+  let db;
+  try {
+    db = await initDB();
+    console.log("✅ IndexedDB OK:", db);
+  } catch (err) {
+    console.error("❌ initDB gagal → fallback LS");
+    return debugLoadVoucherLocalStorage();
+  }
+
+  return new Promise((resolve) => {
     const tx = db.transaction("menuvaData", "readonly");
     const store = tx.objectStore("menuvaData");
 
-    return new Promise((resolve) => {
-      const req = store.get(1);
+    console.log("🔎 Coba ambil record id=1 ...");
+    const req = store.get(1);
 
-      req.onsuccess = () => {
-        const data = req.result;
+    req.onerror = () => {
+      console.error("❌ req.onerror saat get(1) → fallback LS");
+      resolve(debugLoadVoucherLocalStorage());
+    };
 
-        // Jika record tidak ada
-        if (!data) {
-          console.warn("⚠️ Record ID=1 tidak ditemukan, fallback localStorage...");
-          resolve(loadVoucherFromLocalStorage());
-          return;
-        }
+    req.onsuccess = () => {
+      const data = req.result;
+      console.log("📦 HASIL get(1):", data);
 
-        // Jika menuVoucher TIDAK ADA di DB
-        if (!Array.isArray(data.menuVoucher)) {
-          console.warn("⚠️ IndexedDB tidak punya menuVoucher, fallback localStorage...");
-          resolve(loadVoucherFromLocalStorage());
-          return;
-        }
+      if (!data) {
+        console.warn("⚠️ RECORD ID=1 TIDAK ADA DI DB → fallback LS");
+        resolve(debugLoadVoucherLocalStorage());
+        return;
+      }
 
-        // Jika DB ada voucher → normalisasi
-        const normalized = data.menuVoucher.map(normalizeVoucher).filter(Boolean);
-        console.log("📦 Voucher loaded from DB:", normalized);
-        resolve(normalized);
-      };
+      // Cek apakah field menuVoucher ada
+      if (!("menuVoucher" in data)) {
+        console.warn("⚠️ FIELD menuVoucher TIDAK ADA DI RECORD → fallback LS");
+        resolve(debugLoadVoucherLocalStorage());
+        return;
+      }
 
-      req.onerror = () => {
-        console.error("❌ Gagal get(1) dari IndexedDB, fallback localStorage...");
-        resolve(loadVoucherFromLocalStorage());
-      };
-    });
+      console.log("🔍 data.menuVoucher =", data.menuVoucher);
 
-  } catch (err) {
-    console.error("❌ IndexedDB exception:", err);
-    return loadVoucherFromLocalStorage();
-  }
+      // Kalau ada tapi bukan array
+      if (!Array.isArray(data.menuVoucher)) {
+        console.warn("⚠️ menuVoucher bukan array → fallback LS");
+        resolve(debugLoadVoucherLocalStorage());
+        return;
+      }
+
+      // Ada tapi isinya kosong?
+      if (data.menuVoucher.length === 0) {
+        console.warn("⚠️ menuVoucher ADA TAPI KOSONG → fallback LS");
+        resolve(debugLoadVoucherLocalStorage());
+        return;
+      }
+
+      // Normalisasi
+      const normalized = data.menuVoucher.map(v => {
+        const n = normalizeVoucher(v);
+        console.log("   🔹 Normalize:", v, "→", n);
+        return n;
+      }).filter(Boolean);
+
+      console.log("🎯 FINAL voucher normalized:", normalized);
+      resolve(normalized);
+    };
+  });
 }
+
+// Cache voucher
+async function ensureVoucherLoaded() {
+  console.log("====== 🧪 DEBUG: ensureVoucherLoaded() ======");
+
+  if (cachedVoucherList) {
+    console.log("📦 cachedVoucherList SUDAH ADA:", cachedVoucherList);
+    return cachedVoucherList;
+  }
+
+  console.log("📡 Memuat dari DB...");
+  cachedVoucherList = await loadVoucherList();
+
+  console.log("📦 FINAL cachedVoucherList:", cachedVoucherList);
+  console.log("====== 🧪 DEBUG END ======");
+
+  return cachedVoucherList;
+}
+
 
 // Ambil voucher dari localStorage (ADMIN Fallback)
 function loadVoucherFromLocalStorage() {
@@ -1102,18 +1173,6 @@ function loadVoucherFromLocalStorage() {
     console.warn("⚠️ loadVoucherFromLocalStorage gagal:", err);
     return [];
   }
-}
-
-
-// Pastikan voucher sudah di-cache
-async function ensureVoucherLoaded() {
-  if (cachedVoucherList) return cachedVoucherList;
-
-  const list = await loadVoucherList();
-  cachedVoucherList = list || [];
-
-  console.log("📦 Voucher list cached:", cachedVoucherList);
-  return cachedVoucherList;
 }
 
 // Cari voucher berdasarkan code
@@ -1557,6 +1616,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
