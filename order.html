@@ -1127,8 +1127,7 @@ function cleanNumber(val) {
 }
 
 // === Apply Voucher otomatis ===
-function autoApplyVoucher() {
-  const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
+async function autoApplyVoucher() {
   const input = document.getElementById("voucherInput")?.value.trim();
   const msg = document.getElementById("voucherMessage");
 
@@ -1138,57 +1137,74 @@ function autoApplyVoucher() {
 
   if (!totalEl || !msg || !grandEl) return;
 
-  // simpan original total (hanya sekali)
+  // simpan total asli
   if (!totalEl.dataset.rawOriginal) {
     totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
   }
 
   const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
 
+  // hilangkan voucher jika input kosong
   if (!input) {
-    // restore
     totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
-    if (discountEl) { 
-      discountEl.style.display = "none"; 
-      discountEl.innerText = ""; 
-    }
+
     msg.innerText = "";
+    if (discountEl) discountEl.style.display = "none";
     grandEl.innerText = `Grand Total = ${formatHarga(originalTotal)}`;
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  // ambil voucher dari database
+  const vouchers = await loadVoucherList();
+  const code = input.toUpperCase();
 
-  if (voucher && input.toUpperCase() === (voucher.code || "").toUpperCase() && today <= voucher.expiry) {
-    const discountPercent = parseFloat(voucher.discount) || 0;
-    const potongan = originalTotal * (discountPercent / 100);
-    const discounted = originalTotal - potongan;
+  const found = vouchers.find(v => v.code === code);
 
-    totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
-    totalEl.dataset.raw = String(discounted);
-
-    msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-    msg.style.color = "green";
-
-    if (discountEl) {
-      discountEl.style.display = "block";
-      discountEl.innerText = `Discount ${discountPercent}% = ${formatHarga(potongan)}`;
-    }
-
-    grandEl.innerText = `Grand Total = ${formatHarga(discounted)}`;
-  } else {
-    totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
-    totalEl.dataset.raw = String(originalTotal);
+  if (!found) {
+    // INVALID
     msg.innerText = "❌ Voucher Code is invalid or expired";
     msg.style.color = "red";
-    if (discountEl) {
-      discountEl.style.display = "none";
-      discountEl.innerText = "";
-    }
+
+    totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
+    totalEl.dataset.raw = String(originalTotal);
+
+    if (discountEl) discountEl.style.display = "none";
     grandEl.innerText = `Grand Total = ${formatHarga(originalTotal)}`;
+    return;
   }
+
+  // === VALID VOUCHER ===
+  const discountPercent = parseFloat(found.discount) || 0;
+  const potongan = originalTotal * (discountPercent / 100);
+  const discounted = originalTotal - potongan;
+
+  msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+  msg.style.color = "green";
+
+  totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
+  totalEl.dataset.raw = String(discounted);
+
+  if (discountEl) {
+    discountEl.style.display = "block";
+    discountEl.innerText = `Discount ${discountPercent}% = ${formatHarga(potongan)}`;
+  }
+
+  grandEl.innerText = `Grand Total = ${formatHarga(discounted)}`;
 }
+
+  // === LOAD VOUCHER DARI DATABASE ===
+async function loadVoucherList() {
+  const data = await loadDataFromDB(1);
+
+  if (!Array.isArray(data.menuVoucher)) return [];
+
+  const today = new Date();
+
+  // filter voucher aktif
+  return data.menuVoucher.filter(v => new Date(v.expiry) >= today);
+}
+
 
 // Event attach
 document.addEventListener("DOMContentLoaded", () => {
@@ -1203,6 +1219,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
