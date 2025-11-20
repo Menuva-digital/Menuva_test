@@ -499,6 +499,18 @@ body.dark .qty-controls span {
 .cart-qty { margin: 0 10px; }
 .cart-price { font-weight: bold; }
 
+   .voucher-ok {
+  border: 2px solid #2ecc71 !important;
+  background: #eafff2 !important;
+  transition: 0.25s;
+}
+
+.voucher-error {
+  border: 2px solid #e74c3c !important;
+  background: #ffecec !important;
+  transition: 0.25s;
+}
+
 </style>
 </head>
 <body>
@@ -1128,7 +1140,8 @@ function cleanNumber(val) {
 
 // === Apply Voucher otomatis ===
 async function autoApplyVoucher() {
-  const input = document.getElementById("voucherInput")?.value.trim();
+  const inputEl = document.getElementById("voucherInput");
+  const input = inputEl?.value.trim();
   const msg = document.getElementById("voucherMessage");
 
   const totalEl = document.getElementById("totalPrice");
@@ -1137,32 +1150,37 @@ async function autoApplyVoucher() {
 
   if (!totalEl || !msg || !grandEl) return;
 
-  // simpan total asli
+  // Simpan total asli hanya sekali
   if (!totalEl.dataset.rawOriginal) {
     totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
   }
 
   const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
 
-  // hilangkan voucher jika input kosong
+  // Reset saat input kosong
   if (!input) {
+    inputEl.classList.remove("voucher-ok", "voucher-error");
+
     totalEl.innerText = `Total Price = ${formatHarga(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
 
     msg.innerText = "";
     if (discountEl) discountEl.style.display = "none";
+
     grandEl.innerText = `Grand Total = ${formatHarga(originalTotal)}`;
     return;
   }
 
-  // ambil voucher dari database
+  // Ambil voucher aktif
   const vouchers = await loadVoucherList();
-  const code = input.toUpperCase();
-
-  const found = vouchers.find(v => v.code === code);
+  const codeUpper = input.toUpperCase();
+  const found = vouchers.find(v => v.code === codeUpper);
 
   if (!found) {
-    // INVALID
+    // === Voucher INVALID ===
+    inputEl.classList.remove("voucher-ok");
+    inputEl.classList.add("voucher-error");
+
     msg.innerText = "❌ Voucher Code is invalid or expired";
     msg.style.color = "red";
 
@@ -1170,11 +1188,15 @@ async function autoApplyVoucher() {
     totalEl.dataset.raw = String(originalTotal);
 
     if (discountEl) discountEl.style.display = "none";
+
     grandEl.innerText = `Grand Total = ${formatHarga(originalTotal)}`;
     return;
   }
 
-  // === VALID VOUCHER ===
+  // === Voucher VALID ===
+  inputEl.classList.remove("voucher-error");
+  inputEl.classList.add("voucher-ok");
+
   const discountPercent = parseFloat(found.discount) || 0;
   const potongan = originalTotal * (discountPercent / 100);
   const discounted = originalTotal - potongan;
@@ -1219,6 +1241,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 </body>
 </html>
+
 
 
 
