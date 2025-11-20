@@ -242,19 +242,19 @@ body.dark .room-card {
   justify-content: left;
 }
 
-.voucher-box input {
-  width: 180px;      /* atur sesuai selera */
-  max-width: 60%;    /* biar tetap responsif di HP */
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+/* Efek input */
+#voucherInput.voucher-ok {
+  border-color: #31c55f;
+  background: #e6ffed;
+  color: #0f6b2e;
 }
-#voucherMessage {
-  margin-top: 10px;   /* kasih jarak dari textbox */
-  font-size: 0.85em; /* kecilkan sedikit */
-  font-style: italic;
-  color: #666;       /* default abu2 biar soft */
+
+#voucherInput.voucher-error {
+  border-color: #ff6b6b;
+  background: #ffecec;
+  color: #8b0000;
 }
+
 #totalPrice {
   color: var(--text) !important;
   font-weight: 600;
@@ -680,66 +680,96 @@ function cleanNumber(val) {
 }
 
 // === Apply Voucher otomatis ===
-function autoApplyVoucher() {
-  const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
-  const input = document.getElementById("voucherInput")?.value.trim();
+async function autoApplyVoucher() {
+  const inputEl = document.getElementById("voucherInput");
+  const code = inputEl?.value.trim().toUpperCase();
   const msg = document.getElementById("voucherMessage");
 
-  const totalEl = document.getElementById("totalPrice");   // total asli
-  const discountEl = document.getElementById("voucherDiscount"); // nominal diskon
-  const grandEl = document.getElementById("grandTotal");   // total setelah diskon
+  const totalEl = document.getElementById("totalPrice");
+  const discountEl = document.getElementById("voucherDiscount");
+  const grandEl = document.getElementById("grandTotal");
 
   if (!totalEl || !msg || !grandEl) return;
 
-  // simpan total asli sekali aja
+  // Simpan total asli hanya 1x
   if (!totalEl.dataset.rawOriginal) {
     totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
   }
 
   const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
 
-  if (!input) {
-    // restore original
+  // === Jika input kosong → reset ===
+  if (!code) {
+    inputEl.classList.remove("voucher-ok", "voucher-error");
+    msg.innerText = "";
+    msg.style.color = "#666";
+
     totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
+
     if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
-    msg.innerText = "";
     grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
+
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  // === Ambil voucher aktif dari DB ===
+  const vouchers = await loadVoucherList();
+  const found = vouchers.find(v => v.code === code);
 
-  if (voucher && input.toUpperCase() === (voucher.code || "").toUpperCase() && today <= voucher.expiry) {
-    const discountPercent = parseFloat(voucher.discount) || 0;
-    const potongan = originalTotal * (discountPercent / 100);
-    const discounted = originalTotal - potongan;
+  // === Voucher INVALID ===
+  if (!found) {
+    inputEl.classList.remove("voucher-ok");
+    inputEl.classList.add("voucher-error");
 
-    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
-    totalEl.dataset.raw = String(discounted);
+    msg.innerText = "❌ Voucher Code is invalid or expired";
+    msg.style.color = "red";
 
-    msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-
-    if (discountEl) {
-      discountEl.style.display = "block";
-      discountEl.innerText = `Discount ${discountPercent}% = ${formatCurrency(potongan)}`;
-    }
-
-    grandEl.innerText = `Grand Total = ${formatCurrency(discounted)}`;
-  } else {
     totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
     totalEl.dataset.raw = String(originalTotal);
-    msg.innerText = "❌ Voucher Code is invalid or expired";
-    if (discountEl) {
-      discountEl.style.display = "none";
-      discountEl.innerText = "";
-    }
+
+    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
     grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
+
+    return;
+  }
+
+  // === Voucher VALID ===
+  const discountPercent = parseFloat(found.discount) || 0;
+  const potongan = originalTotal * (discountPercent / 100);
+  const discounted = originalTotal - potongan;
+
+  inputEl.classList.remove("voucher-error");
+  inputEl.classList.add("voucher-ok");
+
+  msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+  msg.style.color = "green";
+
+  totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
+  totalEl.dataset.raw = String(discounted);
+
+  if (discountEl) {
+    discountEl.style.display = "block";
+    discountEl.innerText = `Discount ${discountPercent}% = ${formatCurrency(potongan)}`;
+  }
+
+  grandEl.innerText = `Grand Total = ${formatCurrency(discounted)}`;
+}
+
+  async function loadVoucherList() {
+  try {
+    const data = await loadDataFromDB(1);
+    if (!Array.isArray(data.menuVoucher)) return [];
+
+    const today = new Date().toISOString().split("T")[0];
+    return data.menuVoucher.filter(v => v.expiry >= today);
+  } catch (err) {
+    console.error("Voucher load error:", err);
+    return [];
   }
 }
 
-// === Attach event multiple biar aman di HP/desktop ===
-document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", () => {
   const voucherInput = document.getElementById("voucherInput");
   if (voucherInput) {
     ["input", "keyup", "change", "blur"].forEach(evt => {
@@ -747,6 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
 
 function tambahKeCart(room){
   if(!room || !room.nama) return;
@@ -928,6 +959,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
+
 
 
 
