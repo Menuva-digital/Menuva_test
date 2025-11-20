@@ -2254,6 +2254,36 @@ function saveVoucher() {
   `;
 }
 
+  function copyVoucherCode(code) {
+  if (!code) return;
+
+  // Method modern
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code)
+      .then(() => {
+        alert(`Kode voucher "${code}" berhasil disalin!`);
+      })
+      .catch(err => {
+        console.error("Clipboard error:", err);
+        fallbackCopy(code);
+      });
+  } else {
+    // Fallback lama
+    fallbackCopy(code);
+  }
+}
+
+function fallbackCopy(text) {
+  const tempInput = document.createElement("input");
+  tempInput.value = text;
+  document.body.appendChild(tempInput);
+  tempInput.select();
+  document.execCommand("copy");
+  tempInput.remove();
+  alert(`Kode voucher "${text}" berhasil disalin!`);
+}
+
+
   async function initVoucherSystem() {
   await loadVouchers();
 }
@@ -2390,6 +2420,7 @@ function markViewedAndGo() {
 
 </body>
 </html>
+
 
 
 
