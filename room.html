@@ -690,124 +690,152 @@ function cleanNumber(val) {
   return parseFloat(String(val).replace(/[^0-9.-]/g, "")) || 0;
 }
 
-// === Apply Voucher otomatis ===
-async function autoApplyVoucher() {
-  const inputEl = document.getElementById("voucherInput");
-  const code = inputEl?.value.trim().toUpperCase();
-  const msg = document.getElementById("voucherMessage");
+ /* ============================================
+   VOUCHER SYSTEM — SUPER OPTIMIZED VERSION
+   ============================================ */
 
-  const totalEl = document.getElementById("totalPrice");
-  const discountEl = document.getElementById("voucherDiscount");
-  const grandEl = document.getElementById("grandTotal");
+let CACHE_VOUCHERS = null;
+let VOUCHER_RAF = null;      // untuk requestAnimationFrame throttle
+let VOUCHER_LAST_VALUE = ""; // untuk cegah perhitungan ulang yg tidak perlu
 
-  if (!totalEl || !msg || !grandEl) return;
-
-  // Simpan total asli hanya 1x
-  if (!totalEl.dataset.rawOriginal) {
-    totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
-  }
-
-  const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
-
-  // === Jika input kosong → reset ===
-  if (!code) {
-    inputEl.classList.remove("voucher-ok", "voucher-error");
-    msg.innerText = "";
-    msg.style.color = "#666";
-
-    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
-    totalEl.dataset.raw = String(originalTotal);
-
-    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
-    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
-
-    return;
-  }
-
-  // === Ambil voucher aktif dari DB ===
-  const vouchers = await loadVoucherList();
-  const found = vouchers.find(v => v.code === code);
-
-  // === Voucher INVALID ===
-  if (!found) {
-    inputEl.classList.remove("voucher-ok");
-    inputEl.classList.add("voucher-error");
-
-    msg.innerText = "❌ Voucher Code is invalid or expired";
-    msg.style.color = "red";
-
-    totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
-    totalEl.dataset.raw = String(originalTotal);
-
-    if (discountEl) { discountEl.style.display = "none"; discountEl.innerText = ""; }
-    grandEl.innerText = `Grand Total = ${formatCurrency(originalTotal)}`;
-
-    return;
-  }
-
-  // === Voucher VALID ===
-  const discountPercent = parseFloat(found.discount) || 0;
-  const potongan = originalTotal * (discountPercent / 100);
-  const discounted = originalTotal - potongan;
-
-  inputEl.classList.remove("voucher-error");
-  inputEl.classList.add("voucher-ok");
-
-  msg.innerText = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
-  msg.style.color = "green";
-
-  totalEl.innerText = `Total Price = ${formatCurrency(originalTotal)}`;
-  totalEl.dataset.raw = String(discounted);
-
-  if (discountEl) {
-    discountEl.style.display = "block";
-    discountEl.innerText = `Discount ${discountPercent}% = ${formatCurrency(potongan)}`;
-  }
-
-  grandEl.innerText = `Grand Total = ${formatCurrency(discounted)}`;
-}
-
-  async function loadVoucherList() {
+// === Load voucher list hanya 1x ===
+async function loadVoucherList() {
   try {
+    if (CACHE_VOUCHERS !== null) return CACHE_VOUCHERS;
+
     const data = await loadDataFromDB(1);
-    if (!Array.isArray(data.menuVoucher)) return [];
+    if (!Array.isArray(data.menuVoucher)) {
+      CACHE_VOUCHERS = [];
+      return [];
+    }
 
     const today = new Date().toISOString().split("T")[0];
-    return data.menuVoucher.filter(v => v.expiry >= today);
+    CACHE_VOUCHERS = data.menuVoucher.filter(v => v.expiry >= today);
+
+    return CACHE_VOUCHERS;
+
   } catch (err) {
     console.error("Voucher load error:", err);
+    CACHE_VOUCHERS = [];
     return [];
   }
 }
 
-  document.addEventListener("DOMContentLoaded", () => {
+// === Apply voucher dengan throttle & DOM optimized ===
+async function autoApplyVoucher() {
+  cancelAnimationFrame(VOUCHER_RAF);
+
+  VOUCHER_RAF = requestAnimationFrame(async () => {
+    const inputEl = document.getElementById("voucherInput");
+    if (!inputEl) return;
+
+    const code = inputEl.value.trim().toUpperCase();
+    if (code === VOUCHER_LAST_VALUE) return; // tidak perlu hitung ulang
+    VOUCHER_LAST_VALUE = code;
+
+    const msg = document.getElementById("voucherMessage");
+    const totalEl = document.getElementById("totalPrice");
+    const discountEl = document.getElementById("voucherDiscount");
+    const grandEl = document.getElementById("grandTotal");
+
+    if (!msg || !totalEl || !grandEl) return;
+
+    // Simpan total asli hanya 1x
+    if (!totalEl.dataset.rawOriginal) {
+      totalEl.dataset.rawOriginal = String(cleanNumber(totalEl.dataset.raw) || 0);
+    }
+
+    const originalTotal = cleanNumber(totalEl.dataset.rawOriginal);
+
+    // ==== Reset jika kosong ====
+    if (!code) {
+      inputEl.classList.remove("voucher-ok", "voucher-error");
+      msg.textContent = "";
+      msg.style.color = "#666";
+
+      totalEl.textContent = `Total Price = ${formatCurrency(originalTotal)}`;
+      totalEl.dataset.raw = String(originalTotal);
+
+      if (discountEl) { discountEl.style.display = "none"; discountEl.textContent = ""; }
+      grandEl.textContent = `Grand Total = ${formatCurrency(originalTotal)}`;
+
+      return;
+    }
+
+    // ==== Ambil voucher 1x ====
+    const vouchers = await loadVoucherList();
+    const found = vouchers.find(v => v.code === code);
+
+    // ==== Voucher INVALID ====
+    if (!found) {
+      inputEl.classList.remove("voucher-ok");
+      inputEl.classList.add("voucher-error");
+
+      msg.textContent = "❌ Voucher Code is invalid or expired";
+      msg.style.color = "red";
+
+      totalEl.textContent = `Total Price = ${formatCurrency(originalTotal)}`;
+      totalEl.dataset.raw = String(originalTotal);
+
+      if (discountEl) { discountEl.style.display = "none"; }
+      grandEl.textContent = `Grand Total = ${formatCurrency(originalTotal)}`;
+
+      return;
+    }
+
+    // ==== Voucher VALID ====
+    const discountPercent = parseFloat(found.discount) || 0;
+    const potongan = originalTotal * (discountPercent / 100);
+    const discounted = originalTotal - potongan;
+
+    inputEl.classList.remove("voucher-error");
+    inputEl.classList.add("voucher-ok");
+
+    msg.textContent = `✅ Voucher valid! Diskon ${discountPercent}% diterapkan`;
+    msg.style.color = "green";
+
+    totalEl.textContent = `Total Price = ${formatCurrency(originalTotal)}`;
+    totalEl.dataset.raw = String(discounted);
+
+    if (discountEl) {
+      discountEl.style.display = "block";
+      discountEl.textContent = `Discount ${discountPercent}% = ${formatCurrency(potongan)}`;
+    }
+
+    grandEl.textContent = `Grand Total = ${formatCurrency(discounted)}`;
+  });
+}
+
+// === Event Listener optimized (tanpa keyup) ===
+document.addEventListener("DOMContentLoaded", () => {
   const voucherInput = document.getElementById("voucherInput");
   if (voucherInput) {
-    ["input", "keyup", "change", "blur"].forEach(evt => {
+    ["input", "change", "blur"].forEach(evt => {
       voucherInput.addEventListener(evt, autoApplyVoucher);
     });
   }
 });
 
-
-function tambahKeCart(room){
-  if(!room || !room.nama) return;
+// === Ketika nambah room ke cart, voucher tetap diterapkan ===
+function tambahKeCart(room) {
+  if (!room || !room.nama) return;
 
   const idx = cart.findIndex(r => r.nama === room.nama);
   if (idx >= 0) {
     cart[idx].qty = (cart[idx].qty || 0) + 1;
   } else {
-    cart.push({...room, qty: 1});
+    cart.push({ ...room, qty: 1 });
   }
 
   updateCartUI();
 
-  // kalau ada voucher aktif, langsung hitung ulang diskon
+  // re-apply voucher jika ada
   const voucher = JSON.parse(localStorage.getItem("voucher") || "null");
   if (voucher) {
-    applyVoucher();
+    requestAnimationFrame(autoApplyVoucher);
   }
 }
+
 
 function hapusDariCart(i){ cart.splice(i,1); updateCartUI(); }
 function ubahQty(i,d){ cart[i].qty += d; if (cart[i].qty < 1) cart[i].qty = 1; updateCartUI(); }
@@ -953,12 +981,6 @@ function hideLoading() {
   if (overlay) overlay.classList.remove('show');
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  showLoading(); // tampil
-  await new Promise(r => setTimeout(r, 1500)); // simulasi proses load data
-  hideLoading(); // sembunyi
-});
-
 </script>
 
 <script>
@@ -970,8 +992,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
-
-
-
-
 
