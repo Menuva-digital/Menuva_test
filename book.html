@@ -902,14 +902,14 @@ function loadCustomerForm() {
   }
   function stopPromoCountdown(){ if (promoCountdownTimer){ clearInterval(promoCountdownTimer); promoCountdownTimer = null; } }
 
-  /* ============================
-   VOUCHER HELPERS (WAJIB ADA)
-   ============================ */
+ let cachedVoucherList = null;
 
-// Normalisasi voucher agar seragam
+/* ============================
+   VOUCHER HELPERS (WAJIB ADA)
+============================ */
+
 function normalizeVoucher(v) {
   if (!v) return null;
-
   return {
     code: String(v.code || v.kodeVoucher || '').trim().toUpperCase(),
     discount: Number(v.discount || v.persen || 0),
@@ -917,20 +917,16 @@ function normalizeVoucher(v) {
   };
 }
 
-// Cari voucher secara SINKRON dari cache yang sudah dimuat
 function findVoucherSync(code) {
-  if (!code) return null;
-  if (!Array.isArray(cachedVoucherList)) return null;
-
-  const c = String(code).trim().toUpperCase();
-
-  const found = cachedVoucherList.find(v => {
-    const vc = String(v.code || v.kodeVoucher || '').trim().toUpperCase();
-    return vc === c;
-  });
-
+  if (!code || !Array.isArray(cachedVoucherList)) return null;
+  const c = code.trim().toUpperCase();
+  const found = cachedVoucherList.find(v => String(v.code || v.kodeVoucher).trim().toUpperCase() === c);
   return found ? normalizeVoucher(found) : null;
 }
+
+/* ==========================
+    VOUCHER APPLY SUMMARY
+========================= */
 
 function applyVoucherAndUpdateSummary() {
   const cartTotalEl = document.getElementById('cartTotal');
@@ -939,10 +935,7 @@ function applyVoucherAndUpdateSummary() {
   const voucherDiscountEl = document.getElementById('voucherDiscount');
   const inputCode = (document.getElementById('voucherInput')?.value || '').trim();
 
-  // Ambil total dari data-raw
-  const rawTotal = (cartTotalEl && cartTotalEl.dataset && cleanNumber(cartTotalEl.dataset.raw)) 
-    ? cleanNumber(cartTotalEl.dataset.raw) 
-    : 0;
+  const rawTotal = cleanNumber(cartTotalEl?.dataset?.raw) || 0;
 
   let discount = 0;
   let voucherValid = false;
@@ -955,10 +948,10 @@ function applyVoucherAndUpdateSummary() {
     voucherValid = true;
     activeVoucherData = voucher;
 
-    try { showToast && showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${pct}%`, 'success'); } catch(e){}
+    try { showToast(`🎉 Voucher ${voucher.code} aktif! Diskon ${pct}%`, "success"); } catch(e){}
   } else if (inputCode) {
     activeVoucherData = null;
-    try { showToast && showToast('❌ Kode voucher salah atau kadaluarsa.', 'error'); } catch(e){}
+    try { showToast("❌ Kode voucher salah atau kadaluarsa.", "error"); } catch(e){}
   }
 
   const newTotal = Math.max(0, rawTotal - discount);
@@ -967,206 +960,95 @@ function applyVoucherAndUpdateSummary() {
   if (voucherDiscountEl) voucherDiscountEl.textContent = formatWithActive ? formatWithActive(discount) : discount;
   if (grandTotalEl) grandTotalEl.textContent = formatWithActive ? formatWithActive(newTotal) : newTotal;
 
-  // Animasi discount row
   if (discountRow) {
     if (voucherValid && discount > 0) {
-      discountRow.style.display = 'flex';
-      discountRow.classList.add('fade-in');
-      discountRow.classList.remove('fade-out');
+      discountRow.style.display = "flex";
+      discountRow.classList.add("fade-in");
+      discountRow.classList.remove("fade-out");
     } else {
-      discountRow.classList.remove('fade-in');
-      discountRow.classList.add('fade-out');
-      setTimeout(() => (discountRow.style.display = 'none'), 300);
+      discountRow.classList.remove("fade-in");
+      discountRow.classList.add("fade-out");
+      setTimeout(() => (discountRow.style.display = "none"), 300);
     }
   }
 }
 
 function saveVoucherToStorage() {
-  try {
-    if (!activeVoucherData) {
-      localStorage.removeItem('menuva_voucher');
-      return;
-    }
-    // save the raw object if present (keamanan agar struktur DB tetap utuh)
-    const toSave = activeVoucherData._raw || activeVoucherData;
-    localStorage.setItem('menuva_voucher', JSON.stringify(toSave));
-  } catch (err) {
-    console.warn('⚠️ saveVoucherToStorage failed:', err);
+  if (!activeVoucherData) {
+    localStorage.removeItem("menuva_voucher");
+    return;
   }
+  const toSave = activeVoucherData._raw || activeVoucherData;
+  localStorage.setItem("menuva_voucher", JSON.stringify(toSave));
 }
 
 function restoreVoucherFromStorage() {
-  try {
-    const saved = localStorage.getItem('menuva_voucher');
-    if (!saved) return;
-
-    let parsed;
-    try { parsed = JSON.parse(saved); } catch (e) { parsed = null; }
-
-    if (!parsed) return;
-
-    // parsed could be an array (legacy) or object
-    const candidateRaw = Array.isArray(parsed) ? (parsed[0] || null) : parsed;
-    if (!candidateRaw) return;
-
-    const norm = typeof normalizeVoucher === 'function' ? normalizeVoucher(candidateRaw) : null;
-    if (!norm) {
-      // fallback minimal normalize
-      activeVoucherData = { code: String(candidateRaw.code || candidateRaw.kode || '').trim(), discount: Number(candidateRaw.discount||0), _raw: candidateRaw };
-      applyVoucherAndUpdateSummary?.();
-      return;
-    }
-
-    // If cached voucher list already present, try find canonical one
-    if (Array.isArray(cachedVoucherList) && cachedVoucherList.length) {
-      const found = cachedVoucherList.find(v => String(v.code || '').trim().toLowerCase() === String(norm.code || '').trim().toLowerCase());
-      activeVoucherData = found || norm;
-    } else {
-      // otherwise just restore normalized voucher (may be validated later)
-      activeVoucherData = norm;
-    }
-
-    // update UI/summary
-    applyVoucherAndUpdateSummary?.();
-  } catch (err) {
-    console.warn('⚠️ restoreVoucherFromStorage failed:', err);
-  }
+  const saved = localStorage.getItem("menuva_voucher");
+  if (!saved) return;
+  let parsed;
+  try { parsed = JSON.parse(saved); } catch(e){ return; }
+  const candidate = Array.isArray(parsed) ? parsed[0] : parsed;
+  if (!candidate) return;
+  activeVoucherData = normalizeVoucher(candidate);
+  applyVoucherAndUpdateSummary?.();
 }
 
+/* ==========================
+      LOAD VOUCHER LIST
+========================== */
 
-let cachedVoucherList = null;
-
-// Load voucher dari IndexedDB record ID=1
 async function loadVoucherList() {
-  console.log("====== 🧪 DEBUG: loadVoucherList() START ======");
-
-  let db;
   try {
-    db = await initDB();
-    console.log("✅ IndexedDB OK:", db);
+    const db = await initDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction("menuvaData", "readonly");
+      const store = tx.objectStore("menuvaData");
+      const req = store.get(1);
+
+      req.onsuccess = () => {
+        const data = req.result;
+        if (!data || !Array.isArray(data.menuVoucher)) {
+          resolve(loadVoucherFromLocalStorage());
+          return;
+        }
+        resolve(data.menuVoucher.map(normalizeVoucher).filter(Boolean));
+      };
+
+      req.onerror = () => resolve(loadVoucherFromLocalStorage());
+    });
   } catch (err) {
-    console.error("❌ initDB gagal → fallback LS");
-    return debugLoadVoucherLocalStorage();
+    return loadVoucherFromLocalStorage();
   }
-
-  return new Promise((resolve) => {
-    const tx = db.transaction("menuvaData", "readonly");
-    const store = tx.objectStore("menuvaData");
-
-    console.log("🔎 Coba ambil record id=1 ...");
-    const req = store.get(1);
-
-    req.onerror = () => {
-      console.error("❌ req.onerror saat get(1) → fallback LS");
-      resolve(debugLoadVoucherLocalStorage());
-    };
-
-    req.onsuccess = () => {
-      const data = req.result;
-      console.log("📦 HASIL get(1):", data);
-
-      if (!data) {
-        console.warn("⚠️ RECORD ID=1 TIDAK ADA DI DB → fallback LS");
-        resolve(debugLoadVoucherLocalStorage());
-        return;
-      }
-
-      // Cek apakah field menuVoucher ada
-      if (!("menuVoucher" in data)) {
-        console.warn("⚠️ FIELD menuVoucher TIDAK ADA DI RECORD → fallback LS");
-        resolve(debugLoadVoucherLocalStorage());
-        return;
-      }
-
-      console.log("🔍 data.menuVoucher =", data.menuVoucher);
-
-      // Kalau ada tapi bukan array
-      if (!Array.isArray(data.menuVoucher)) {
-        console.warn("⚠️ menuVoucher bukan array → fallback LS");
-        resolve(debugLoadVoucherLocalStorage());
-        return;
-      }
-
-      // Ada tapi isinya kosong?
-      if (data.menuVoucher.length === 0) {
-        console.warn("⚠️ menuVoucher ADA TAPI KOSONG → fallback LS");
-        resolve(debugLoadVoucherLocalStorage());
-        return;
-      }
-
-      // Normalisasi
-      const normalized = data.menuVoucher.map(v => {
-        const n = normalizeVoucher(v);
-        console.log("   🔹 Normalize:", v, "→", n);
-        return n;
-      }).filter(Boolean);
-
-      console.log("🎯 FINAL voucher normalized:", normalized);
-      resolve(normalized);
-    };
-  });
 }
 
-// Cache voucher
-async function ensureVoucherLoaded() {
-  console.log("====== 🧪 DEBUG: ensureVoucherLoaded() ======");
-
-  if (cachedVoucherList) {
-    console.log("📦 cachedVoucherList SUDAH ADA:", cachedVoucherList);
-    return cachedVoucherList;
-  }
-
-  console.log("📡 Memuat dari DB...");
-  cachedVoucherList = await loadVoucherList();
-
-  console.log("📦 FINAL cachedVoucherList:", cachedVoucherList);
-  console.log("====== 🧪 DEBUG END ======");
-
-  return cachedVoucherList;
-}
-
-
-// Ambil voucher dari localStorage (ADMIN Fallback)
 function loadVoucherFromLocalStorage() {
   try {
     const raw = localStorage.getItem("menuva_vouchers");
-    if (!raw) {
-      console.warn("⚠️ localStorage menuva_vouchers kosong");
-      return [];
-    }
-
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    console.log("📦 Voucher loaded from localStorage (fallback):", parsed);
-
-    return parsed.map(normalizeVoucher).filter(Boolean);
-
-  } catch (err) {
-    console.warn("⚠️ loadVoucherFromLocalStorage gagal:", err);
+    return Array.isArray(parsed)
+      ? parsed.map(normalizeVoucher).filter(Boolean)
+      : [];
+  } catch {
     return [];
   }
 }
 
-// Cari voucher berdasarkan code
-async function findVoucher(code) {
-  const list = await ensureVoucherLoaded();
-
- const c = code.toUpperCase();
-return list.find(v => 
-  String(v.kodeVoucher || v.code).toUpperCase() === c
-);
+async function ensureVoucherLoaded() {
+  if (cachedVoucherList) return cachedVoucherList;
+  cachedVoucherList = await loadVoucherList();
+  return cachedVoucherList;
 }
 
-// Apply voucher
+/* ==========================
+        APPLY VOUCHER
+========================== */
+
 async function applyVoucher() {
   const input = document.getElementById("voucherInput");
   const msg = document.getElementById("voucherMessage");
   const code = input.value.trim();
 
-  console.log("🔎 applyVoucher() dipanggil, code =", code);
-
-  // Reset animasi
   input.classList.remove("voucher-valid", "voucher-invalid");
 
   if (!code) {
@@ -1182,20 +1064,15 @@ async function applyVoucher() {
   const voucher = findVoucherSync(code);
 
   if (!voucher) {
-    console.log("❌ Voucher invalid");
     msg.textContent = "❌ Invalid voucher code";
     msg.style.color = "var(--danger)";
     input.classList.add("voucher-invalid");
     playError();
-    
     activeVoucherData = null;
     saveVoucherToStorage();
-
     applyVoucherAndUpdateSummary();
     return;
   }
-
-  console.log("✅ Voucher valid:", voucher);
 
   activeVoucherData = voucher;
   saveVoucherToStorage();
@@ -1208,57 +1085,57 @@ async function applyVoucher() {
   applyVoucherAndUpdateSummary();
 }
 
+/* ==========================
+      AUTO-DETECT INPUT 🔥
+========================== */
 
- function initVoucherInput() {
+function initVoucherInput() {
   const input = document.getElementById("voucherInput");
   const msg = document.getElementById("voucherMessage");
+  if (!input) return;
 
-  if (!input) {
-    console.error("❌ voucherInput tidak ditemukan di DOM!");
-    return;
-  }
-
-  console.log("🎯 initVoucherInput aktif");
-
-  // Pas user tekan Enter
+  // Enter tetap berfungsi
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      console.log("⏩ Enter ditekan → applyVoucher()");
-      applyVoucher();
-    }
+    if (e.key === "Enter") applyVoucher();
   });
 
-  // Real-time input change
-  input.addEventListener("input", () => {
+  // 🔥 AUTO DETECT setiap user mengetik
+  input.addEventListener("input", async () => {
+    const code = input.value.trim();
+
     msg.textContent = "";
     input.classList.remove("voucher-valid", "voucher-invalid");
+
+    if (!code || code.length < 3) {
+      return; // biar ga spam
+    }
+
+    await ensureVoucherLoaded();
+
+    const voucher = findVoucherSync(code);
+
+    if (!voucher) {
+      input.classList.add("voucher-invalid");
+      return;
+    }
+
+    input.classList.add("voucher-valid");
+    activeVoucherData = voucher;
+    saveVoucherToStorage();
+    applyVoucherAndUpdateSummary();
   });
 }
 
+/* ==========================
+           INIT
+========================== */
 
-function hideDiscount() {
-  document.getElementById("discountRow").style.display = "none";
-  document.getElementById("voucherDiscount").textContent = "0";
-}
-
-function playSuccess() {
-  document.getElementById("sound-success").play();
-}
-
-function playError() {
-  document.getElementById("sound-error").play();
-}
-
-/* ---------------------------------------
-   INIT: wajib dipanggil di DOMContentLoaded
----------------------------------------- */
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 DOM Loaded → Init voucher");
   initVoucherInput();
   await ensureVoucherLoaded();
   restoreVoucherFromStorage?.();
 });
-
+  
   /* ------------------ LOCALE UI ------------------------- */
   function initLocaleSelect(){
     const sel = document.getElementById('localeSelect');
@@ -1589,6 +1466,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
