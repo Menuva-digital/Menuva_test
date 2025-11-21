@@ -524,34 +524,36 @@ function toggleDark(){
 
 /* ========= UI: ROOM CARD CREATION (safer) ========= */
 function createRoomCard(room){
-  // Build DOM elements instead of inline JSON stringify to avoid issues
   const card = document.createElement('div');
   card.className = 'room-card';
 
+  const frag = document.createDocumentFragment();
+
   const img = document.createElement('img');
   img.alt = room.nama || room.name || '';
+  img.loading = "lazy"; // PATCH: lazy load biar ga berat
   img.src = (room.image && room.image.length) ? room.image : 'https://via.placeholder.com/400x200?text=No+Image';
-  card.appendChild(img);
+  frag.appendChild(img);
 
   const h3 = document.createElement('h3');
   h3.textContent = room.nama || room.name || 'Unnamed';
-  card.appendChild(h3);
+  frag.appendChild(h3);
 
   const pPrice = document.createElement('p');
   pPrice.innerHTML = `<b>Price:</b> ${formatCurrency(room.harga || room.price || 0)}`;
-  card.appendChild(pPrice);
+  frag.appendChild(pPrice);
 
   const pCap = document.createElement('p');
   pCap.innerHTML = `<b>Capacity:</b> ${room.kapasitas || room.capacity || 0} person`;
-  card.appendChild(pCap);
+  frag.appendChild(pCap);
 
   const pLuas = document.createElement('p');
   pLuas.innerHTML = `<b>Room size:</b> ${room.luas || room.size || 0} m²`;
-  card.appendChild(pLuas);
+  frag.appendChild(pLuas);
 
   const pDesc = document.createElement('p');
   pDesc.textContent = room.deskripsi || room.description || '';
-  card.appendChild(pDesc);
+  frag.appendChild(pDesc);
 
   const btn = document.createElement('button');
   btn.textContent = 'Add To Cart';
@@ -563,8 +565,9 @@ function createRoomCard(room){
     deskripsi: room.deskripsi || room.description || '',
     kategori: room.kategori || room.category || ''
   }));
-  card.appendChild(btn);
+  frag.appendChild(btn);
 
+  card.appendChild(frag);
   return card;
 }
 
@@ -619,6 +622,7 @@ function updateCartUI() {
   const totalEl = getEl('totalPrice');
   const discountEl = getEl('voucherDiscount');
   const grandEl = getEl('grandTotal');
+
   if (!preview || !totalEl || !grandEl) return;
 
   if (cart.length === 0) {
@@ -631,8 +635,9 @@ function updateCartUI() {
     return;
   }
 
-  preview.innerHTML = '';
+  const frag = document.createDocumentFragment();
   let subtotal = 0;
+
   cart.forEach((item, idx) => {
     const subtotalItem = (Number(item.harga) || 0) * (Number(item.qty) || 0);
     subtotal += subtotalItem;
@@ -671,17 +676,19 @@ function updateCartUI() {
     rem.onclick = () => hapusDariCart(idx);
     div.appendChild(rem);
 
-    preview.appendChild(div);
+    frag.appendChild(div);
   });
 
-  // simpan subtotal asli
+  preview.innerHTML = '';
+  preview.appendChild(frag);
+
   totalEl.dataset.rawOriginal = subtotal;
   totalEl.dataset.raw = subtotal;
   totalEl.innerText = 'Total Price = ' + formatCurrency(subtotal);
+
   grandEl.innerText = 'Grand Total = ' + formatCurrency(subtotal);
 
-  // cek voucher aktif → langsung re-apply diskon
-  autoApplyVoucher();
+  autoApplyVoucher(); // tetap
 }
 
 // Helper aman parse angka
@@ -701,23 +708,27 @@ let VOUCHER_LAST_VALUE = ""; // untuk cegah perhitungan ulang yg tidak perlu
 // === Load voucher list hanya 1x ===
 async function loadVoucherList() {
   try {
+    // Kalau sudah ada di cache → langsung return
     if (CACHE_VOUCHERS !== null) return CACHE_VOUCHERS;
 
-    const data = await loadDataFromDB(1);
-    if (!Array.isArray(data.menuVoucher)) {
+    // FIX: gunakan restoData yang sudah dimuat, JANGAN load ulang DB!
+    const data = restoData;
+
+    if (!data || !Array.isArray(data.menuVoucher)) {
       CACHE_VOUCHERS = [];
-      return [];
+      return CACHE_VOUCHERS;
     }
 
     const today = new Date().toISOString().split("T")[0];
-    CACHE_VOUCHERS = data.menuVoucher.filter(v => v.expiry >= today);
 
+    // Cache voucher aktif
+    CACHE_VOUCHERS = data.menuVoucher.filter(v => v.expiry >= today);
     return CACHE_VOUCHERS;
 
   } catch (err) {
     console.error("Voucher load error:", err);
     CACHE_VOUCHERS = [];
-    return [];
+    return CACHE_VOUCHERS;
   }
 }
 
@@ -810,9 +821,7 @@ async function autoApplyVoucher() {
 document.addEventListener("DOMContentLoaded", () => {
   const voucherInput = document.getElementById("voucherInput");
   if (voucherInput) {
-    ["input", "change", "blur"].forEach(evt => {
-      voucherInput.addEventListener(evt, autoApplyVoucher);
-    });
+    voucherInput.addEventListener("input", autoApplyVoucher); // PATCH
   }
 });
 
@@ -929,6 +938,11 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // === tampilkan spinner pusaran air ===
   showLoading(); // 🔧 ditambahkan
 
+  // === PATCH: Lazy Loading untuk semua IMG ===
+  document.querySelectorAll("img").forEach(img => {
+    img.loading = "lazy";
+  });
+  
   // apply theme button wiring
   applyTheme();
   const darkBtn = getEl('darkToggle');
@@ -992,4 +1006,3 @@ function hideLoading() {
 </script>
 </body>
 </html>
-
