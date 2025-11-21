@@ -1099,31 +1099,46 @@ function initVoucherInput() {
     if (e.key === "Enter") applyVoucher();
   });
 
-  // 🔥 AUTO DETECT setiap user mengetik
-  input.addEventListener("input", async () => {
-    const code = input.value.trim();
+ // 🔥 AUTO DETECT (real-time) + pesan valid/invalid
+input.addEventListener("input", async () => {
+  const code = input.value.trim();
 
+  msg.textContent = "";
+  input.classList.remove("voucher-valid", "voucher-invalid");
+
+  // === input kosong
+  if (!code) {
     msg.textContent = "";
-    input.classList.remove("voucher-valid", "voucher-invalid");
+    return;
+  }
 
-    if (!code || code.length < 3) {
-      return; // biar ga spam
-    }
+  // === minimal 3 karakter untuk cek
+  if (code.length < 3) {
+    msg.textContent = "⏳ Enter at least 3 characters…";
+    msg.style.color = "var(--warning)";
+    return;
+  }
 
-    await ensureVoucherLoaded();
+  await ensureVoucherLoaded();
+  const voucher = findVoucherSync(code);
 
-    const voucher = findVoucherSync(code);
+  // ❌ INVALID
+  if (!voucher) {
+    input.classList.add("voucher-invalid");
+    msg.textContent = "❌ Invalid voucher code";
+    msg.style.color = "var(--danger)";
+    return;
+  }
 
-    if (!voucher) {
-      input.classList.add("voucher-invalid");
-      return;
-    }
+  // ✅ VALID
+  input.classList.add("voucher-valid");
+  msg.textContent = "✅ Voucher valid: " + voucher.code;
+  msg.style.color = "var(--success)";
 
-    input.classList.add("voucher-valid");
-    activeVoucherData = voucher;
-    saveVoucherToStorage();
-    applyVoucherAndUpdateSummary();
-  });
+  activeVoucherData = voucher;
+  saveVoucherToStorage();
+  applyVoucherAndUpdateSummary();
+});
 }
 
 /* ==========================
@@ -1466,6 +1481,7 @@ window.addEventListener('DOMContentLoaded', initDarkMode);
 
 </body>
 </html>
+
 
 
 
